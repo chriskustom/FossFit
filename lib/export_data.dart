@@ -1,0 +1,143 @@
+import 'dart:io';
+
+import 'package:csv/csv.dart';
+import 'package:drift/drift.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:fossfit/main.dart';
+import 'package:fossfit/utils.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
+class ExportData extends StatelessWidget {
+  const ExportData({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: () {
+        showModalBottomSheet(
+          context: context,
+          useRootNavigator: true,
+          builder: (context) {
+            return SafeArea(
+              child: Wrap(
+                children: <Widget>[
+                  ListTile(
+                    leading: const Icon(Icons.insights),
+                    title: const Text('Graphs'),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      if (!await requestNotificationPermission()) return;
+                      final gymSets = await db.gymSets.select().get();
+                      final List<List<dynamic>> data = [
+                        [
+                          'id',
+                          'name',
+                          'reps',
+                          'weight',
+                          'created',
+                          'unit',
+                          'bodyWeight',
+                          'duration',
+                          'distance',
+                          'cardio',
+                          'hidden',
+                          'incline',
+                        ]
+                      ];
+                      for (var gymSet in gymSets) {
+                        data.add([
+                          gymSet.id,
+                          gymSet.name,
+                          gymSet.reps,
+                          gymSet.weight,
+                          gymSet.created.toIso8601String(),
+                          gymSet.unit,
+                          gymSet.bodyWeight,
+                          gymSet.duration,
+                          gymSet.distance,
+                          gymSet.cardio,
+                          gymSet.hidden,
+                          gymSet.incline,
+                        ]);
+                      }
+                      final csv =
+                          const CsvEncoder(lineDelimiter: "\n").convert(data);
+                      final bytes = Uint8List.fromList(csv.codeUnits);
+                      await FilePicker.saveFile(
+                        fileName: 'graphs.csv',
+                        bytes: bytes,
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.event),
+                    title: const Text('Plans'),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      final plans = await db.plans.select().get();
+                      final List<List<dynamic>> data = [
+                        ['id', 'days', 'title', 'sequence', 'exercises'],
+                      ];
+                      for (var plan in plans) {
+                        final planExercises = await (db.planExercises.select()
+                              ..where(
+                                (u) => u.planId.equals(plan.id) & u.enabled,
+                              ))
+                            .get();
+                        data.add([
+                          plan.id,
+                          plan.days,
+                          plan.title ?? '',
+                          plan.sequence ?? '',
+                          planExercises.map((e) => e.exercise).join(';'),
+                        ]);
+                      }
+
+                      if (!await requestNotificationPermission()) return;
+
+                      final csv =
+                          const CsvEncoder(lineDelimiter: "\n").convert(data);
+                      final bytes = Uint8List.fromList(csv.codeUnits);
+                      await FilePicker.saveFile(
+                        fileName: 'plans.csv',
+                        bytes: bytes,
+                        type: FileType.custom,
+                        allowedExtensions: ['csv'],
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.storage),
+                    title: const Text('Database'),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      final dbFolder = await getApplicationDocumentsDirectory();
+                      final file =
+                          File(p.join(dbFolder.path, 'FossFit.sqlite'));
+                      final bytes = await file.readAsBytes();
+                      final result = await FilePicker.saveFile(
+                        fileName: 'FossFit.sqlite',
+                        bytes: bytes,
+                        type: FileType.custom,
+                        allowedExtensions: ['sqlite'],
+                      );
+                      if (Platform.isMacOS ||
+                          Platform.isWindows ||
+                          Platform.isLinux) await file.copy(result!.path);
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+      icon: const Icon(Icons.download),
+      label: const Text('Export data'),
+    );
+  }
+}

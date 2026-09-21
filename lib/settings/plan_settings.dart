@@ -1,0 +1,164 @@
+import 'package:drift/drift.dart';
+import 'package:flutter/material.dart';
+import 'package:fossfit/constants.dart';
+import 'package:fossfit/database/database.dart';
+import 'package:fossfit/main.dart';
+import 'package:fossfit/settings/settings_state.dart';
+import 'package:fossfit/utils.dart';
+import 'package:provider/provider.dart';
+
+List<Widget> getPlanSettings(
+  String term,
+  Setting settings,
+  TextEditingController max,
+  TextEditingController warmup,
+) {
+  return [
+    if ('warmup sets'.contains(term.toLowerCase()))
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Tooltip(
+          message: 'Warmup sets have no rest timers',
+          child: TextField(
+            controller: warmup,
+            decoration: const InputDecoration(
+              labelText: 'Warmup sets',
+              hintText: '0',
+            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: false),
+            onTap: () => selectAll(warmup),
+            onChanged: (value) => db.settings.update().write(
+                  SettingsCompanion(
+                    warmupSets: Value(int.parse(value)),
+                  ),
+                ),
+          ),
+        ),
+      ),
+    if ('sets per exercise'.contains(term.toLowerCase()))
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Tooltip(
+          message: 'Default # of exercises in a plan',
+          child: TextField(
+            controller: max,
+            decoration: const InputDecoration(
+              labelText: 'Sets per exercise (max: 20)',
+            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: false),
+            onTap: () => selectAll(max),
+            onChanged: (value) {
+              if (int.parse(value) > 0 && int.parse(value) <= 20) {
+                db.settings.update().write(
+                      SettingsCompanion(
+                        maxSets: Value(int.parse(value)),
+                      ),
+                    );
+              }
+            },
+          ),
+        ),
+      ),
+    if ('plan trailing display'.contains(term.toLowerCase()))
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Tooltip(
+          message: 'Right side of list displays in Plans + Plan view',
+          child: DropdownButtonFormField<PlanTrailing>(
+            initialValue: PlanTrailing.values.byName(
+              settings.planTrailing.replaceFirst('PlanTrailing.', ''),
+            ),
+            decoration: const InputDecoration(
+              labelStyle: TextStyle(),
+              labelText: 'Plan trailing display',
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: PlanTrailing.reorder,
+                child: Row(
+                  children: [
+                    Text("Re-order"),
+                    SizedBox(width: 8),
+                    Icon(Icons.menu, size: 18),
+                  ],
+                ),
+              ),
+              DropdownMenuItem(
+                value: PlanTrailing.count,
+                child: Row(
+                  children: [
+                    Text("Count"),
+                    SizedBox(width: 8),
+                    Text("(5)"),
+                  ],
+                ),
+              ),
+              DropdownMenuItem(
+                value: PlanTrailing.percent,
+                child: Row(
+                  children: [
+                    Text("Percent"),
+                    SizedBox(width: 8),
+                    Text("(50%)"),
+                  ],
+                ),
+              ),
+              DropdownMenuItem(
+                value: PlanTrailing.ratio,
+                child: Row(
+                  children: [
+                    Text("Ratio"),
+                    SizedBox(width: 8),
+                    Text("(5 / 10)"),
+                  ],
+                ),
+              ),
+              DropdownMenuItem(
+                value: PlanTrailing.none,
+                child: Text("None"),
+              ),
+            ],
+            onChanged: (value) => db.settings.update().write(
+                  SettingsCompanion(
+                    planTrailing: Value(value.toString()),
+                  ),
+                ),
+          ),
+        ),
+      ),
+  ];
+}
+
+class PlanSettings extends StatefulWidget {
+  const PlanSettings({super.key});
+
+  @override
+  State<PlanSettings> createState() => _PlanSettingsState();
+}
+
+class _PlanSettingsState extends State<PlanSettings> {
+  late var settings = context.read<SettingsState>().value;
+
+  late final max = TextEditingController(text: settings.maxSets.toString());
+
+  late final warmup =
+      TextEditingController(text: settings.warmupSets?.toString());
+
+  @override
+  Widget build(BuildContext context) {
+    settings = context.watch<SettingsState>().value;
+
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      appBar: AppBar(
+        title: const Text("Plans"),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: ListView(
+          children: getPlanSettings('', settings, max, warmup),
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,148 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    flutterVersionCode = '1'
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    flutterVersionName = '1.0'
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+   keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    namespace "com.kustom.FossFitfork"
+    compileSdkVersion flutter.compileSdkVersion
+    ndkVersion = "28.2.13676358"
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+        coreLibraryDesugaringEnabled true
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    defaultConfig {
+        applicationId "com.kustom.FossFitfork"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+        minSdkVersion flutter.minSdkVersion
+        targetSdkVersion flutter.targetSdkVersion
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+    }
+
+    // Reproducible builds configuration
+    packagingOptions {
+        // Exclude files that can cause reproducibility issues
+        excludes += ['META-INF/DEPENDENCIES']
+        excludes += ['META-INF/LICENSE']
+        excludes += ['META-INF/LICENSE.txt']
+        excludes += ['META-INF/NOTICE']
+        excludes += ['META-INF/NOTICE.txt']
+        excludes += ['LICENSE-junit.txt']
+        excludes += ['META-INF/services/U1.a']
+        excludes += ['META-INF/services/U1.b']
+        excludes += ['META-INF/services/X1.a']
+        excludes += ['META-INF/services/X1.b']
+        // Ensure deterministic ordering
+        pickFirsts += ['**/libc++_shared.so']
+        pickFirsts += ['**/libjsc.so']
+        // Exclude problematic directories
+        excludes += ['androidx/**']
+        excludes += ['junit/**']
+    }
+
+   signingConfigs {
+       release {
+           keyAlias keystoreProperties['keyAlias']
+           keyPassword keystoreProperties['keyPassword']
+           storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+           storePassword keystoreProperties['storePassword']
+       }
+   }
+   buildTypes {
+       profile {
+           if (keystorePropertiesFile.exists()) {
+               signingConfig signingConfigs.release
+           }
+           // Reproducible builds
+           buildConfigField "long", "BUILD_TIME", "0L"
+       }
+       debug {
+           if (keystorePropertiesFile.exists()) {
+               signingConfig signingConfigs.release
+           }
+           // Reproducible builds
+           buildConfigField "long", "BUILD_TIME", "0L"
+       }
+       release {
+           signingConfig signingConfigs.release
+           // Reproducible builds
+           buildConfigField "long", "BUILD_TIME", "0L"
+       }
+   }
+   // https://github.com/ChrisKustom/FossFit/issues/125
+   dependenciesInfo {
+        // Disables dependency metadata when building APKs.
+        includeInApk = false
+        // Disables dependency metadata when building Android App Bundles.
+        includeInBundle = false
+    }
+
+}
+
+ext.abiCodes = ["x86_64": 1, "armeabi-v7a": 2, "arm64-v8a": 3]
+android.applicationVariants.all { variant ->
+    variant.outputs.each { output ->
+        def abiVersionCode = project.ext.abiCodes.get(output.getFilter(com.android.build.OutputFile.ABI))
+        if (abiVersionCode != null) {
+            output.versionCodeOverride = variant.versionCode * 100 + abiVersionCode
+        } else if (output.getFilter(com.android.build.OutputFile.ABI) == null) {
+            // This is a universal APK
+            output.versionCodeOverride = variant.versionCode * 100 + 3
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.documentfile:documentfile:1.0.1'
+    implementation 'androidx.multidex:multidex:2.0.1'
+    implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.22"))
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+}

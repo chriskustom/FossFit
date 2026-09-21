@@ -1,0 +1,122 @@
+import 'package:drift/drift.dart';
+import 'package:flutter/material.dart';
+import 'package:fossfit/database/database.dart';
+
+const weekdays = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
+
+enum CardioMetric { pace, distance, duration, incline, inclineAdjustedPace }
+
+enum Period {
+  day,
+  week,
+  month,
+  year,
+}
+
+enum PlanTrailing { reorder, ratio, count, percent, none }
+
+enum StrengthMetric {
+  oneRepMax,
+  volume,
+  bestWeight,
+  relativeStrength,
+  bestReps,
+}
+
+enum GraphSort {
+  dateDesc,
+  dateAsc,
+  name,
+}
+
+final defaultSettings = SettingsCompanion.insert(
+  themeMode: ThemeMode.system.toString(),
+  planTrailing: PlanTrailing.reorder.toString(),
+  longDateFormat: 'timeago',
+  shortDateFormat: 'd/M/yy',
+  timerDuration: const Duration(minutes: 3, seconds: 30).inMilliseconds,
+  maxSets: 3,
+  vibrate: true,
+  restTimers: false,
+  showUnits: true,
+  alarmSound: '',
+  cardioUnit: 'last-entry',
+  curveLines: true,
+  explainedPermissions: false,
+  groupHistory: false,
+  showBodyWeight: const Value(true),
+  strengthUnit: 'last-entry',
+  systemColors: false,
+  showCategories: const Value(true),
+);
+
+const positiveReinforcement = [
+  'Great work! You are incredible.',
+  'Nice king! Your progress is inspiring.',
+  'I kneel...',
+  "What's that? A new record!",
+  "Incredible stuff! You are an inspiration.",
+  "Wow. Nice.",
+  "Getting strong much?",
+  "Yeah. You're a pretty big guy.",
+  "Amazing. Incredible.",
+  "Arnie would be proud.",
+  "Ronnie C looks upon you with glee.",
+  "YEAH! LIGHTWEIGHT BABY!!!!!!!",
+  "Is that a new record? I knew you could do it.",
+  "Great work! I am proud of you.",
+  "Yeah baby! Light weight!",
+  "Keep it up! Great progress.",
+  "You are doing so well.",
+  "That's my boy!",
+  "Keep it up.",
+  "You are getting very strong.",
+  "Powerful.",
+  "Powerful stuff!",
+  "I am proud of you.",
+  "Keep up the great work.",
+  "Stand tall! You just made a new record.",
+  "New record! You just pushed further than ever!",
+  "Yep! That's a record.",
+  "Wow! New record!",
+  "Very good stuff.",
+];
+
+const strengthUnits = [
+  DropdownMenuItem(
+    value: 'kg',
+    child: Text('Kilograms (kg)'),
+  ),
+  DropdownMenuItem(
+    value: 'lb',
+    child: Text('Pounds (lb)'),
+  ),
+  DropdownMenuItem(
+    value: 'stone',
+    child: Text('Stone (st)'),
+  ),
+  DropdownMenuItem(
+    value: 'km',
+    child: Text('Kilometers (km)'),
+  ),
+  DropdownMenuItem(
+    value: 'mi',
+    child: Text('Miles (mi)'),
+  ),
+  DropdownMenuItem(
+    value: 'm',
+    child: Text('Meters (m)'),
+  ),
+  DropdownMenuItem(
+    value: 'kcal',
+    child: Text('Kilocalories (kcal)'),
+  ),
+];

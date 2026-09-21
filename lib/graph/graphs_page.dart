@@ -1,0 +1,683 @@
+import 'package:drift/drift.dart' as drift;
+import 'package:drift/drift.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart' as material;
+import 'package:flutter/material.dart';
+import 'package:fossfit/animated_fab.dart';
+import 'package:fossfit/app_search.dart';
+import 'package:fossfit/constants.dart';
+import 'package:fossfit/database/database.dart';
+import 'package:fossfit/database/gym_sets.dart';
+import 'package:fossfit/graph/add_exercise_page.dart';
+import 'package:fossfit/graph/cardio_data.dart';
+import 'package:fossfit/graph/edit_graph_page.dart';
+import 'package:fossfit/graph/flex_line.dart';
+import 'package:fossfit/graph/global_progress_page.dart';
+import 'package:fossfit/graphs_filters.dart';
+import 'package:fossfit/main.dart';
+import 'package:fossfit/plan/plan_state.dart';
+import 'package:fossfit/settings/settings_state.dart';
+import 'package:fossfit/utils.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:sticky_headers/sticky_headers/widget.dart';
+
+import 'graph_tile.dart';
+
+class GraphsPage extends StatefulWidget {
+  final TabController tabController;
+
+  const GraphsPage({super.key, required this.tabController});
+
+  @override
+  createState() => GraphsPageState();
+}
+
+class GraphsPageState extends State<GraphsPage>
+    with AutomaticKeepAliveClientMixin {
+  late final Stream<List<GymSetsCompanion>> stream = watchGraphs();
+
+  final Set<String> selected = {};
+  final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
+  String search = '';
+  String? category;
+  final scroll = ScrollController();
+  bool extendFab = true;
+  int total = 0;
+  GraphSort sort = GraphSort.dateDesc;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return NavigatorPopHandler(
+      onPopWithResult: (result) {
+        if (navKey.currentState!.canPop() == false) return;
+        final settings = context.read<SettingsState>().value;
+        final graphsIndex = settings.tabs.split(',').indexOf('GraphsPage');
+        if (widget.tabController.index == graphsIndex)
+          Navigator.of(navKey.currentContext!).pop();
+      },
+      child: Navigator(
+        key: navKey,
+        onGenerateRoute: (settings) => MaterialPageRoute(
+          builder: (context) => graphsPage(),
+          settings: settings,
+        ),
+      ),
+    );
+  }
+
+  void onDelete() async {
+    final state = context.read<PlanState>();
+    final copy = selected.toList();
+    setState(() {
+      selected.clear();
+    });
+
+    await (db.delete(db.gymSets)..where((tbl) => tbl.name.isIn(copy))).go();
+
+    final plans = await db.plans.select().get();
+    for (final plan in plans) {
+      db
+          .delete(db.planExercises)
+          .where((x) => x.planId.equals(plan.id) & x.exercise.isIn(copy));
+    }
+    state.updatePlans(null);
+  }
+
+  LineTouchTooltipData tooltipData(
+    List<dynamic> data,
+    String unit,
+    String format,
+  ) {
+    return LineTouchTooltipData(
+      getTooltipColor: (touch) => Theme.of(context).colorScheme.surface,
+      getTooltipItems: (touchedSpots) {
+        final row = data.elementAt(touchedSpots.last.spotIndex);
+        final created = DateFormat(format).format(row.created);
+
+        String text;
+        if (row is CardioData)
+          text = "${row.value} ${row.unit} / min";
+        else
+          text = "${row.reps} x ${row.value.toStringAsFixed(2)}$unit $created";
+
+        return [
+          LineTooltipItem(
+            text,
+            TextStyle(color: Theme.of(context).textTheme.bodyLarge!.color),
+          ),
+          if (touchedSpots.length > 1) null,
+        ];
+      },
+    );
+  }
+
+  Widget getPeek(GymSetsCompanion gymSet, List<dynamic> data, String format) {
+    List<FlSpot> spots = [];
+    for (var index = 0; index < data.length; index++) {
+      spots.add(FlSpot(index.toDouble(), data[index].value));
+    }
+
+    return material.SizedBox(
+      height: MediaQuery.of(context).size.height * 0.15,
+      child: material.Padding(
+        padding:
+            const EdgeInsets.only(right: 48.0, top: 8.0, left: 48, bottom: 8),
+        child: FlexLine(
+          data: data,
+          spots: spots,
+          tooltipData: () => tooltipData(
+            data,
+            gymSet.unit.value,
+            format,
+          ),
+          hideBottom: true,
+          hideLeft: true,
+        ),
+      ),
+    );
+  }
+
+  Scaffold graphsPage() {
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      body: StreamBuilder(
+        stream: stream,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) return ErrorWidget(snapshot.error.toString());
+          if (!snapshot.hasData) return const SizedBox();
+
+          final terms =
+              search.toLowerCase().split(" ").where((term) => term.isNotEmpty);
+          var stream = snapshot.data!.where((gymSet) {
+            if (category != null) {
+              return gymSet.category.value == category;
+            }
+            return true;
+          });
+
+          for (final term in terms) {
+            stream = stream.where(
+              (gymSet) => gymSet.name.value.toLowerCase().contains(term),
+            );
+          }
+
+          final gymSets = stream.toList();
+          switch (sort) {
+            case GraphSort.dateDesc:
+              gymSets.sort(
+                (a, b) => b.created.value.compareTo(a.created.value),
+              );
+              break;
+
+            case GraphSort.dateAsc:
+              gymSets.sort(
+                (a, b) => a.created.value.compareTo(b.created.value),
+              );
+              break;
+
+            case GraphSort.name:
+              gymSets.sort(
+                (a, b) => a.name.value.toLowerCase().compareTo(
+                      b.name.value.toLowerCase(),
+                    ),
+              );
+              break;
+          }
+          return material.Column(
+            children: [
+              AppSearch(
+                filter: GraphsFilters(
+                  category: category,
+                  setCategory: (value) {
+                    setState(() {
+                      category = value;
+                    });
+                  },
+                  sort: sort,
+                  setSort: (value) {
+                    setState(() {
+                      sort = value;
+                    });
+                  },
+                ),
+                onShare: onShare,
+                onChange: (value) {
+                  setState(() {
+                    search = value;
+                  });
+                },
+                onClear: () => setState(() {
+                  selected.clear();
+                }),
+                onDelete: onDelete,
+                onSelect: () => setState(() {
+                  selected.addAll(
+                    gymSets.map((gymSet) => gymSet.name.value),
+                  );
+                }),
+                selected: selected,
+                onEdit: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EditGraphPage(
+                      name: selected.first,
+                    ),
+                  ),
+                ),
+                confirmText: "This will delete $total records. Are you sure?",
+              ),
+              if (gymSets.isEmpty &&
+                  !'global progress'.contains(search.toLowerCase()))
+                ListTile(
+                  title: const Text("No graphs found"),
+                  subtitle: Text(
+                    "Tap to create an exercise called $search",
+                  ),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => AddExercisePage(
+                          name: search,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              Selector<SettingsState, bool>(
+                selector: (p0, settingsState) =>
+                    settingsState.value.showGlobalProgress,
+                builder: (context, showGlobal, child) => Expanded(
+                  child: (sort == GraphSort.name)
+                      ? _sortedGraphList(gymSets, showGlobal)
+                      : _stickyHeadersGraphList(gymSets, showGlobal),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+      floatingActionButton: AnimatedFab(
+        onPressed: () => navKey.currentState!.push(
+          MaterialPageRoute(
+            builder: (context) => const AddExercisePage(),
+          ),
+        ),
+        label: Text('Add'),
+        scroll: scroll,
+        icon: Icon(Icons.add),
+      ),
+    );
+  }
+
+  Future<void> onShare() async {
+    final copy = selected.toList();
+    setState(() {
+      selected.clear();
+    });
+    final sets = (await stream.first)
+        .where(
+          (gymSet) => copy.contains(gymSet.name.value),
+        )
+        .toList();
+    final text = sets
+        .map(
+          (gymSet) =>
+              "${toString(gymSet.reps.value)}x${toString(gymSet.weight.value)}${gymSet.unit.value} ${gymSet.name.value}",
+        )
+        .join(', ');
+    await SharePlus.instance.share(ShareParams(text: "I just did $text"));
+  }
+
+  void longPressGlobal() {
+    showModalBottomSheet(
+      useRootNavigator: true,
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.visibility_off),
+                title: const Text('Hide global progress'),
+                onTap: () {
+                  db.settings.update().write(
+                        const SettingsCompanion(
+                          showGlobalProgress: Value(false),
+                        ),
+                      );
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.clear),
+                title: const Text('Cancel'),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  material.ListView _stickyHeadersGraphList(
+    List<GymSetsCompanion> gymSets,
+    bool showGlobalProgress,
+  ) {
+    _grouped = _groupByDay(gymSets);
+    var itemCount = _grouped.entries.length + 1;
+    final showGlobal = 'global graphs'.contains(search.toLowerCase()) &&
+        category == null &&
+        showGlobalProgress;
+    if (showGlobal) itemCount++;
+
+    final settings = context.read<SettingsState>().value;
+    final showPeekGraph =
+        settings.peekGraph && _grouped.entries.firstOrNull != null;
+    if (showPeekGraph) itemCount++;
+    return ListView.builder(
+      itemCount: itemCount,
+      controller: scroll,
+      padding: const EdgeInsets.only(bottom: 50, top: 8),
+      itemBuilder: (context, index) {
+        int currentIdx = index;
+
+        if (showGlobal) {
+          if (index == 0) {
+            return material.Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2),
+              child: ListTile(
+                leading: const Icon(Icons.language),
+                title: const Text("Global progress"),
+                subtitle: const Text("A chart grouped by category"),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const GlobalProgressPage(),
+                  ),
+                ),
+                onLongPress: longPressGlobal,
+              ),
+            );
+          }
+          currentIdx--;
+        }
+        bool peek = showPeekGraph && currentIdx == 0;
+
+        if (index == itemCount - 1) return const SizedBox(height: 96);
+
+        if (showPeekGraph && currentIdx > 1) {
+          currentIdx--;
+        }
+
+        final set = _grouped.entries.elementAtOrNull(currentIdx);
+        if (set == null) return const SizedBox();
+        final date = set.key;
+        final sets = set.value;
+
+        return StickyHeader(
+          header: Container(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            alignment: Alignment.center,
+            child: _buildSectionDivider(date),
+          ),
+          content: material.Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: List.generate(
+              sets.length,
+              (index) {
+                return material.Column(
+                  children: [
+                    GraphTile(
+                      selected: selected,
+                      gymSet: set.value[index],
+                      onSelect: (name) async {
+                        if (selected.contains(name))
+                          setState(() {
+                            selected.remove(name);
+                          });
+                        else
+                          setState(() {
+                            selected.add(name);
+                          });
+                        final result = await (db.gymSets.selectOnly()
+                              ..addColumns([db.gymSets.name.count()])
+                              ..where(db.gymSets.name.isIn(selected)))
+                            .getSingle();
+                        setState(() {
+                          total = result.read(db.gymSets.name.count()) ?? 0;
+                        });
+                      },
+                      tabCtrl: widget.tabController,
+                    ),
+                    if (peek && index == 0) ...[
+                      Consumer<SettingsState>(
+                        builder: (
+                          BuildContext context,
+                          SettingsState settings,
+                          Widget? child,
+                        ) {
+                          if (_grouped.entries.firstOrNull == null)
+                            return const SizedBox();
+
+                          return FutureBuilder(
+                            builder: (context, snapshot) =>
+                                snapshot.data != null
+                                    ? getPeek(
+                                        _grouped.entries.first.value.first,
+                                        snapshot.data!,
+                                        settings.value.shortDateFormat,
+                                      )
+                                    : const SizedBox(),
+                            future:
+                                _grouped.entries.first.value.first.cardio.value
+                                    ? getCardioData(
+                                        name: _grouped.entries.first.value.first
+                                            .name.value,
+                                      )
+                                    : getStrengthData(
+                                        target: _grouped.entries.first.value
+                                            .first.unit.value,
+                                        name: _grouped.entries.first.value.first
+                                            .name.value,
+                                        metric: StrengthMetric.bestWeight,
+                                        period: Period.day,
+                                        start: null,
+                                        end: null,
+                                        limit: 20,
+                                      ),
+                          );
+                        },
+                      ),
+                    ],
+                  ],
+                );
+
+                // return GraphTile(
+                //   selected: selected,
+                //   gymSet: set.value[index],
+                //   onSelect: (name) async {
+                //     if (selected.contains(name))
+                //       setState(() {
+                //         selected.remove(name);
+                //       });
+                //     else
+                //       setState(() {
+                //         selected.add(name);
+                //       });
+                //     final result = await (db.gymSets.selectOnly()
+                //           ..addColumns([db.gymSets.name.count()])
+                //           ..where(db.gymSets.name.isIn(selected)))
+                //         .getSingle();
+                //     setState(() {
+                //       total = result.read(db.gymSets.name.count()) ?? 0;
+                //     });
+                //   },
+                //   tabCtrl: widget.tabController,
+                // );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  material.ListView _sortedGraphList(
+    List<GymSetsCompanion> gymSets,
+    bool showGlobalProgress,
+  ) {
+    var itemCount = gymSets.length + 1;
+    final showGlobal = 'global graphs'.contains(search.toLowerCase()) &&
+        category == null &&
+        showGlobalProgress;
+    if (showGlobal) itemCount++;
+
+    final settings = context.read<SettingsState>().value;
+    final showPeekGraph = settings.peekGraph && gymSets.firstOrNull != null;
+    if (showPeekGraph) itemCount++;
+
+    return ListView.builder(
+      itemCount: itemCount,
+      controller: scroll,
+      padding: const EdgeInsets.only(bottom: 50, top: 8),
+      itemBuilder: (context, index) {
+        int currentIdx = index;
+
+        if (showGlobal) {
+          if (index == 0) {
+            return material.Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2),
+              child: ListTile(
+                leading: const Icon(Icons.language),
+                title: const Text("Global progress"),
+                subtitle: const Text("A chart grouped by category"),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const GlobalProgressPage(),
+                  ),
+                ),
+                onLongPress: longPressGlobal,
+              ),
+            );
+          }
+          currentIdx--;
+        }
+
+        if (showPeekGraph && currentIdx == 1) {
+          return Consumer<SettingsState>(
+            builder: (
+              BuildContext context,
+              SettingsState settings,
+              Widget? child,
+            ) {
+              if (!settings.value.peekGraph) return const SizedBox();
+              if (gymSets.firstOrNull == null) return const SizedBox();
+
+              return FutureBuilder(
+                builder: (context, snapshot) => snapshot.data != null
+                    ? getPeek(
+                        gymSets.first,
+                        snapshot.data!,
+                        settings.value.shortDateFormat,
+                      )
+                    : const SizedBox(),
+                future: gymSets.first.cardio.value
+                    ? getCardioData(name: gymSets.first.name.value)
+                    : getStrengthData(
+                        target: gymSets.first.unit.value,
+                        name: gymSets.first.name.value,
+                        metric: StrengthMetric.bestWeight,
+                        period: Period.day,
+                        start: null,
+                        end: null,
+                        limit: 20,
+                      ),
+              );
+            },
+          );
+        }
+
+        if (index == itemCount - 1) return const SizedBox(height: 96);
+
+        if (showPeekGraph && currentIdx > 1) {
+          currentIdx--;
+        }
+
+        final set = gymSets.elementAtOrNull(currentIdx);
+        if (set == null) return const SizedBox();
+
+        final previousItem = currentIdx > 0 ? gymSets[currentIdx - 1] : set;
+
+        final bool showDivider = sort != GraphSort.name &&
+            (currentIdx == 0 ||
+                !isSameDay(
+                  set.created.value.toLocal(),
+                  previousItem.created.value.toLocal(),
+                ));
+
+        return material.Column(
+          children: [
+            if (showDivider)
+              material.Row(
+                children: [
+                  const material.Expanded(child: Divider()),
+                  const Icon(Icons.today),
+                  const SizedBox(width: 4),
+                  Selector<SettingsState, String>(
+                    selector: (p0, p1) => p1.value.shortDateFormat,
+                    builder: (context, format, child) => Text(
+                      DateFormat(format).format(set.created.value.toLocal()),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const material.Expanded(child: Divider()),
+                ],
+              ),
+            GraphTile(
+              selected: selected,
+              gymSet: set,
+              onSelect: (name) async {
+                if (selected.contains(name))
+                  setState(() {
+                    selected.remove(name);
+                  });
+                else
+                  setState(() {
+                    selected.add(name);
+                  });
+                final result = await (db.gymSets.selectOnly()
+                      ..addColumns([db.gymSets.name.count()])
+                      ..where(db.gymSets.name.isIn(selected)))
+                    .getSingle();
+                setState(() {
+                  total = result.read(db.gymSets.name.count()) ?? 0;
+                });
+              },
+              tabCtrl: widget.tabController,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSectionDivider(DateTime date) {
+    final format = context.read<SettingsState>().value.shortDateFormat;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          const Expanded(child: Divider(thickness: 1)),
+          const SizedBox(width: 4),
+          const Icon(Icons.today, size: 16),
+          const SizedBox(width: 4),
+          Text(
+            DateFormat(format).format(date),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: 4),
+          const Expanded(child: Divider(thickness: 1)),
+        ],
+      ),
+    );
+  }
+
+  Map<DateTime, List<GymSetsCompanion>> _grouped = {};
+  Map<DateTime, List<GymSetsCompanion>> _groupByDay(
+    List<GymSetsCompanion> sets,
+  ) {
+    final map = <DateTime, List<GymSetsCompanion>>{};
+
+    for (final set in sets) {
+      final day = DateTime(
+        set.created.value.year,
+        set.created.value.month,
+        set.created.value.day,
+      );
+
+      map.putIfAbsent(day, () => []);
+      map[day]!.add(set);
+    }
+
+    // Optional: sort newest first
+    final sortedKeys = map.keys.toList()
+      ..sort(
+        sort == GraphSort.dateDesc
+            ? (a, b) => b.compareTo(a)
+            : (a, b) => a.compareTo(b),
+      );
+
+    return {
+      for (final key in sortedKeys) key: map[key]!,
+    };
+  }
+}

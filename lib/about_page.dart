@@ -1,0 +1,118 @@
+import 'package:flutter/material.dart';
+import 'package:fossfit/settings/whats_new.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher_string.dart';
+
+class AboutPage extends StatelessWidget {
+  const AboutPage({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final info = PackageInfo.fromPlatform();
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      appBar: AppBar(
+        title: const Text("About"),
+      ),
+      body: ListView(
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Image(
+              image: AssetImage('assets/ic_launcher.png'),
+              height: 150,
+            ),
+          ),
+          ListTile(
+            title: const Text("Donate"),
+            leading: const Icon(Icons.favorite_outline),
+            subtitle: FutureBuilder(
+              future: info,
+              builder: (context, snapshot) =>
+                  const Text("Help support this project"),
+            ),
+            onTap: () async {
+              const url = 'https://github.com/sponsors/ChrisKustom';
+              await launchUrlString(url);
+            },
+          ),
+          ListTile(
+            title: const Text("Whats new?"),
+            subtitle: const Text("See our release notes"),
+            leading: const Icon(Icons.change_circle_outlined),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const WhatsNew(),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text("Version"),
+            subtitle: FutureBuilder(
+              future: info,
+              builder: (context, snapshot) =>
+                  Text(snapshot.data?.version ?? "1.0.0"),
+            ),
+            onTap: () async {
+              const url =
+                  'https://github.com/ChrisKustom/FossFit-Fork/releases';
+              if (await canLaunchUrlString(url)) await launchUrlString(url);
+            },
+          ),
+          ListTile(
+            title: const Text("Author"),
+            leading: const Icon(Icons.person),
+            subtitle: FutureBuilder(
+              future: info,
+              builder: (context, snapshot) => const Text("ChrisKustom"),
+            ),
+            onTap: () async {
+              const url = 'https://github.com/ChrisKustom';
+              if (await canLaunchUrlString(url)) await launchUrlString(url);
+            },
+          ),
+          ListTile(
+            title: const Text("License"),
+            leading: const Icon(Icons.balance),
+            subtitle: FutureBuilder(
+              future: info,
+              builder: (context, snapshot) => const Text("MIT"),
+            ),
+            onTap: () async {
+              const url =
+                  'https://github.com/ChrisKustom/FossFit-Fork?tab=MIT-1-ov-file#readme';
+              if (await canLaunchUrlString(url)) await launchUrlString(url);
+            },
+          ),
+          ListTile(
+            title: const Text("Source code"),
+            leading: const Icon(Icons.code),
+            subtitle: FutureBuilder(
+              future: info,
+              builder: (context, snapshot) =>
+                  const Text("Check it out on GitHub"),
+            ),
+            onTap: () async {
+              const url = 'https://github.com/ChrisKustom/FossFit-Fork';
+              if (await canLaunchUrlString(url)) await launchUrlString(url);
+            },
+          ),
+          ListTile(
+            title: const Text("Report a bug"),
+            leading: const Icon(Icons.bug_report),
+            subtitle: const Text("Open a ticket on GitHub"),
+            onTap: () async {
+              final version = (await info).version;
+              final url =
+                  'https://github.com/ChrisKustom/FossFit-Fork/issues/new?labels=Bug&body=App version: $version';
+              if (await canLaunchUrlString(url)) await launchUrlString(url);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
