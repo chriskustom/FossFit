@@ -29,8 +29,8 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.kustom.FossFitfork"
-    compileSdkVersion flutter.compileSdkVersion
+    namespace "com.kustom.fossfit"
+    compileSdkVersion 37
     ndkVersion = "28.2.13676358"
 
     buildFeatures {
@@ -38,13 +38,13 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
         coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
 
     sourceSets {
@@ -52,7 +52,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.kustom.FossFitfork"
+        applicationId "com.kustom.fossfit"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
         minSdkVersion flutter.minSdkVersion
@@ -143,6 +143,5 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.documentfile:documentfile:1.0.1'
     implementation 'androidx.multidex:multidex:2.0.1'
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.22"))
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
 }

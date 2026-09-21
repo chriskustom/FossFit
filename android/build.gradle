@@ -1,15 +1,15 @@
-buildscript {
-    ext.kotlin_version = '2.1.0'
-    repositories {
-        google()
-        mavenCentral()
-    }
+// buildscript {
+//     ext.kotlin_version = '2.2.0'
+//     repositories {
+//         google()
+//         mavenCentral()
+//     }
 
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.1'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
-}
+//     // dependencies {
+//     //     classpath 'com.android.tools.build:gradle:8.12.1'
+//     //     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+//     // }
+// }
 
 allprojects {
     repositories {
@@ -23,19 +23,26 @@ rootProject.buildDir = '../build'
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
     project.evaluationDependsOn(':app')
-    
-    // Enable buildConfig for all Android modules to fix audioplayers_android issue
-    project.plugins.whenPluginAdded { plugin ->
-        if (plugin.class.name.contains('com.android.build.gradle.LibraryPlugin') ||
-            plugin.class.name.contains('com.android.build.gradle.AppPlugin')) {
-            project.android {
-                buildFeatures {
-                    buildConfig true
-                }
+
+    project.plugins.withId("com.android.library") {
+        project.pluginManager.apply("org.jetbrains.kotlin.android")
+
+        project.android {
+            buildFeatures {
+                buildConfig = true
+            }
+        }
+    }
+
+    project.plugins.withId("com.android.application") {
+        project.android {
+            buildFeatures {
+                buildConfig = true
             }
         }
     }
 }
+
 
 tasks.register("clean", Delete) {
     delete rootProject.buildDir

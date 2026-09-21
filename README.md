@@ -1,6 +1,6 @@
 # FossFit
 
-A simple fork of [FossFit](https://github.com/chriskustomp2412/FossFit) with some QOL updates
+A simple workout app
 
 ## Changes
 

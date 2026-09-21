@@ -117,10 +117,10 @@ class ExportData extends StatelessWidget {
                       Navigator.pop(context);
                       final dbFolder = await getApplicationDocumentsDirectory();
                       final file =
-                          File(p.join(dbFolder.path, 'FossFit.sqlite'));
+                          File(p.join(dbFolder.path, 'fossfit.sqlite'));
                       final bytes = await file.readAsBytes();
                       final result = await FilePicker.saveFile(
-                        fileName: 'FossFit.sqlite',
+                        fileName: 'fossfit.sqlite',
                         bytes: bytes,
                         type: FileType.custom,
                         allowedExtensions: ['sqlite'],

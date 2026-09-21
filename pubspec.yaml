@@ -1,7 +1,7 @@
 name: fossfit
 description: Track gym progress, visualize graphs, enjoy offline support & timers
 publish_to: none
-version: 2.1.50+335
+version: 1.0.0
 environment:
   sdk: ">=3.2.6 <4.0.0"
 dependencies:
@@ -36,8 +36,6 @@ dependencies:
   flutter_local_notifications_platform_interface: ^12.2.0
 
 dev_dependencies:
-  integration_test:
-    sdk: flutter
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
@@ -68,6 +66,9 @@ flutter_launcher_icons:
     image_path: assets/ic_launcher.png
     icon_size: 48
   macos:
+    generate: true
+    image_path: assets/ic_launcher.png
+  linux:
     generate: true
     image_path: assets/ic_launcher.png
 msix_config:

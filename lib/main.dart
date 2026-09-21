@@ -30,7 +30,7 @@ Future<void> main() async {
 AppDatabase db = AppDatabase();
 
 MethodChannel androidChannel =
-    const MethodChannel("com.kustom.FossFitfork/android");
+    const MethodChannel("com.kustom.fossfit/android");
 
 Widget appProviders(SettingsState state) => MultiProvider(
       providers: [
