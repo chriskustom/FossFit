@@ -89,19 +89,16 @@ class _PlanTileState extends State<PlanTile> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Center(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: 2),
-              child: Text(
-                widget.plan.title?.isNotEmpty == true
-                    ? widget.plan.title![0]
-                    : widget.plan.days[0].toUpperCase(),
-                textAlign: TextAlign.justify,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                ),
+            child: Text(
+              widget.plan.title?.isNotEmpty == true
+                  ? widget.plan.title![0]
+                  : widget.plan.days[0].toUpperCase(),
+              textAlign: TextAlign.justify,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
               ),
             ),
           ),

@@ -134,7 +134,7 @@ class DeleteRecordsButton extends StatelessWidget {
                                   final dbFolder =
                                       await getApplicationDocumentsDirectory();
                                   final file = File(
-                                    p.join(dbFolder.path, 'FossFit.sqlite'),
+                                    p.join(dbFolder.path, 'fossfit.sqlite'),
                                   );
                                   await db.close();
                                   await db.executor.close();

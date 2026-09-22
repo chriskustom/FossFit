@@ -42,7 +42,7 @@ fun openDb(context: Context): SQLiteDatabase? {
     val parentDir = context.filesDir.parentFile
     val dbFolder = File(parentDir, "app_flutter").absolutePath
     Log.d("auto backup", "dbFolder=$dbFolder")
-    val dbFile = File(dbFolder, "FossFit.sqlite")
+    val dbFile = File(dbFolder, "fossfit.sqlite")
     if (!dbFile.exists()) return null
     return SQLiteDatabase.openDatabase(dbFile.absolutePath, null, 0)
 }

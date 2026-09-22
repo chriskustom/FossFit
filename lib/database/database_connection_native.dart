@@ -10,7 +10,7 @@ import 'package:sqlite3/sqlite3.dart';
 LazyDatabase createNativeConnection() {
   return LazyDatabase(() async {
     final folder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(folder.path, 'FossFit.sqlite'));
+    final file = File(p.join(folder.path, 'fossfit.sqlite'));
 
     final cache = (await getTemporaryDirectory()).path;
     sqlite3.tempDirectory = cache;

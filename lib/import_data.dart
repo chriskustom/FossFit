@@ -134,7 +134,7 @@ $version
     final dbFolder = await getApplicationDocumentsDirectory();
     await db.close();
 
-    await sourceFile.copy(p.join(dbFolder.path, 'FossFit.sqlite'));
+    await sourceFile.copy(p.join(dbFolder.path, 'fossfit.sqlite'));
     db = AppDatabase();
 
     await (db.settings.update())

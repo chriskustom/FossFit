@@ -24,7 +24,7 @@ void tapBackup(bool value) async {
 
   if (value) {
     final dbFolder = await getApplicationDocumentsDirectory();
-    final dbPath = p.join(dbFolder.path, 'FossFit.sqlite');
+    final dbPath = p.join(dbFolder.path, 'fossfit.sqlite');
     androidChannel.invokeMethod('pick', {'dbPath': dbPath});
     await Permission.notification.request();
   }
@@ -54,7 +54,7 @@ List<Widget> getDataSettings(
       TextButton.icon(
         onPressed: () async {
           final dbFolder = await getApplicationDocumentsDirectory();
-          final dbPath = p.join(dbFolder.path, 'FossFit.sqlite');
+          final dbPath = p.join(dbFolder.path, 'fossfit.sqlite');
           await SharePlus.instance.share(ShareParams(files: [XFile(dbPath)]));
         },
         label: const Text("Share database"),

@@ -522,7 +522,6 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
                 shape: BoxShape.circle,
               ),
               cellMargin: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-              cellPadding: EdgeInsets.only(bottom: 2),
               todayTextStyle:
                   TextStyle(color: Theme.of(context).colorScheme.primary),
               selectedDecoration: BoxDecoration(

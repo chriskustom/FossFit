@@ -216,15 +216,6 @@ class _StartPlanPageState extends State<StartPlanPage>
           return const SizedBox.shrink();
         }
 
-        final exercises = snapshot.data!;
-
-        for (var index = 0; index < exercises.length; index++) {
-          controllers.putIfAbsent(
-            index,
-            ExpansibleController.new,
-          );
-        }
-
         return Scaffold(
           resizeToAvoidBottomInset: false,
           appBar: _buildAppBar(context),
@@ -361,17 +352,14 @@ class _StartPlanPageState extends State<StartPlanPage>
       onFieldSubmitted: (_) => save(snapshot),
     );
 
-    final unitField = unitSelector();
-
-    if (screenWidth <= 520) {
+    print(screenWidth);
+    if (screenWidth <= 450) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           repsField,
           const SizedBox(height: 8),
           weightField,
-          const SizedBox(height: 8),
-          unitField,
         ],
       );
     }
@@ -381,8 +369,6 @@ class _StartPlanPageState extends State<StartPlanPage>
         Expanded(child: repsField),
         const SizedBox(width: 8),
         Expanded(child: weightField),
-        const SizedBox(width: 8),
-        Expanded(child: unitField),
       ],
     );
   }
@@ -768,7 +754,8 @@ class _StartPlanPageState extends State<StartPlanPage>
 
     if (finishedExercise) {
       await select(selected + 1);
-      controllers[selected]?.expand();
+      var idx = snapshot.data![selected].id;
+      controllers[idx]?.expand();
     }
 
     if (!settings.notifications) return;
@@ -1068,6 +1055,7 @@ class _StartPlanPageState extends State<StartPlanPage>
               children: [
                 if (!cardio) strengthFields(snapshot),
                 if (cardio) ...cardioFields(snapshot),
+                unitSelector(),
                 notesField(),
                 const SizedBox(height: 4),
                 StreamBuilder<List<GymSet>>(
@@ -1139,17 +1127,14 @@ class _StartPlanPageState extends State<StartPlanPage>
                               color: iconColor,
                               size: 20,
                             )
-                          : Padding(
-                              padding: EdgeInsets.only(bottom: 2),
-                              child: Text(
-                                planItem.exercise[0].toUpperCase(),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: iconColor,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'monospace',
-                                ),
+                          : Text(
+                              planItem.exercise[0].toUpperCase(),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: iconColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'monospace',
                               ),
                             ),
                     );
