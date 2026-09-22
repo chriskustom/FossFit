@@ -6,10 +6,9 @@ import 'package:drift/drift.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
 import 'package:fossfit/plan/plan_state.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:fossfit/utils.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
@@ -102,8 +101,7 @@ $version
 3. See error
 ''');
 
-      final url =
-          'https://github.com/ChrisKustom/FossFit/issues/new?title=$title&body=$body';
+      final url = 'https://github.com/ChrisKustom/FossFit/issues/new?title=$title&body=$body';
 
       toast(
         'Failed to import database: ${e.toString()}',
@@ -132,21 +130,19 @@ $version
     }
 
     final dbFolder = await getApplicationDocumentsDirectory();
-    await db.close();
+    await oldDb.close();
 
     await sourceFile.copy(p.join(dbFolder.path, 'FossFit.sqlite'));
-    db = AppDatabase();
+    oldDb = AppDatabase();
 
-    await (db.settings.update())
-        .write(const SettingsCompanion(alarmSound: Value('')));
+    await (oldDb.settings.update()).write(const SettingsCompanion(alarmSound: Value('')));
 
     if (!ctx.mounted) return;
     final settingsState = ctx.read<SettingsState>();
     await settingsState.init();
 
     if (!ctx.mounted) return;
-    Navigator.of(ctx, rootNavigator: true)
-        .pushNamedAndRemoveUntil('/', (_) => false);
+    Navigator.of(ctx, rootNavigator: true).pushNamedAndRemoveUntil('/', (_) => false);
   }
 
   Future<void> _importDatabaseWeb(BuildContext context) async {
@@ -190,8 +186,7 @@ $version
       final rows = const CsvDecoder().convert(csvContent);
 
       if (rows.isEmpty) throw Exception('CSV file is empty');
-      if (rows.length <= 1)
-        throw Exception('CSV file must contain at least one data row');
+      if (rows.length <= 1) throw Exception('CSV file must contain at least one data row');
 
       final columns = rows.first;
 
@@ -225,8 +220,7 @@ $version
         if (columns.elementAtOrNull(7) == 'bodyWeight') {
           final bodyWeightValue = row.elementAtOrNull(7);
           if (bodyWeightValue != null) {
-            bodyWeight =
-                Value(double.tryParse(bodyWeightValue.toString()) ?? 0);
+            bodyWeight = Value(double.tryParse(bodyWeightValue.toString()) ?? 0);
           }
         }
 
@@ -251,21 +245,19 @@ $version
           distance: columns.elementAtOrNull(8) == 'distance'
               ? Value(double.tryParse(row[8]?.toString() ?? '0') ?? 0)
               : const Value(0),
-          cardio: columns.elementAtOrNull(9) == 'cardio'
-              ? Value(parseBool(row[9]))
-              : const Value(false),
+          cardio: columns.elementAtOrNull(9) == 'cardio' ? Value(parseBool(row[9])) : const Value(false),
           incline: columns.elementAtOrNull(11) == 'incline'
               ? Value(int.tryParse(row[11]?.toString() ?? ''))
               : const Value(null),
         );
       });
 
-      await db.gymSets.deleteAll();
-      await db.gymSets.insertAll(gymSets);
+      await oldDb.gymSets.deleteAll();
+      await oldDb.gymSets.insertAll(gymSets);
 
       final weightSet = await getBodyWeight();
       if (weightSet != null) {
-        (db.gymSets.update()..where((tbl) => tbl.bodyWeight.equals(0)))
+        (oldDb.gymSets.update()..where((tbl) => tbl.bodyWeight.equals(0)))
             .write(GymSetsCompanion(bodyWeight: Value(weightSet.weight)));
       }
 
@@ -325,8 +317,7 @@ $version
       //.decoder(csvContent) CsvToListConverter(eol: "\n").convert(csvContent);
 
       if (csvList.isEmpty) throw Exception('CSV file is empty');
-      if (csvList.length <= 1)
-        throw Exception('CSV file must contain at least one data row');
+      if (csvList.length <= 1) throw Exception('CSV file must contain at least one data row');
 
       final plansToInsert = <PlansCompanion>[];
       final planExercisesToInsert = <PlanExercisesCompanion>[];
@@ -354,10 +345,10 @@ $version
         );
       }
 
-      await db.plans.deleteAll();
-      await db.planExercises.deleteAll();
-      await db.plans.insertAll(plansToInsert);
-      await db.planExercises.insertAll(planExercisesToInsert);
+      await oldDb.plans.deleteAll();
+      await oldDb.planExercises.deleteAll();
+      await oldDb.plans.insertAll(plansToInsert);
+      await oldDb.planExercises.insertAll(planExercisesToInsert);
 
       if (!ctx.mounted) return;
       ctx.read<PlanState>().updatePlans(null);
@@ -395,8 +386,7 @@ $version
 3. See error
 ''');
 
-      final url =
-          'https://github.com/ChrisKustom/FossFit/issues/new?title=$title&body=$body';
+      final url = 'https://github.com/ChrisKustom/FossFit/issues/new?title=$title&body=$body';
 
       toast(
         'Failed to import plans: ${e.toString()}',

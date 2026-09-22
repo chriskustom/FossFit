@@ -2,12 +2,11 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/constants.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
 import 'package:fossfit/plan/exercise_modal.dart';
 import 'package:fossfit/plan/plan_state.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:provider/provider.dart';
 
 class StartList extends StatefulWidget {
@@ -44,19 +43,16 @@ class _StartListState extends State<StartList> {
     if (count == null) return;
     if (counts.elementAtOrNull(index)?.count == 0) return;
 
-    if (DateTime.now().difference(lastTap.dateTime) >=
-            const Duration(milliseconds: 300) ||
-        index != lastTap.index)
+    if (DateTime.now().difference(lastTap.dateTime) >= const Duration(milliseconds: 300) || index != lastTap.index)
       return setState(() {
         lastTap = (index: index, dateTime: DateTime.now());
       });
 
-    final gymSet = await (db.gymSets.select()
+    final gymSet = await (oldDb.gymSets.select()
           ..where((tbl) => tbl.name.equals(widget.exercises[index].exercise))
           ..orderBy(
             [
-              (u) =>
-                  OrderingTerm(expression: u.created, mode: OrderingMode.desc),
+              (u) => OrderingTerm(expression: u.created, mode: OrderingMode.desc),
             ],
           )
           ..limit(1))
@@ -70,8 +66,7 @@ class _StartListState extends State<StartList> {
 
   @override
   Widget build(BuildContext context) {
-    final max = context
-        .select<SettingsState, int>((settings) => settings.value.maxSets);
+    final max = context.select<SettingsState, int>((settings) => settings.value.maxSets);
     final trailing = context.select<SettingsState, PlanTrailing>(
       (settings) => PlanTrailing.values.byName(
         settings.value.planTrailing.replaceFirst('PlanTrailing.', ''),
@@ -84,8 +79,7 @@ class _StartListState extends State<StartList> {
       return ReorderableListView.builder(
         itemCount: widget.exercises.length,
         padding: const EdgeInsets.only(bottom: 76),
-        itemBuilder: (context, index) =>
-            itemBuilder(context, index, max, trailing, counts),
+        itemBuilder: (context, index) => itemBuilder(context, index, max, trailing, counts),
         onReorder: (oldIndex, newIndex) async {
           if (oldIndex < newIndex) {
             newIndex--;
@@ -94,10 +88,10 @@ class _StartListState extends State<StartList> {
           final item = widget.exercises.removeAt(oldIndex);
           widget.exercises.insert(newIndex, item);
 
-          await db.batch((batch) {
+          await oldDb.batch((batch) {
             for (var i = 0; i < widget.exercises.length; i++) {
               batch.update(
-                db.planExercises,
+                oldDb.planExercises,
                 PlanExercisesCompanion(sequence: Value(i)),
                 where: (pe) => pe.id.equals(widget.exercises[i].id),
               );
@@ -114,8 +108,7 @@ class _StartListState extends State<StartList> {
       return ListView.builder(
         padding: const EdgeInsets.only(bottom: 76),
         itemCount: widget.exercises.length,
-        itemBuilder: (context, index) =>
-            itemBuilder(context, index, max, trailing, counts),
+        itemBuilder: (context, index) => itemBuilder(context, index, max, trailing, counts),
       );
   }
 
@@ -127,8 +120,7 @@ class _StartListState extends State<StartList> {
     List<GymCount> counts,
   ) {
     final exercise = widget.exercises[index];
-    final idx =
-        counts.indexWhere((element) => element.name == exercise.exercise);
+    final idx = counts.indexWhere((element) => element.name == exercise.exercise);
     var count = 0;
     int max = maxSets;
 

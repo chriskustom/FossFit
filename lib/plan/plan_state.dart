@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
 import 'package:fossfit/main.dart';
 
 class PlanCount {
@@ -53,17 +52,17 @@ class PlanState extends ChangeNotifier {
   }
 
   Future<void> setExercises(PlansCompanion plan) async {
-    var query = db.gymSets.selectOnly()
-      ..addColumns([db.gymSets.name])
-      ..groupBy([db.gymSets.name])
+    var query = oldDb.gymSets.selectOnly()
+      ..addColumns([oldDb.gymSets.name])
+      ..groupBy([oldDb.gymSets.name])
       ..join([
         leftOuterJoin(
-          db.planExercises,
-          db.planExercises.planId.equals(plan.id.present ? plan.id.value : 0) &
-              db.planExercises.exercise.equalsExp(db.gymSets.name),
+          oldDb.planExercises,
+          oldDb.planExercises.planId.equals(plan.id.present ? plan.id.value : 0) &
+              oldDb.planExercises.exercise.equalsExp(oldDb.gymSets.name),
         ),
       ])
-      ..addColumns(db.planExercises.$columns);
+      ..addColumns(oldDb.planExercises.$columns);
 
     final results = await query.get();
 
@@ -73,13 +72,13 @@ class PlanState extends ChangeNotifier {
     for (final result in results) {
       final pe = PlanExercisesCompanion(
         planId: plan.id,
-        id: Value.absentIfNull(result.read(db.planExercises.id)),
-        exercise: Value(result.read(db.gymSets.name)!),
-        enabled: Value(result.read(db.planExercises.enabled) ?? false),
-        maxSets: Value(result.read(db.planExercises.maxSets)),
-        warmupSets: Value(result.read(db.planExercises.warmupSets)),
-        timers: Value(result.read(db.planExercises.timers) ?? true),
-        sequence: Value(result.read(db.planExercises.sequence) ?? 0),
+        id: Value.absentIfNull(result.read(oldDb.planExercises.id)),
+        exercise: Value(result.read(oldDb.gymSets.name)!),
+        enabled: Value(result.read(oldDb.planExercises.enabled) ?? false),
+        maxSets: Value(result.read(oldDb.planExercises.maxSets)),
+        warmupSets: Value(result.read(oldDb.planExercises.warmupSets)),
+        timers: Value(result.read(oldDb.planExercises.timers) ?? true),
+        sequence: Value(result.read(oldDb.planExercises.sequence) ?? 0),
       );
       if (pe.enabled.value)
         enabled.add(pe);
@@ -94,25 +93,24 @@ class PlanState extends ChangeNotifier {
   }
 
   Future<void> updateDefaults() async {
-    final latest = db.gymSets.created.max();
+    final latest = oldDb.gymSets.created.max();
     final sub = Subquery(
-      db.select(db.gymSets).join([])
-        ..groupBy([db.gymSets.name])
-        ..addColumns([db.gymSets.name, latest]),
+      oldDb.select(oldDb.gymSets).join([])
+        ..groupBy([oldDb.gymSets.name])
+        ..addColumns([oldDb.gymSets.name, latest]),
       'ls',
     );
-    final query = db.select(db.gymSets).join(
+    final query = oldDb.select(oldDb.gymSets).join(
       [
         innerJoin(
           sub,
-          sub.ref(db.gymSets.name).equalsExp(db.gymSets.name) &
-              sub.ref(latest).equalsExp(db.gymSets.created),
+          sub.ref(oldDb.gymSets.name).equalsExp(oldDb.gymSets.name) & sub.ref(latest).equalsExp(oldDb.gymSets.created),
           useColumns: false,
         ),
       ],
     );
     final rows = await query.get();
-    lastSets = rows.map((rows) => rows.readTable(db.gymSets)).toList();
+    lastSets = rows.map((rows) => rows.readTable(oldDb.gymSets)).toList();
     notifyListeners();
   }
 
@@ -131,7 +129,7 @@ class PlanState extends ChangeNotifier {
   }
 
   Future<List<PlanCount>> getPlanCounts() async {
-    return (db.customSelect(
+    return (oldDb.customSelect(
       """
         SELECT id, SUM(max_sets) AS max_sets,
           SUM(todays_count) AS todays_count FROM (
@@ -154,7 +152,7 @@ class PlanState extends ChangeNotifier {
         )
         GROUP BY id
     """,
-      readsFrom: {db.plans, db.gymSets, db.planExercises, db.settings},
+      readsFrom: {oldDb.plans, oldDb.gymSets, oldDb.planExercises, oldDb.settings},
     )).get().then((rows) {
       return rows
           .map(
@@ -182,41 +180,41 @@ class PlanState extends ChangeNotifier {
    """,
     );
 
-    final results = await (db.selectOnly(db.planExercises)
+    final results = await (oldDb.selectOnly(oldDb.planExercises)
           ..addColumns([
-            db.gymSets.name,
+            oldDb.gymSets.name,
             count,
-            db.planExercises.maxSets,
-            db.gymSets.restMs,
-            db.planExercises.warmupSets,
-            db.planExercises.timers,
+            oldDb.planExercises.maxSets,
+            oldDb.gymSets.restMs,
+            oldDb.planExercises.warmupSets,
+            oldDb.planExercises.timers,
           ])
           ..join([
             innerJoin(
-              db.gymSets,
-              db.gymSets.name.equalsExp(db.planExercises.exercise),
+              oldDb.gymSets,
+              oldDb.gymSets.name.equalsExp(oldDb.planExercises.exercise),
             ),
           ])
           ..where(
-            db.planExercises.planId.equals(planId) & db.planExercises.enabled,
+            oldDb.planExercises.planId.equals(planId) & oldDb.planExercises.enabled,
           )
-          ..groupBy([db.gymSets.name]))
+          ..groupBy([oldDb.gymSets.name]))
         .get();
     return results
         .map(
           (row) => (
             count: row.read<int>(count)!,
-            name: row.read(db.gymSets.name)!,
-            maxSets: row.read(db.planExercises.maxSets),
-            restMs: row.read(db.gymSets.restMs),
-            warmupSets: row.read(db.planExercises.warmupSets),
-            timers: row.read(db.planExercises.timers)!,
+            name: row.read(oldDb.gymSets.name)!,
+            maxSets: row.read(oldDb.planExercises.maxSets),
+            restMs: row.read(oldDb.gymSets.restMs),
+            warmupSets: row.read(oldDb.planExercises.warmupSets),
+            timers: row.read(oldDb.planExercises.timers)!,
           ),
         )
         .toList();
   }
 
-  Future<List<Plan>> getPlans() async => await (db.select(db.plans)
+  Future<List<Plan>> getPlans() async => await (oldDb.select(oldDb.plans)
         ..orderBy([
           (u) => OrderingTerm(expression: u.sequence),
         ]))

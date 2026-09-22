@@ -1,9 +1,9 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/constants.dart';
-import 'package:fossfit/database/gym_sets.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/graph/strength_data.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -37,8 +37,8 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
   }
 
   void tabListener() {
-    final settings = context.read<SettingsState>().value;
-    final graphsIndex = settings.tabs.split(',').indexOf('GraphsPage');
+    final settings = context.watch<SettingsRepository>();
+    final graphsIndex = settings.getSetting(key: 'tabs').split(',').indexOf('GraphsPage');
     if (tabController?.indexIsChanging == true) return;
     if (tabController?.index != graphsIndex) return;
     setData();
@@ -51,7 +51,8 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
   }
 
   void setData() async {
-    final newData = await getGlobalData(
+    var repo = context.watch<GymSetsRepository>();
+    final newData = await repo.getGlobalData(
       target: targetUnit,
       metric: metric,
       period: period,
@@ -59,7 +60,7 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
       end: endDate,
       limit: limit,
     );
-    final newCategories = await getCategories();
+    final newCategories = await repo.getCategories();
     setState(() {
       data = newData;
       categories = newCategories;
@@ -86,7 +87,7 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsState>().value;
+    final settings = context.watch<SettingsRepository>();
 
     final chartColors = generateChartColors(context, categories.length);
     List<LineChartBarData> lineBarsData = [];
@@ -102,14 +103,12 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
       final categoryData = data.where((d) => d.category == category).toList();
       lineBarsData.add(
         LineChartBarData(
-          spots: categoryData
-              .map((d) => FlSpot(dateToXMap[d.created]!, d.value))
-              .toList(),
-          isCurved: settings.curveLines,
+          spots: categoryData.map((d) => FlSpot(dateToXMap[d.created]!, d.value)).toList(),
+          isCurved: settings.isEnabled(key: 'curve_lines'),
           color: chartColors[index],
           barWidth: 3,
           isStrokeCapRound: true,
-          curveSmoothness: settings.curveSmoothness ?? 0.35,
+          curveSmoothness: settings.getDouble(key: 'curve_smoothness'),
           dotData: const FlDotData(
             show: false,
           ),
@@ -141,7 +140,7 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
         ),
         lineTouchData: LineTouchData(
           enabled: true,
-          touchTooltipData: tooltipData(settings.shortDateFormat, chartColors),
+          touchTooltipData: tooltipData(settings.getSetting(key: 'short_date_format'), chartColors),
         ),
         lineBarsData: lineBarsData,
         gridData: const FlGridData(show: false),
@@ -183,7 +182,7 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
                   value: StrengthMetric.volume,
                   child: Text("Volume"),
                 ),
-                if (settings.showBodyWeight)
+                if (settings.isEnabled(key: 'show_body_weight'))
                   const DropdownMenuItem(
                     value: StrengthMetric.relativeStrength,
                     child: Text("Relative strength"),
@@ -226,7 +225,7 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
               },
             ),
             Visibility(
-              visible: settings.showUnits,
+              visible: settings.isEnabled(key: 'show_units'),
               child: Column(
                 children: [
                   const SizedBox(height: 8),
@@ -266,10 +265,9 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
                     child: ListTile(
                       title: const Text('Start date'),
                       subtitle: startDate == null
-                          ? Text(settings.shortDateFormat)
+                          ? Text(settings.getSetting(key: 'short_date_format'))
                           : Text(
-                              DateFormat(settings.shortDateFormat)
-                                  .format(startDate!),
+                              DateFormat(settings.getSetting(key: 'short_date_format')).format(startDate!),
                             ),
                       onLongPress: () {
                         setState(() {
@@ -286,10 +284,9 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
                       title: const Text('Stop date'),
                       subtitle: endDate != null
                           ? Text(
-                              DateFormat(settings.shortDateFormat)
-                                  .format(endDate!),
+                              DateFormat(settings.getSetting(key: 'short_date_format')).format(endDate!),
                             )
-                          : Text(settings.shortDateFormat),
+                          : Text(settings.getSetting(key: 'short_date_format')),
                       onLongPress: () {
                         setState(() {
                           endDate = null;
@@ -314,10 +311,7 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
                 ),
                 Slider(
                   value: limit.toDouble(),
-                  inactiveColor: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.24),
+                  inactiveColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
                   min: 10,
                   max: 200,
                   onChanged: (value) {
@@ -344,18 +338,15 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
               children: [
                 if (data.isNotEmpty)
                   Text(
-                    DateFormat(settings.shortDateFormat)
-                        .format(data.first.created),
+                    DateFormat(settings.getSetting(key: 'short_date_format')).format(data.first.created),
                   ),
                 if (data.length > 2)
                   Text(
-                    DateFormat(settings.shortDateFormat)
-                        .format(data[data.length ~/ 2].created),
+                    DateFormat(settings.getSetting(key: 'short_date_format')).format(data[data.length ~/ 2].created),
                   ),
                 if (data.length > 1)
                   Text(
-                    DateFormat(settings.shortDateFormat)
-                        .format(data.last.created),
+                    DateFormat(settings.getSetting(key: 'short_date_format')).format(data.last.created),
                   ),
               ],
             ),
@@ -467,8 +458,7 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
               value = "${formatter.format(row.value)}$targetUnit";
               break;
             case StrengthMetric.bestWeight:
-              value =
-                  "${row.reps} x ${row.value.toStringAsFixed(2)}$targetUnit";
+              value = "${row.reps} x ${row.value.toStringAsFixed(2)}$targetUnit";
               break;
           }
 

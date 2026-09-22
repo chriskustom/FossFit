@@ -2,12 +2,11 @@ import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
 import 'package:fossfit/app_search.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
 import 'package:fossfit/plan/edit_plan_page.dart';
 import 'package:fossfit/plan/plan_state.dart';
 import 'package:fossfit/plan/plans_list.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -20,8 +19,7 @@ class PlansPage extends StatefulWidget {
   State<PlansPage> createState() => PlansPageState();
 }
 
-class PlansPageState extends State<PlansPage>
-    with AutomaticKeepAliveClientMixin {
+class PlansPageState extends State<PlansPage> with AutomaticKeepAliveClientMixin {
   final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
 
   @override
@@ -33,7 +31,7 @@ class PlansPageState extends State<PlansPage>
     return NavigatorPopHandler(
       onPopWithResult: (result) {
         if (navKey.currentState!.canPop() == false) return;
-        final settings = context.read<SettingsState>().value;
+        final settings = context.watch<SettingsRepository>();
         final index = settings.tabs.split(',').indexOf('PlansPage');
         if (widget.tabController.index == index) navKey.currentState!.pop();
       },
@@ -94,10 +92,9 @@ class _PlansPageWidgetState extends State<_PlansPageWidget> {
     for (final plan in allPlans) {
       bool matches = plan.days.toLowerCase().contains(search.toLowerCase());
       if (!matches && search.isNotEmpty) {
-        final planExercises = await (db.planExercises.select()
+        final planExercises = await (oldDb.planExercises.select()
               ..where(
-                (tbl) =>
-                    tbl.planId.equals(plan.id) & tbl.exercise.like('%$search%'),
+                (tbl) => tbl.planId.equals(plan.id) & tbl.exercise.like('%$search%'),
               ))
             .get();
         matches = planExercises.isNotEmpty;
@@ -132,17 +129,14 @@ class _PlansPageWidgetState extends State<_PlansPageWidget> {
                 plans.map((plan) async {
                   final days = plan.days.split(',').join(', ');
                   await state?.setExercises(plan.toCompanion(false));
-                  final exercises = state?.exercises
-                      .where((pe) => pe.enabled.value)
-                      .map((pe) => "- ${pe.exercise.value}")
-                      .join('\n');
+                  final exercises =
+                      state?.exercises.where((pe) => pe.enabled.value).map((pe) => "- ${pe.exercise.value}").join('\n');
 
                   return "$days:\n$exercises";
                 }),
               );
 
-              await SharePlus.instance
-                  .share(ShareParams(text: summaries.join('\n\n')));
+              await SharePlus.instance.share(ShareParams(text: summaries.join('\n\n')));
               setState(() {
                 selected.clear();
               });
@@ -162,10 +156,9 @@ class _PlansPageWidgetState extends State<_PlansPageWidget> {
               setState(() {
                 selected.clear();
               });
-              await db.plans.deleteWhere((tbl) => tbl.id.isIn(copy));
+              await oldDb.plans.deleteWhere((tbl) => tbl.id.isIn(copy));
               state.updatePlans(null);
-              await db.planExercises
-                  .deleteWhere((tbl) => tbl.planId.isIn(copy));
+              await oldDb.planExercises.deleteWhere((tbl) => tbl.planId.isIn(copy));
             },
             onSelect: () => setState(() {
               selected.addAll(filtered?.map((plan) => plan.id) ?? []);

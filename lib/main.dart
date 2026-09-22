@@ -1,42 +1,64 @@
-import 'package:drift/drift.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:fossfit/database/failed_migrations_page.dart';
+import 'package:fossfit/db/database_helper.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
+import 'package:fossfit/db/repositories/plans_repository.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/home_page.dart';
-import 'package:fossfit/plan/plan_state.dart';
-import 'package:fossfit/settings/settings_state.dart';
+import 'package:fossfit/models/constants.dart';
 import 'package:fossfit/timer/timer_state.dart';
+import 'package:platform_detail/platform_detail.dart';
 import 'package:provider/provider.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 final rootScaffoldMessenger = GlobalKey<ScaffoldMessengerState>();
 
 Future<void> main() async {
+  if (kIsWeb || PlatformDetail.isDesktop) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
   WidgetsFlutterBinding.ensureInitialized();
+  //WidgetsBinding.instance.addObserver(AppLifecycleHandler());
+  tz.initializeTimeZones();
+  try {
+    final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
+  } catch (_) {
+    tz.setLocalLocation(tz.getLocation('UTC'));
+  }
 
-  Setting setting;
+  final dbHelper = DatabaseHelper();
+  final Database db = await dbHelper.database;
+  final settingsRepo = SettingsRepository(db);
 
   try {
-    setting = await (db.settings.select()..limit(1)).getSingle();
+    await settingsRepo.loadAll();
   } catch (error) {
     return runApp(FailedMigrationsPage(error: error));
   }
+  // Run backup
+  await dbHelper.checkBackup(settingsRepo);
 
-  final state = SettingsState(setting);
-  runApp(appProviders(state));
+  runApp(appProviders(db, settingsRepo));
 }
 
-AppDatabase db = AppDatabase();
+MethodChannel androidChannel = const MethodChannel("com.kustom.fossfit/android");
 
-MethodChannel androidChannel =
-    const MethodChannel("com.kustom.fossfit/android");
-
-Widget appProviders(SettingsState state) => MultiProvider(
+Widget appProviders(Database db, SettingsRepository repo) => MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => state),
+        ChangeNotifierProvider<GymSetsRepository>(create: (_) => GymSetsRepository(db)..loadAll()),
+        ChangeNotifierProvider<PlansRepository>(create: (_) => PlansRepository(db)..loadAll()),
+        ChangeNotifierProvider<PlanExercisesRepository>(create: (_) => PlanExercisesRepository(db)..loadAll()),
+        ChangeNotifierProvider<SettingsRepository>.value(value: repo),
         ChangeNotifierProvider(create: (context) => TimerState()),
-        ChangeNotifierProvider(create: (context) => PlanState()),
       ],
       child: App(),
     );
@@ -46,13 +68,7 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.select<SettingsState, bool>(
-      (settings) => settings.value.systemColors,
-    );
-    final mode = context.select<SettingsState, ThemeMode>(
-      (settings) => ThemeMode.values
-          .byName(settings.value.themeMode.replaceFirst('ThemeMode.', '')),
-    );
+    final settingsRepo = Provider.of<SettingsRepository>(context, listen: false);
 
     final light = ColorScheme.fromSeed(seedColor: Colors.deepPurple);
     final dark = ColorScheme.fromSeed(
@@ -60,52 +76,78 @@ class App extends StatelessWidget {
       brightness: Brightness.dark,
     );
 
-    return DynamicColorBuilder(
-      builder: (lightDynamic, darkDynamic) {
-        final settings = context.watch<SettingsState>();
-        final currentBrightness =
-            settings.value.themeMode == 'ThemeMode.dark' ||
-                    (settings.value.themeMode == 'ThemeMode.system' &&
-                        MediaQuery.of(context).platformBrightness ==
-                            Brightness.dark)
-                ? Brightness.dark
-                : Brightness.light;
+    return FutureBuilder<void>(
+      future: settingsRepo.loadAll(),
+      builder: (ctx, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const MaterialApp(
+            home: Scaffold(body: Center(child: CircularProgressIndicator())),
+          );
+        }
 
-        SystemChrome.setSystemUIOverlayStyle(
-          SystemUiOverlayStyle(
-            statusBarIconBrightness: currentBrightness == Brightness.dark
-                ? Brightness.light
-                : Brightness.dark,
-            systemNavigationBarIconBrightness:
-                currentBrightness == Brightness.dark
-                    ? Brightness.light
-                    : Brightness.dark,
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: Colors.transparent,
-          ),
-        );
+        return Consumer<SettingsRepository>(
+          builder: (c, repo, _) {
+            final themeMode = ThemeMode.values.byName(
+              (
+                repo
+                        .getSettingByCategory(
+                          category: SettingCategory.appearance.name,
+                          key: 'theme_mode',
+                        )
+                        .isEmpty
+                    ? 'system'
+                    : repo.getSettingByCategory(
+                        category: SettingCategory.appearance.name,
+                        key: 'theme_mode',
+                      ),
+              ).toString().replaceFirst('ThemeMode.', ''),
+            );
+            final dynamicColours = repo.isEnabledByCategory(
+              category: SettingCategory.appearance,
+              key: 'system_colors',
+            );
+            return DynamicColorBuilder(
+              builder: (lightDynamic, darkDynamic) {
+                final currentBrightness = themeMode.name == 'dark' ||
+                        (themeMode.name == 'system' && MediaQuery.of(context).platformBrightness == Brightness.dark)
+                    ? Brightness.dark
+                    : Brightness.light;
 
-        return MaterialApp(
-          scaffoldMessengerKey: rootScaffoldMessenger,
-          title: 'FossFit',
-          theme: ThemeData(
-            colorScheme: colors ? lightDynamic : light,
-            fontFamily: 'Manrope',
-            useMaterial3: true,
-            inputDecorationTheme: const InputDecorationTheme(
-              floatingLabelBehavior: FloatingLabelBehavior.always,
-            ),
-          ),
-          darkTheme: ThemeData(
-            colorScheme: colors ? darkDynamic : dark,
-            fontFamily: 'Manrope',
-            useMaterial3: true,
-            inputDecorationTheme: const InputDecorationTheme(
-              floatingLabelBehavior: FloatingLabelBehavior.always,
-            ),
-          ),
-          themeMode: mode,
-          home: HomePage(),
+                SystemChrome.setSystemUIOverlayStyle(
+                  SystemUiOverlayStyle(
+                    statusBarIconBrightness: currentBrightness == Brightness.dark ? Brightness.light : Brightness.dark,
+                    systemNavigationBarIconBrightness:
+                        currentBrightness == Brightness.dark ? Brightness.light : Brightness.dark,
+                    statusBarColor: Colors.transparent,
+                    systemNavigationBarColor: Colors.transparent,
+                  ),
+                );
+
+                return MaterialApp(
+                  scaffoldMessengerKey: rootScaffoldMessenger,
+                  title: 'FossFit',
+                  theme: ThemeData(
+                    colorScheme: dynamicColours ? lightDynamic : light,
+                    fontFamily: 'Roboto',
+                    useMaterial3: true,
+                    inputDecorationTheme: const InputDecorationTheme(
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                    ),
+                  ),
+                  darkTheme: ThemeData(
+                    colorScheme: dynamicColours ? darkDynamic : dark,
+                    fontFamily: 'Roboto',
+                    useMaterial3: true,
+                    inputDecorationTheme: const InputDecorationTheme(
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                    ),
+                  ),
+                  themeMode: themeMode,
+                  home: HomePage(),
+                );
+              },
+            );
+          },
         );
       },
     );

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/gym_sets.dart';
 
 import 'constants.dart';
 
@@ -23,9 +22,7 @@ class GraphsFilters extends StatefulWidget {
 }
 
 class _GraphsFiltersState extends State<GraphsFilters> {
-  int get count =>
-      (widget.category != null ? 1 : 0) +
-      (widget.sort != GraphSort.dateDesc ? 1 : 0);
+  int get count => (widget.category != null ? 1 : 0) + (widget.sort != GraphSort.dateDesc ? 1 : 0);
 
   @override
   Widget build(BuildContext context) {

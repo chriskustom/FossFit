@@ -18,6 +18,8 @@ dependencies:
   provider: ^6.1.1
   dynamic_color: ^1.7.0
   sqlite3: ^3.5.2
+  sqflite: ^2.4.2
+  sqflite_common_ffi: ^2.4.0+2
   file_picker: ^13.1.0
   share_plus: ^13.3.0
   audioplayers: ^6.5.0
@@ -34,6 +36,9 @@ dependencies:
   sticky_headers: ^0.3.0+2
   table_calendar: ^3.2.1
   flutter_local_notifications_platform_interface: ^12.2.0
+  timezone: ^0.11.1
+  flutter_timezone: ^5.1.0
+  platform_detail: ^5.5.0
 
 dev_dependencies:
   flutter_test:
@@ -51,6 +56,82 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/fonts/
+
+  fonts:
+    - family: Wolland
+      fonts:
+        - asset: assets/fonts/Wolland.ttf
+    - family: Staatliches
+      fonts:
+        - asset: assets/fonts/Staatliches.ttf
+
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter/Inter-VariableFont_opsz,wght.ttf
+          weight: 100
+          style: normal
+
+    - family: Lato
+      fonts:
+        - asset: assets/fonts/Lato/Lato-Black.ttf
+          weight: 900
+        - asset: assets/fonts/Lato/Lato-BlackItalic.ttf
+          weight: 900
+          style: italic
+        - asset: assets/fonts/Lato/Lato-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Lato/Lato-BoldItalic.ttf
+          weight: 700
+          style: italic
+        - asset: assets/fonts/Lato/Lato-Italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/Lato/Lato-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Lato/Lato-LightItalic.ttf
+          weight: 300
+          style: italic
+        - asset: assets/fonts/Lato/Lato-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Lato/Lato-Thin.ttf
+          weight: 100
+        - asset: assets/fonts/Lato/Lato-ThinItalic.ttf
+          weight: 100
+          style: italic
+
+    - family: Lunasima
+      fonts:
+        - asset: assets/fonts/Lunasima/Lunasima-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Lunasima/Lunasima-Regular.ttf
+          weight: 400
+
+    - family: Montserrat
+      fonts:
+        - asset: assets/fonts/Montserrat/Montserrat-VariableFont_wght.ttf
+          weight: 100
+          style: normal
+
+    - family: NotoSans
+      fonts:
+        - asset: assets/fonts/NotoSans/NotoSans-VariableFont_wdth,wght.ttf
+          weight: 100
+          style: normal
+
+    - family: OpenSans
+      fonts:
+        - asset: assets/fonts/OpenSans/OpenSans-VariableFont_wdth,wght.ttf
+          weight: 100
+          style: normal
+
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto/Roboto-VariableFont_wdth,wght.ttf
+          weight: 100
+          style: normal
+
+
 flutter_launcher_icons:
   android: true
   ios: true

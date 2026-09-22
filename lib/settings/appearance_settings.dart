@@ -2,11 +2,10 @@ import 'package:drift/drift.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/graph/cardio_data.dart';
 import 'package:fossfit/graph/flex_line.dart';
 import 'package:fossfit/main.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:provider/provider.dart';
 
 List<Widget> getAppearanceSettings(
@@ -19,8 +18,7 @@ List<Widget> getAppearanceSettings(
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: DropdownButtonFormField<ThemeMode>(
-          initialValue: ThemeMode.values
-              .byName(settings.value.themeMode.replaceFirst('ThemeMode.', '')),
+          initialValue: ThemeMode.values.byName(settings.value.themeMode.replaceFirst('ThemeMode.', '')),
           decoration: const InputDecoration(
             labelStyle: TextStyle(),
             labelText: 'Theme',
@@ -39,7 +37,7 @@ List<Widget> getAppearanceSettings(
               child: Text("Light"),
             ),
           ],
-          onChanged: (value) => db.settings.update().write(
+          onChanged: (value) => oldDb.settings.update().write(
                 SettingsCompanion(
                   themeMode: Value(value.toString()),
                 ),
@@ -53,17 +51,15 @@ List<Widget> getAppearanceSettings(
           message: 'Use the primary color of your device for the app',
           child: ListTile(
             title: const Text('System color scheme'),
-            leading: settings.value.systemColors
-                ? const Icon(Icons.color_lens)
-                : const Icon(Icons.color_lens_outlined),
-            onTap: () => db.settings.update().write(
+            leading: settings.value.systemColors ? const Icon(Icons.color_lens) : const Icon(Icons.color_lens_outlined),
+            onTap: () => oldDb.settings.update().write(
                   SettingsCompanion(
                     systemColors: Value(!settings.value.systemColors),
                   ),
                 ),
             trailing: Switch(
               value: settings.value.systemColors,
-              onChanged: (value) => db.settings.update().write(
+              onChanged: (value) => oldDb.settings.update().write(
                     SettingsCompanion(
                       systemColors: Value(value),
                     ),
@@ -77,17 +73,15 @@ List<Widget> getAppearanceSettings(
         message: 'Pick/display images on the history page',
         child: ListTile(
           title: const Text('Show images'),
-          leading: settings.value.showImages
-              ? const Icon(Icons.image)
-              : const Icon(Icons.image_outlined),
-          onTap: () => db.settings.update().write(
+          leading: settings.value.showImages ? const Icon(Icons.image) : const Icon(Icons.image_outlined),
+          onTap: () => oldDb.settings.update().write(
                 SettingsCompanion(
                   showImages: Value(!settings.value.showImages),
                 ),
               ),
           trailing: Switch(
             value: settings.value.showImages,
-            onChanged: (value) => db.settings.update().write(
+            onChanged: (value) => oldDb.settings.update().write(
                   SettingsCompanion(
                     showImages: Value(value),
                   ),
@@ -100,17 +94,15 @@ List<Widget> getAppearanceSettings(
         message: 'Add a graph entry charting your progress by category',
         child: ListTile(
           title: const Text('Show global progress'),
-          leading: settings.value.showGlobalProgress
-              ? const Icon(Icons.public)
-              : const Icon(Icons.public_off),
-          onTap: () => db.settings.update().write(
+          leading: settings.value.showGlobalProgress ? const Icon(Icons.public) : const Icon(Icons.public_off),
+          onTap: () => oldDb.settings.update().write(
                 SettingsCompanion(
                   showGlobalProgress: Value(!settings.value.showGlobalProgress),
                 ),
               ),
           trailing: Switch(
             value: settings.value.showGlobalProgress,
-            onChanged: (value) => db.settings.update().write(
+            onChanged: (value) => oldDb.settings.update().write(
                   SettingsCompanion(
                     showGlobalProgress: Value(value),
                   ),
@@ -125,17 +117,15 @@ List<Widget> getAppearanceSettings(
           message: 'Show stats panel above workout history',
           child: ListTile(
             title: const Text('Show stats panel'),
-            leading: settings.value.statsPanel
-                ? const Icon(Icons.analytics)
-                : const Icon(Icons.analytics_outlined),
-            onTap: () => db.settings.update().write(
+            leading: settings.value.statsPanel ? const Icon(Icons.analytics) : const Icon(Icons.analytics_outlined),
+            onTap: () => oldDb.settings.update().write(
                   SettingsCompanion(
                     statsPanel: Value(!settings.value.statsPanel),
                   ),
                 ),
             trailing: Switch(
               value: settings.value.statsPanel,
-              onChanged: (value) => db.settings.update().write(
+              onChanged: (value) => oldDb.settings.update().write(
                     SettingsCompanion(
                       statsPanel: Value(value),
                     ),
@@ -150,14 +140,14 @@ List<Widget> getAppearanceSettings(
         child: ListTile(
           title: const Text('Peek graph'),
           leading: const Icon(Icons.visibility_outlined),
-          onTap: () => db.settings.update().write(
+          onTap: () => oldDb.settings.update().write(
                 SettingsCompanion(
                   peekGraph: Value(!settings.value.peekGraph),
                 ),
               ),
           trailing: Switch(
             value: settings.value.peekGraph,
-            onChanged: (value) => db.settings.update().write(
+            onChanged: (value) => oldDb.settings.update().write(
                   SettingsCompanion(
                     peekGraph: Value(value),
                   ),
@@ -171,14 +161,14 @@ List<Widget> getAppearanceSettings(
         child: ListTile(
           title: const Text('Curve line graphs'),
           leading: const Icon(Icons.insights),
-          onTap: () => db.settings.update().write(
+          onTap: () => oldDb.settings.update().write(
                 SettingsCompanion(
                   curveLines: Value(!settings.value.curveLines),
                 ),
               ),
           trailing: Switch(
             value: settings.value.curveLines,
-            onChanged: (value) => db.settings.update().write(
+            onChanged: (value) => oldDb.settings.update().write(
                   SettingsCompanion(
                     curveLines: Value(value),
                   ),
@@ -198,10 +188,9 @@ List<Widget> getAppearanceSettings(
           ),
           Slider(
             value: settings.value.curveSmoothness ?? 0.35,
-            inactiveColor:
-                Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
+            inactiveColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
             onChanged: (value) {
-              db.settings.update().write(
+              oldDb.settings.update().write(
                     SettingsCompanion(
                       curveSmoothness: Value(value),
                     ),
@@ -220,8 +209,7 @@ List<Widget> getAppearanceSettings(
             hideLeft: true,
             spots: const [FlSpot(0, 0.13), FlSpot(1, 5), FlSpot(2, 2)],
             tooltipData: () => LineTouchTooltipData(
-              getTooltipColor: (touchedSpot) =>
-                  Theme.of(context).colorScheme.surface,
+              getTooltipColor: (touchedSpot) => Theme.of(context).colorScheme.surface,
               getTooltipItems: (touchedSpots) => touchedSpots
                   .map(
                     (spot) => LineTooltipItem(

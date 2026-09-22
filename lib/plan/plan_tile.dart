@@ -2,11 +2,10 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/constants.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
 import 'package:fossfit/plan/plan_state.dart';
 import 'package:fossfit/plan/start_plan_page.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:provider/provider.dart';
 
 class PlanTile extends StatefulWidget {
@@ -41,12 +40,11 @@ class _PlanTileState extends State<PlanTile> {
   }
 
   Stream<List<PlanExercise>> _getExercises() {
-    return (db.planExercises.select()
+    return (oldDb.planExercises.select()
           ..where((tbl) => tbl.planId.equals(widget.plan.id) & tbl.enabled)
           ..orderBy(
             [
-              (u) =>
-                  OrderingTerm(expression: u.sequence, mode: OrderingMode.asc),
+              (u) => OrderingTerm(expression: u.sequence, mode: OrderingMode.asc),
             ],
           ))
         .watch();
@@ -89,19 +87,14 @@ class _PlanTileState extends State<PlanTile> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Center(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: 2),
-              child: Text(
-                widget.plan.title?.isNotEmpty == true
-                    ? widget.plan.title![0]
-                    : widget.plan.days[0].toUpperCase(),
-                textAlign: TextAlign.justify,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                ),
+            child: Text(
+              widget.plan.title?.isNotEmpty == true ? widget.plan.title![0] : widget.plan.days[0].toUpperCase(),
+              textAlign: TextAlign.justify,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
               ),
             ),
           ),
@@ -156,19 +149,16 @@ class _PlanTileState extends State<PlanTile> {
               ),
             );
             if (trailing == PlanTrailing.none) return const SizedBox();
-            if (trailing == PlanTrailing.reorder &&
-                defaultTargetPlatform == TargetPlatform.linux)
+            if (trailing == PlanTrailing.reorder && defaultTargetPlatform == TargetPlatform.linux)
               return const SizedBox();
-            else if (trailing == PlanTrailing.reorder &&
-                defaultTargetPlatform == TargetPlatform.android)
+            else if (trailing == PlanTrailing.reorder && defaultTargetPlatform == TargetPlatform.android)
               return ReorderableDragStartListener(
                 index: widget.index,
                 child: const Icon(Icons.drag_handle),
               );
 
             final state = context.watch<PlanState>();
-            final idx = state.planCounts
-                .indexWhere((element) => element.planId == widget.plan.id);
+            final idx = state.planCounts.indexWhere((element) => element.planId == widget.plan.id);
             PlanCount count;
             if (idx != -1)
               count = state.planCounts[idx];
@@ -194,8 +184,7 @@ class _PlanTileState extends State<PlanTile> {
           },
         ),
         onTap: () async {
-          if (widget.selected.isNotEmpty)
-            return widget.onSelect(widget.plan.id);
+          if (widget.selected.isNotEmpty) return widget.onSelect(widget.plan.id);
           final state = context.read<PlanState>();
           await state.updateGymCounts(widget.plan.id);
 
@@ -224,11 +213,8 @@ class _PlanTileState extends State<PlanTile> {
         TextSpan(
           text: day.trim(),
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontWeight:
-                    widget.weekday == day.trim() ? FontWeight.bold : null,
-                decoration: widget.weekday == day.trim()
-                    ? TextDecoration.underline
-                    : null,
+                fontWeight: widget.weekday == day.trim() ? FontWeight.bold : null,
+                decoration: widget.weekday == day.trim() ? TextDecoration.underline : null,
 //                color: widget.weekday == day.trim() ? Theme.of(context).colorScheme.inversePrimary : null,
               ),
         ),

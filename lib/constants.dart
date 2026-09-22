@@ -1,6 +1,5 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
 
 const weekdays = [
   'Monday',

@@ -3,9 +3,8 @@ import 'dart:io';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
@@ -57,10 +56,9 @@ class _WeightPageState extends State<WeightPage> {
                 autofocus: true,
               ),
               const SizedBox(height: 8),
-              Selector<SettingsState, String>(
+              Selector<SettingsRepository, String>(
                 selector: (context, settings) => settings.value.strengthUnit,
-                builder: (context, value, child) =>
-                    DropdownButtonFormField<String>(
+                builder: (context, value, child) => DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Unit'),
                   initialValue: unit ?? value,
                   items: const [
@@ -91,7 +89,7 @@ class _WeightPageState extends State<WeightPage> {
                 enabled: false,
               ),
               const SizedBox(height: 8),
-              Selector<SettingsState, bool>(
+              Selector<SettingsRepository, bool>(
                 builder: (context, showImages, child) {
                   return Visibility(
                     visible: showImages,
@@ -114,8 +112,7 @@ class _WeightPageState extends State<WeightPage> {
                               }),
                               child: Image.file(
                                 File(image!),
-                                errorBuilder: (context, error, stackTrace) =>
-                                    TextButton.icon(
+                                errorBuilder: (context, error, stackTrace) => TextButton.icon(
                                   label: const Text('Image error'),
                                   icon: const Icon(Icons.error),
                                   onPressed: () => pick(),
@@ -138,13 +135,12 @@ class _WeightPageState extends State<WeightPage> {
         onPressed: () async {
           if (!key.currentState!.validate()) return;
 
-          final settings = context.read<SettingsState>().value;
+          final settings = context.watch<SettingsRepository>();
           Navigator.pop(context);
 
-          if (settings.strengthUnit != 'last-entry')
-            unit = settings.strengthUnit;
+          if (settings.strengthUnit != 'last-entry') unit = settings.strengthUnit;
 
-          db.gymSets.insertOne(
+          oldDb.gymSets.insertOne(
             GymSetsCompanion.insert(
               created: DateTime.now().toLocal(),
               name: "Weight",
@@ -154,7 +150,7 @@ class _WeightPageState extends State<WeightPage> {
               image: drift.Value(image),
             ),
           );
-          (db.gymSets.update()..where((tbl) => tbl.bodyWeight.equals(0))).write(
+          (oldDb.gymSets.update()..where((tbl) => tbl.bodyWeight.equals(0))).write(
             GymSetsCompanion(
               bodyWeight: drift.Value(double.parse(ctrl.text)),
             ),
@@ -175,7 +171,7 @@ class _WeightPageState extends State<WeightPage> {
   @override
   void initState() {
     super.initState();
-    final settings = context.read<SettingsState>().value;
+    final settings = context.watch<SettingsRepository>();
 
     getBodyWeight().then(
       (value) => setState(() {

@@ -1,14 +1,14 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
-import 'package:fossfit/settings/settings_state.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
+import 'package:fossfit/models/plan_exercises_model.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
 class ExerciseTile extends StatefulWidget {
-  final PlanExercisesCompanion planExercise;
-  final Function(PlanExercisesCompanion) onChange;
+  final PlanExercises planExercise;
+  final Function(PlanExercises) onChange;
 
   const ExerciseTile({
     super.key,
@@ -37,18 +37,15 @@ class _ExerciseTileState extends State<ExerciseTile> {
           showDialog(
             context: context,
             builder: (context) {
-              bool timers = widget.planExercise.timers.present
-                  ? widget.planExercise.timers.value
-                  : true;
+              bool timers = widget.planExercise.timers.present ? widget.planExercise.timers.value : true;
 
               return AlertDialog.adaptive(
                 title: Text(widget.planExercise.exercise.value),
                 content: SingleChildScrollView(
                   child: material.Column(
                     children: [
-                      Selector<SettingsState, int?>(
-                        selector: (context, settings) =>
-                            settings.value.warmupSets,
+                      Selector<SettingsRepository, int?>(
+                        selector: (context, settings) => settings.value.warmupSets,
                         builder: (context, value, child) => TextField(
                           controller: warmup,
                           keyboardType: const TextInputType.numberWithOptions(
@@ -70,7 +67,7 @@ class _ExerciseTileState extends State<ExerciseTile> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Selector<SettingsState, int>(
+                      Selector<SettingsRepository, int>(
                         selector: (context, settings) => settings.value.maxSets,
                         builder: (context, value, child) => TextField(
                           controller: max,
@@ -79,8 +76,7 @@ class _ExerciseTileState extends State<ExerciseTile> {
                           ),
                           onTap: () => selectAll(max),
                           onChanged: (value) {
-                            if (int.parse(max.text) > 0 &&
-                                int.parse(max.text) <= 20) {
+                            if (int.parse(max.text) > 0 && int.parse(max.text) <= 20) {
                               final pe = widget.planExercise.copyWith(
                                 enabled: const Value(true),
                                 maxSets: Value(int.parse(max.text)),

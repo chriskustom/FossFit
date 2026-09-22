@@ -54,9 +54,7 @@ class DeleteRecordsButton extends StatelessWidget {
                                 icon: const Icon(Icons.delete),
                                 onPressed: () async {
                                   Navigator.pop(context);
-                                  await (db.delete(db.gymSets)
-                                        ..where((u) => u.hidden.equals(false)))
-                                      .go();
+                                  await (oldDb.delete(oldDb.gymSets)..where((u) => u.hidden.equals(false))).go();
                                   if (!ctx.mounted) return;
                                   Navigator.pop(ctx);
                                 },
@@ -94,7 +92,7 @@ class DeleteRecordsButton extends StatelessWidget {
                                 onPressed: () async {
                                   final planState = ctx.read<PlanState>();
                                   Navigator.pop(context);
-                                  await db.delete(db.plans).go();
+                                  await oldDb.delete(oldDb.plans).go();
                                   planState.updatePlans(null);
                                   if (!ctx.mounted) return;
                                   Navigator.pop(ctx);
@@ -131,18 +129,15 @@ class DeleteRecordsButton extends StatelessWidget {
                                 label: const Text('Delete'),
                                 icon: const Icon(Icons.delete),
                                 onPressed: () async {
-                                  final dbFolder =
-                                      await getApplicationDocumentsDirectory();
+                                  final dbFolder = await getApplicationDocumentsDirectory();
                                   final file = File(
                                     p.join(dbFolder.path, 'FossFit.sqlite'),
                                   );
-                                  await db.close();
-                                  await db.executor.close();
+                                  await oldDb.close();
+                                  await oldDb.executor.close();
                                   await file.delete();
-                                  if (defaultTargetPlatform ==
-                                          TargetPlatform.iOS ||
-                                      defaultTargetPlatform ==
-                                          TargetPlatform.android)
+                                  if (defaultTargetPlatform == TargetPlatform.iOS ||
+                                      defaultTargetPlatform == TargetPlatform.android)
                                     SystemNavigator.pop();
                                   else
                                     exit(0);

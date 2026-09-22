@@ -1,8 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -61,7 +60,7 @@ List<Widget> getFormatSettings(String term, Setting settings) {
             ),
           ],
           onChanged: (value) {
-            db.settings.update().write(
+            oldDb.settings.update().write(
                   SettingsCompanion(
                     strengthUnit: Value(value!),
                   ),
@@ -98,7 +97,7 @@ List<Widget> getFormatSettings(String term, Setting settings) {
             ),
           ],
           onChanged: (value) {
-            db.settings.update().write(
+            oldDb.settings.update().write(
                   SettingsCompanion(
                     cardioUnit: Value(value!),
                   ),
@@ -116,8 +115,7 @@ List<Widget> getFormatSettings(String term, Setting settings) {
               var format = timeago.format(DateTime.now());
 
               if (settings.longDateFormat != 'timeago')
-                format =
-                    DateFormat(settings.longDateFormat).format(DateTime.now());
+                format = DateFormat(settings.longDateFormat).format(DateTime.now());
 
               return DropdownButtonFormField<String>(
                 initialValue: settings.longDateFormat,
@@ -127,7 +125,7 @@ List<Widget> getFormatSettings(String term, Setting settings) {
                     child: Text(value),
                   );
                 }).toList(),
-                onChanged: (value) => db.settings.update().write(
+                onChanged: (value) => oldDb.settings.update().write(
                       SettingsCompanion(
                         longDateFormat: Value(value!),
                       ),
@@ -153,14 +151,13 @@ List<Widget> getFormatSettings(String term, Setting settings) {
                 child: Text(value),
               );
             }).toList(),
-            onChanged: (value) => db.settings.update().write(
+            onChanged: (value) => oldDb.settings.update().write(
                   SettingsCompanion(
                     shortDateFormat: Value(value!),
                   ),
                 ),
             decoration: InputDecoration(
-              labelText:
-                  'Short date format (${DateFormat(settings.shortDateFormat).format(DateTime.now())})',
+              labelText: 'Short date format (${DateFormat(settings.shortDateFormat).format(DateTime.now())})',
             ),
           ),
         ),

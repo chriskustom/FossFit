@@ -2,7 +2,6 @@ import 'package:drift/drift.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
 import 'package:fossfit/main.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -21,7 +20,7 @@ void toast(String message, {SnackBarAction? action, Duration? duration}) {
 }
 
 Future<GymSet?> getBodyWeight() async {
-  final gymSet = await (db.gymSets.select()
+  final gymSet = await (oldDb.gymSets.select()
         ..where((tbl) => tbl.name.equals('Weight'))
         ..orderBy(
           [(u) => OrderingTerm(expression: u.created, mode: OrderingMode.desc)],
@@ -32,9 +31,7 @@ Future<GymSet?> getBodyWeight() async {
 }
 
 bool isSameDay(DateTime date1, DateTime date2) {
-  return date1.year == date2.year &&
-      date1.month == date2.month &&
-      date1.day == date2.day;
+  return date1.year == date2.year && date1.month == date2.month && date1.day == date2.day;
 }
 
 DateTime parseDate(String dateString) {
@@ -55,8 +52,7 @@ DateTime parseDate(String dateString) {
 }
 
 Future<bool> requestNotificationPermission() async {
-  if (const String.fromEnvironment("FossFit_DEVICE_TYPE").isNotEmpty)
-    return true;
+  if (const String.fromEnvironment("FossFit_DEVICE_TYPE").isNotEmpty) return true;
   if (!kIsWeb) {
     final permission = await Permission.notification.request();
     return permission.isGranted;
@@ -64,8 +60,8 @@ Future<bool> requestNotificationPermission() async {
   return true;
 }
 
-void selectAll(TextEditingController controller) => controller.selection =
-    TextSelection(baseOffset: 0, extentOffset: controller.text.length);
+void selectAll(TextEditingController controller) =>
+    controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
 
 String toString(double value) {
   final str = value.toStringAsFixed(2);

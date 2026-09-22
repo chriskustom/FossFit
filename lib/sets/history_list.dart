@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
+import 'package:fossfit/models/gym_sets_model.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:fossfit/utils.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -11,7 +11,7 @@ import 'package:sticky_headers/sticky_headers.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class HistoryList extends StatefulWidget {
-  final List<GymSet> sets;
+  final List<GymSets> sets;
   final ScrollController scroll;
   final Function(int) onSelect;
   final Set<int> selected;
@@ -122,8 +122,7 @@ class _HistoryListState extends State<HistoryList> {
     bool showImages,
   ) {
     final minutes = gymSet.duration.floor();
-    final seconds =
-        ((gymSet.duration * 60) % 60).floor().toString().padLeft(2, '0');
+    final seconds = ((gymSet.duration * 60) % 60).floor().toString().padLeft(2, '0');
     final distance = toString(gymSet.distance);
     final reps = toString(gymSet.reps);
     final weight = toString(gymSet.weight);
@@ -155,8 +154,7 @@ class _HistoryListState extends State<HistoryList> {
             width: 24,
             height: 24,
             File(gymSet.image!),
-            errorBuilder: (context, error, stackTrace) =>
-                const Icon(Icons.error),
+            errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
           ),
         ),
       );
@@ -188,19 +186,14 @@ class _HistoryListState extends State<HistoryList> {
 
     leading = AnimatedSwitcher(
       duration: const Duration(milliseconds: 150),
-      transitionBuilder: (child, animation) =>
-          ScaleTransition(scale: animation, child: child),
+      transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
       child: leading,
     );
 
     String trailing = "$reps REPS @ $weight ${gymSet.unit}";
-    if (gymSet.cardio &&
-        (gymSet.unit == 'kg' ||
-            gymSet.unit == 'lb' ||
-            gymSet.unit == 'stone')) {
+    if (gymSet.cardio && (gymSet.unit == 'kg' || gymSet.unit == 'lb' || gymSet.unit == 'stone')) {
       trailing = "$weight ${gymSet.unit} / $minutes:$seconds $incline";
-    } else if (gymSet.cardio &&
-        (gymSet.unit == 'km' || gymSet.unit == 'mi' || gymSet.unit == 'kcal')) {
+    } else if (gymSet.cardio && (gymSet.unit == 'km' || gymSet.unit == 'mi' || gymSet.unit == 'kcal')) {
       trailing = "$distance ${gymSet.unit} / $minutes:$seconds $incline";
     }
 
@@ -227,12 +220,10 @@ class _HistoryListState extends State<HistoryList> {
   }
 
   Widget _getListItem(Widget leading, GymSet gymSet, String trailing) {
-    final title =
-        Text(_peek ? "${_getSetNumber(gymSet)}: $trailing" : gymSet.name);
+    final title = Text(_peek ? "${_getSetNumber(gymSet)}: $trailing" : gymSet.name);
     final dateFormat = context.watch<SettingsState>().value.longDateFormat;
 
-    final subtitle =
-        dateFormat == 'timeago' ? Text(timeago.format(gymSet.created)) : null;
+    final subtitle = dateFormat == 'timeago' ? Text(timeago.format(gymSet.created)) : null;
 
     return ListTile(
       dense: true,
@@ -240,12 +231,10 @@ class _HistoryListState extends State<HistoryList> {
       leading: leading,
       title: title,
       subtitle: subtitle,
-      trailing: Selector<SettingsState, String>(
+      trailing: Selector<SettingsRepository, String>(
         selector: (context, settings) => settings.value.shortDateFormat,
         builder: (context, dateFormat, child) => Text(
-          dateFormat == 'timeago'
-              ? timeago.format(gymSet.created)
-              : DateFormat("HH:mm a").format(gymSet.created),
+          dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
         ),
       ),
       onLongPress: () => widget.onSelect(gymSet.id),
@@ -282,8 +271,7 @@ class _HistoryListState extends State<HistoryList> {
 
   @override
   Widget build(BuildContext context) {
-    final showImages = context
-        .select<SettingsState, bool>((settings) => settings.value.showImages);
+    final showImages = context.select<SettingsState, bool>((settings) => settings.value.showImages);
     _grouped = _groupByDay(_current);
 
     return ListView.builder(
@@ -315,9 +303,7 @@ class _HistoryListState extends State<HistoryList> {
   }
 
   void scrollListener() {
-    if (widget.scroll.position.pixels <
-            widget.scroll.position.maxScrollExtent - 200 ||
-        goingNext) return;
+    if (widget.scroll.position.pixels < widget.scroll.position.maxScrollExtent - 200 || goingNext) return;
     setState(() {
       goingNext = true;
     });
@@ -391,7 +377,7 @@ class DateHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    return Selector<SettingsState, String>(
+    return Selector<SettingsRepository, String>(
       selector: (context, settings) {
         final format = settings.value.shortDateFormat;
         return format;
@@ -417,6 +403,5 @@ class DateHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get minExtent => 44;
 
   @override
-  bool shouldRebuild(DateHeaderDelegate oldDelegate) =>
-      oldDelegate.date != date;
+  bool shouldRebuild(DateHeaderDelegate oldDelegate) => oldDelegate.date != date;
 }

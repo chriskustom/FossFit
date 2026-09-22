@@ -2,12 +2,14 @@ import 'package:drift/drift.dart' as drift;
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
+import 'package:fossfit/models/plan_exercises_model.dart';
 import 'package:fossfit/plan/plan_state.dart';
 import 'package:fossfit/plan/swap_workout.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:fossfit/timer/timer_state.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
@@ -36,30 +38,23 @@ class _ExerciseModalState extends State<ExerciseModal> {
   final max = TextEditingController();
   final warmup = TextEditingController();
   bool timers = true;
-
+  List<PlanExercises> planExercises = [];
   @override
   void initState() {
     super.initState();
-
-    (db.planExercises.select()
-          ..where(
-            (u) =>
-                u.planId.equals(widget.planId) &
-                u.exercise.equals(widget.exercise),
-          ))
-        .getSingle()
-        .then((planExercise) {
-      max.text = planExercise.maxSets?.toString() ?? '';
-      warmup.text = planExercise.warmupSets?.toString() ?? '';
-
-      setState(() {
-        timers = planExercise.timers;
-      });
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    var repo = context.watch<PlanExercisesRepository>();
+    var planExercise =
+        repo.planexercises.where((p) => p.id == widget.planId && p.exercise == widget.exercise).take(1).first;
+    max.text = planExercise.maxsets.toString();
+    warmup.text = planExercise.warmupSets?.toString() ?? '';
+
+    timers = planExercise.timers;
+    var setsRepo = context.watch<GymSetsRepository>();
+    var gymSets = setsRepo.gymsets;
     return Wrap(
       children: <Widget>[
         ListTile(
@@ -76,9 +71,8 @@ class _ExerciseModalState extends State<ExerciseModal> {
                   content: SingleChildScrollView(
                     child: material.Column(
                       children: [
-                        Selector<SettingsState, int?>(
-                          selector: (context, settings) =>
-                              settings.value.warmupSets,
+                        Selector<SettingsRepository, int?>(
+                          selector: (context, settings) => settings.getInt(key: 'warmup_sets'),
                           builder: (context, value, child) => TextField(
                             controller: warmup,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -94,9 +88,8 @@ class _ExerciseModalState extends State<ExerciseModal> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Selector<SettingsState, int>(
-                          selector: (context, settings) =>
-                              settings.value.maxSets,
+                        Selector<SettingsRepository, int>(
+                          selector: (context, settings) => settings.getInt(key: 'max_sets'),
                           builder: (context, value, child) => TextField(
                             controller: max,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -149,16 +142,7 @@ class _ExerciseModalState extends State<ExerciseModal> {
             title: const Text('Edit'),
             onTap: () async {
               Navigator.pop(context);
-              final gymSet = await (db.select(db.gymSets)
-                    ..where((r) => db.gymSets.name.equals(widget.exercise))
-                    ..orderBy([
-                      (u) => drift.OrderingTerm(
-                            expression: u.created,
-                            mode: drift.OrderingMode.desc,
-                          ),
-                    ])
-                    ..limit(1))
-                  .getSingle();
+              final gymSet = gymSets.where((r) => r.name == (widget.exercise)).take(1).first;
               if (!context.mounted) return;
               await Navigator.push(
                 context,
@@ -175,17 +159,8 @@ class _ExerciseModalState extends State<ExerciseModal> {
             title: const Text('Undo'),
             onTap: () async {
               Navigator.pop(context);
-              final gymSet = await (db.select(db.gymSets)
-                    ..where((r) => db.gymSets.name.equals(widget.exercise))
-                    ..orderBy([
-                      (u) => drift.OrderingTerm(
-                            expression: u.created,
-                            mode: drift.OrderingMode.desc,
-                          ),
-                    ])
-                    ..limit(1))
-                  .getSingle();
-              await db.gymSets.deleteOne(gymSet);
+              final gymSet = gymSets.where((r) => r.name == (widget.exercise)).take(1).first;
+              await setsRepo.deleteGymSetById(gymSet.id!);
               if (!context.mounted) return;
               final planState = context.read<PlanState>();
               planState.updateGymCounts(widget.planId);
@@ -219,11 +194,9 @@ class _ExerciseModalState extends State<ExerciseModal> {
   }
 
   void changeTimers(bool value) {
-    (db.planExercises.update()
+    (oldDb.planExercises.update()
           ..where(
-            (u) =>
-                u.planId.equals(widget.planId) &
-                u.exercise.equals(widget.exercise),
+            (u) => u.planId.equals(widget.planId) & u.exercise.equals(widget.exercise),
           ))
         .write(
       PlanExercisesCompanion(
@@ -233,11 +206,9 @@ class _ExerciseModalState extends State<ExerciseModal> {
   }
 
   void changeMax(String value) {
-    (db.planExercises.update()
+    (oldDb.planExercises.update()
           ..where(
-            (u) =>
-                u.planId.equals(widget.planId) &
-                u.exercise.equals(widget.exercise),
+            (u) => u.planId.equals(widget.planId) & u.exercise.equals(widget.exercise),
           ))
         .write(
       PlanExercisesCompanion(
@@ -248,11 +219,9 @@ class _ExerciseModalState extends State<ExerciseModal> {
   }
 
   void changeWarmup(String value) {
-    (db.planExercises.update()
+    (oldDb.planExercises.update()
           ..where(
-            (u) =>
-                u.planId.equals(widget.planId) &
-                u.exercise.equals(widget.exercise),
+            (u) => u.planId.equals(widget.planId) & u.exercise.equals(widget.exercise),
           ))
         .write(
       PlanExercisesCompanion(

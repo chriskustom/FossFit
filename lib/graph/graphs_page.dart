@@ -1,22 +1,21 @@
-import 'package:drift/drift.dart' as drift;
-import 'package:drift/drift.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
 import 'package:fossfit/app_search.dart';
 import 'package:fossfit/constants.dart';
-import 'package:fossfit/database/database.dart';
-import 'package:fossfit/database/gym_sets.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
+import 'package:fossfit/db/repositories/plans_repository.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/graph/add_exercise_page.dart';
 import 'package:fossfit/graph/cardio_data.dart';
 import 'package:fossfit/graph/edit_graph_page.dart';
 import 'package:fossfit/graph/flex_line.dart';
 import 'package:fossfit/graph/global_progress_page.dart';
 import 'package:fossfit/graphs_filters.dart';
-import 'package:fossfit/main.dart';
-import 'package:fossfit/plan/plan_state.dart';
-import 'package:fossfit/settings/settings_state.dart';
+import 'package:fossfit/models/constants.dart';
+import 'package:fossfit/models/gym_sets_model.dart';
 import 'package:fossfit/utils.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -34,9 +33,8 @@ class GraphsPage extends StatefulWidget {
   createState() => GraphsPageState();
 }
 
-class GraphsPageState extends State<GraphsPage>
-    with AutomaticKeepAliveClientMixin {
-  late final Stream<List<GymSetsCompanion>> stream = watchGraphs();
+class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMixin {
+  late List<GymSets> sets = [];
 
   final Set<String> selected = {};
   final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
@@ -53,13 +51,13 @@ class GraphsPageState extends State<GraphsPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    sets = context.watch<GymSetsRepository>().gymsets;
     return NavigatorPopHandler(
       onPopWithResult: (result) {
         if (navKey.currentState!.canPop() == false) return;
-        final settings = context.read<SettingsState>().value;
-        final graphsIndex = settings.tabs.split(',').indexOf('GraphsPage');
-        if (widget.tabController.index == graphsIndex)
-          Navigator.of(navKey.currentContext!).pop();
+        final settings = context.watch<SettingsRepository>();
+        final graphsIndex = settings.getSetting(key: 'tabs').split(',').indexOf('GraphsPage');
+        if (widget.tabController.index == graphsIndex) Navigator.of(navKey.currentContext!).pop();
       },
       child: Navigator(
         key: navKey,
@@ -72,21 +70,25 @@ class GraphsPageState extends State<GraphsPage>
   }
 
   void onDelete() async {
-    final state = context.read<PlanState>();
+    final plansRepo = context.read<PlansRepository>();
     final copy = selected.toList();
+    var gymRepo = context.read<GymSetsRepository>();
+    var planExerciseRepo = context.read<PlanExercisesRepository>();
+
     setState(() {
       selected.clear();
     });
+    var gymsetIds = sets.where((t) => copy.contains(t.name)).map((t) => t.id!).toList();
+    await gymRepo.deleteGymSetsById(gymsetIds);
 
-    await (db.delete(db.gymSets)..where((tbl) => tbl.name.isIn(copy))).go();
+    final plans = plansRepo.plans;
 
-    final plans = await db.plans.select().get();
     for (final plan in plans) {
-      db
-          .delete(db.planExercises)
-          .where((x) => x.planId.equals(plan.id) & x.exercise.isIn(copy));
+      for (final exercise in copy) {
+        await planExerciseRepo.deletePlanExerciseByNameAndPlanId(exercise, plan.id!);
+      }
     }
-    state.updatePlans(null);
+    await plansRepo.updatePlans(null);
   }
 
   LineTouchTooltipData tooltipData(
@@ -117,7 +119,7 @@ class GraphsPageState extends State<GraphsPage>
     );
   }
 
-  Widget getPeek(GymSetsCompanion gymSet, List<dynamic> data, String format) {
+  Widget getPeek(GymSets gymSet, List<dynamic> data, String format) {
     List<FlSpot> spots = [];
     for (var index = 0; index < data.length; index++) {
       spots.add(FlSpot(index.toDouble(), data[index].value));
@@ -126,14 +128,13 @@ class GraphsPageState extends State<GraphsPage>
     return material.SizedBox(
       height: MediaQuery.of(context).size.height * 0.15,
       child: material.Padding(
-        padding:
-            const EdgeInsets.only(right: 48.0, top: 8.0, left: 48, bottom: 8),
+        padding: const EdgeInsets.only(right: 48.0, top: 8.0, left: 48, bottom: 8),
         child: FlexLine(
           data: data,
           spots: spots,
           tooltipData: () => tooltipData(
             data,
-            gymSet.unit.value,
+            gymSet.unit,
             format,
           ),
           hideBottom: true,
@@ -146,24 +147,21 @@ class GraphsPageState extends State<GraphsPage>
   Scaffold graphsPage() {
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      body: StreamBuilder(
-        stream: stream,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) return ErrorWidget(snapshot.error.toString());
-          if (!snapshot.hasData) return const SizedBox();
+      body: Builder(
+        builder: (context) {
+          if (sets.isEmpty) return const SizedBox();
 
-          final terms =
-              search.toLowerCase().split(" ").where((term) => term.isNotEmpty);
-          var stream = snapshot.data!.where((gymSet) {
+          final terms = search.toLowerCase().split(" ").where((term) => term.isNotEmpty);
+          var stream = sets.where((gymSet) {
             if (category != null) {
-              return gymSet.category.value == category;
+              return gymSet.category == category;
             }
             return true;
           });
 
           for (final term in terms) {
             stream = stream.where(
-              (gymSet) => gymSet.name.value.toLowerCase().contains(term),
+              (gymSet) => gymSet.name.toLowerCase().contains(term),
             );
           }
 
@@ -171,20 +169,20 @@ class GraphsPageState extends State<GraphsPage>
           switch (sort) {
             case GraphSort.dateDesc:
               gymSets.sort(
-                (a, b) => b.created.value.compareTo(a.created.value),
+                (a, b) => b.created.compareTo(a.created),
               );
               break;
 
             case GraphSort.dateAsc:
               gymSets.sort(
-                (a, b) => a.created.value.compareTo(b.created.value),
+                (a, b) => a.created.compareTo(b.created),
               );
               break;
 
             case GraphSort.name:
               gymSets.sort(
-                (a, b) => a.name.value.toLowerCase().compareTo(
-                      b.name.value.toLowerCase(),
+                (a, b) => a.name.toLowerCase().compareTo(
+                      b.name.toLowerCase(),
                     ),
               );
               break;
@@ -218,7 +216,7 @@ class GraphsPageState extends State<GraphsPage>
                 onDelete: onDelete,
                 onSelect: () => setState(() {
                   selected.addAll(
-                    gymSets.map((gymSet) => gymSet.name.value),
+                    gymSets.map((gymSet) => gymSet.name),
                   );
                 }),
                 selected: selected,
@@ -232,8 +230,7 @@ class GraphsPageState extends State<GraphsPage>
                 ),
                 confirmText: "This will delete $total records. Are you sure?",
               ),
-              if (gymSets.isEmpty &&
-                  !'global progress'.contains(search.toLowerCase()))
+              if (gymSets.isEmpty && !'global progress'.contains(search.toLowerCase()))
                 ListTile(
                   title: const Text("No graphs found"),
                   subtitle: Text(
@@ -249,9 +246,8 @@ class GraphsPageState extends State<GraphsPage>
                     );
                   },
                 ),
-              Selector<SettingsState, bool>(
-                selector: (p0, settingsState) =>
-                    settingsState.value.showGlobalProgress,
+              Selector<SettingsRepository, bool>(
+                selector: (p0, settingsRepository) => settingsRepository.isEnabled(key: 'show_global_progress'),
                 builder: (context, showGlobal, child) => Expanded(
                   child: (sort == GraphSort.name)
                       ? _sortedGraphList(gymSets, showGlobal)
@@ -280,15 +276,14 @@ class GraphsPageState extends State<GraphsPage>
     setState(() {
       selected.clear();
     });
-    final sets = (await stream.first)
+    final sets = (this.sets)
         .where(
-          (gymSet) => copy.contains(gymSet.name.value),
+          (gymSet) => copy.contains(gymSet.name),
         )
         .toList();
     final text = sets
         .map(
-          (gymSet) =>
-              "${toString(gymSet.reps.value)}x${toString(gymSet.weight.value)}${gymSet.unit.value} ${gymSet.name.value}",
+          (gymSet) => "${toString(gymSet.reps)}x${toString(gymSet.weight)}${gymSet.unit} ${gymSet.name}",
         )
         .join(', ');
     await SharePlus.instance.share(ShareParams(text: "I just did $text"));
@@ -306,10 +301,10 @@ class GraphsPageState extends State<GraphsPage>
                 leading: const Icon(Icons.visibility_off),
                 title: const Text('Hide global progress'),
                 onTap: () {
-                  db.settings.update().write(
-                        const SettingsCompanion(
-                          showGlobalProgress: Value(false),
-                        ),
+                  context.read<SettingsRepository>().setSetting(
+                        category: SettingCategory.appearance.name,
+                        key: 'show_global_progress',
+                        value: '0',
                       );
                   Navigator.pop(context);
                 },
@@ -329,20 +324,18 @@ class GraphsPageState extends State<GraphsPage>
   }
 
   material.ListView _stickyHeadersGraphList(
-    List<GymSetsCompanion> gymSets,
+    List<GymSets> gymSets,
     bool showGlobalProgress,
   ) {
     _grouped = _groupByDay(gymSets);
     var itemCount = _grouped.entries.length + 1;
-    final showGlobal = 'global graphs'.contains(search.toLowerCase()) &&
-        category == null &&
-        showGlobalProgress;
+    final showGlobal = 'global graphs'.contains(search.toLowerCase()) && category == null && showGlobalProgress;
     if (showGlobal) itemCount++;
 
-    final settings = context.read<SettingsState>().value;
-    final showPeekGraph =
-        settings.peekGraph && _grouped.entries.firstOrNull != null;
+    final settings = context.watch<SettingsRepository>();
+    final showPeekGraph = settings.isEnabled(key: 'peek_graph') && _grouped.entries.firstOrNull != null;
     if (showPeekGraph) itemCount++;
+    var repo = context.watch<GymSetsRepository>();
     return ListView.builder(
       itemCount: itemCount,
       controller: scroll,
@@ -408,81 +401,49 @@ class GraphsPageState extends State<GraphsPage>
                           setState(() {
                             selected.add(name);
                           });
-                        final result = await (db.gymSets.selectOnly()
-                              ..addColumns([db.gymSets.name.count()])
-                              ..where(db.gymSets.name.isIn(selected)))
-                            .getSingle();
+                        final result = sets.where((t) => selected.contains(t.name)).length;
                         setState(() {
-                          total = result.read(db.gymSets.name.count()) ?? 0;
+                          total = result;
                         });
                       },
                       tabCtrl: widget.tabController,
                     ),
                     if (peek && index == 0) ...[
-                      Consumer<SettingsState>(
+                      Consumer<SettingsRepository>(
                         builder: (
                           BuildContext context,
-                          SettingsState settings,
+                          SettingsRepository settings,
                           Widget? child,
                         ) {
-                          if (_grouped.entries.firstOrNull == null)
-                            return const SizedBox();
+                          if (_grouped.entries.firstOrNull == null) return const SizedBox();
 
                           return FutureBuilder(
-                            builder: (context, snapshot) =>
-                                snapshot.data != null
-                                    ? getPeek(
-                                        _grouped.entries.first.value.first,
-                                        snapshot.data!,
-                                        settings.value.shortDateFormat,
-                                      )
-                                    : const SizedBox(),
-                            future:
-                                _grouped.entries.first.value.first.cardio.value
-                                    ? getCardioData(
-                                        name: _grouped.entries.first.value.first
-                                            .name.value,
-                                      )
-                                    : getStrengthData(
-                                        target: _grouped.entries.first.value
-                                            .first.unit.value,
-                                        name: _grouped.entries.first.value.first
-                                            .name.value,
-                                        metric: StrengthMetric.bestWeight,
-                                        period: Period.day,
-                                        start: null,
-                                        end: null,
-                                        limit: 20,
-                                      ),
+                            builder: (context, snapshot) => snapshot.data != null
+                                ? getPeek(
+                                    _grouped.entries.first.value.first,
+                                    snapshot.data!,
+                                    settings.getSetting(key: 'short_date_format'),
+                                  )
+                                : const SizedBox(),
+                            future: _grouped.entries.first.value.first.cardio
+                                ? repo.getCardioData(
+                                    name: _grouped.entries.first.value.first.name,
+                                  )
+                                : repo.getStrengthData(
+                                    target: _grouped.entries.first.value.first.unit,
+                                    name: _grouped.entries.first.value.first.name,
+                                    metric: StrengthMetric.bestWeight,
+                                    period: Period.day,
+                                    start: null,
+                                    end: null,
+                                    limit: 20,
+                                  ),
                           );
                         },
                       ),
                     ],
                   ],
                 );
-
-                // return GraphTile(
-                //   selected: selected,
-                //   gymSet: set.value[index],
-                //   onSelect: (name) async {
-                //     if (selected.contains(name))
-                //       setState(() {
-                //         selected.remove(name);
-                //       });
-                //     else
-                //       setState(() {
-                //         selected.add(name);
-                //       });
-                //     final result = await (db.gymSets.selectOnly()
-                //           ..addColumns([db.gymSets.name.count()])
-                //           ..where(db.gymSets.name.isIn(selected)))
-                //         .getSingle();
-                //     setState(() {
-                //       total = result.read(db.gymSets.name.count()) ?? 0;
-                //     });
-                //   },
-                //   tabCtrl: widget.tabController,
-                // );
               },
             ),
           ),
@@ -492,19 +453,18 @@ class GraphsPageState extends State<GraphsPage>
   }
 
   material.ListView _sortedGraphList(
-    List<GymSetsCompanion> gymSets,
+    List<GymSets> gymSets,
     bool showGlobalProgress,
   ) {
     var itemCount = gymSets.length + 1;
-    final showGlobal = 'global graphs'.contains(search.toLowerCase()) &&
-        category == null &&
-        showGlobalProgress;
+    final showGlobal = 'global graphs'.contains(search.toLowerCase()) && category == null && showGlobalProgress;
     if (showGlobal) itemCount++;
 
-    final settings = context.read<SettingsState>().value;
-    final showPeekGraph = settings.peekGraph && gymSets.firstOrNull != null;
+    final settings = context.watch<SettingsRepository>();
+    final showPeekGraph = settings.isEnabled(key: 'peek_graph') && gymSets.firstOrNull != null;
     if (showPeekGraph) itemCount++;
 
+    var repo = context.watch<GymSetsRepository>();
     return ListView.builder(
       itemCount: itemCount,
       controller: scroll,
@@ -533,13 +493,13 @@ class GraphsPageState extends State<GraphsPage>
         }
 
         if (showPeekGraph && currentIdx == 1) {
-          return Consumer<SettingsState>(
+          return Consumer<SettingsRepository>(
             builder: (
               BuildContext context,
-              SettingsState settings,
+              SettingsRepository settings,
               Widget? child,
             ) {
-              if (!settings.value.peekGraph) return const SizedBox();
+              if (!showPeekGraph) return const SizedBox();
               if (gymSets.firstOrNull == null) return const SizedBox();
 
               return FutureBuilder(
@@ -547,14 +507,14 @@ class GraphsPageState extends State<GraphsPage>
                     ? getPeek(
                         gymSets.first,
                         snapshot.data!,
-                        settings.value.shortDateFormat,
+                        settings.getSetting(key: 'short_date_format'),
                       )
                     : const SizedBox(),
-                future: gymSets.first.cardio.value
-                    ? getCardioData(name: gymSets.first.name.value)
-                    : getStrengthData(
-                        target: gymSets.first.unit.value,
-                        name: gymSets.first.name.value,
+                future: gymSets.first.cardio
+                    ? repo.getCardioData(name: gymSets.first.name)
+                    : repo.getStrengthData(
+                        target: gymSets.first.unit,
+                        name: gymSets.first.name,
                         metric: StrengthMetric.bestWeight,
                         period: Period.day,
                         start: null,
@@ -580,8 +540,8 @@ class GraphsPageState extends State<GraphsPage>
         final bool showDivider = sort != GraphSort.name &&
             (currentIdx == 0 ||
                 !isSameDay(
-                  set.created.value.toLocal(),
-                  previousItem.created.value.toLocal(),
+                  set.created.toLocal(),
+                  previousItem.created.toLocal(),
                 ));
 
         return material.Column(
@@ -592,10 +552,10 @@ class GraphsPageState extends State<GraphsPage>
                   const material.Expanded(child: Divider()),
                   const Icon(Icons.today),
                   const SizedBox(width: 4),
-                  Selector<SettingsState, String>(
-                    selector: (p0, p1) => p1.value.shortDateFormat,
+                  Selector<SettingsRepository, String>(
+                    selector: (p0, p1) => p1.getSetting(key: 'short_date_format'),
                     builder: (context, format, child) => Text(
-                      DateFormat(format).format(set.created.value.toLocal()),
+                      DateFormat(format).format(set.created.toLocal()),
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -614,12 +574,9 @@ class GraphsPageState extends State<GraphsPage>
                   setState(() {
                     selected.add(name);
                   });
-                final result = await (db.gymSets.selectOnly()
-                      ..addColumns([db.gymSets.name.count()])
-                      ..where(db.gymSets.name.isIn(selected)))
-                    .getSingle();
+                final result = sets.where((t) => selected.contains(t.name)).length;
                 setState(() {
-                  total = result.read(db.gymSets.name.count()) ?? 0;
+                  total = result;
                 });
               },
               tabCtrl: widget.tabController,
@@ -631,7 +588,7 @@ class GraphsPageState extends State<GraphsPage>
   }
 
   Widget _buildSectionDivider(DateTime date) {
-    final format = context.read<SettingsState>().value.shortDateFormat;
+    final format = context.read<SettingsRepository>().getSetting(key: 'short_date_format');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -651,17 +608,17 @@ class GraphsPageState extends State<GraphsPage>
     );
   }
 
-  Map<DateTime, List<GymSetsCompanion>> _grouped = {};
-  Map<DateTime, List<GymSetsCompanion>> _groupByDay(
-    List<GymSetsCompanion> sets,
+  Map<DateTime, List<GymSets>> _grouped = {};
+  Map<DateTime, List<GymSets>> _groupByDay(
+    List<GymSets> sets,
   ) {
-    final map = <DateTime, List<GymSetsCompanion>>{};
+    final map = <DateTime, List<GymSets>>{};
 
     for (final set in sets) {
       final day = DateTime(
-        set.created.value.year,
-        set.created.value.month,
-        set.created.value.day,
+        set.created.year,
+        set.created.month,
+        set.created.day,
       );
 
       map.putIfAbsent(day, () => []);
@@ -671,9 +628,7 @@ class GraphsPageState extends State<GraphsPage>
     // Optional: sort newest first
     final sortedKeys = map.keys.toList()
       ..sort(
-        sort == GraphSort.dateDesc
-            ? (a, b) => b.compareTo(a)
-            : (a, b) => a.compareTo(b),
+        sort == GraphSort.dateDesc ? (a, b) => b.compareTo(a) : (a, b) => a.compareTo(b),
       );
 
     return {

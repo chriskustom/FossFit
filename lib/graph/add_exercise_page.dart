@@ -1,12 +1,11 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
-import 'package:fossfit/database/database.dart';
-import 'package:fossfit/main.dart';
-import 'package:fossfit/settings/settings_state.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
+import 'package:fossfit/models/gym_sets_model.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
@@ -23,10 +22,8 @@ class _AddExercisePageState extends State<AddExercisePage> {
   final TextEditingController nameCtrl = TextEditingController();
   bool cardio = false;
 
-  late var settings = context.watch<SettingsState>();
-  late String unit = settings.value.strengthUnit == 'last-entry'
-      ? 'kg'
-      : settings.value.strengthUnit;
+  String unit = 'kg';
+
   String? image;
   final key = GlobalKey<FormState>();
 
@@ -38,7 +35,16 @@ class _AddExercisePageState extends State<AddExercisePage> {
 
   @override
   Widget build(BuildContext context) {
-    settings = context.watch<SettingsState>();
+    var settings = context.watch<SettingsRepository>();
+    var strengthUnit = settings.getSetting(key: 'strength_unit');
+    var cardioUnit = settings.getSetting(key: 'cardio_unit');
+    if (strengthUnit != 'last-entry' && !cardio) {
+      unit = strengthUnit;
+    } else {
+      if (cardioUnit != 'last-entry' && cardio) {
+        unit = cardioUnit;
+      }
+    }
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -56,8 +62,7 @@ class _AddExercisePageState extends State<AddExercisePage> {
                 decoration: const InputDecoration(labelText: 'Name'),
                 textCapitalization: TextCapitalization.sentences,
                 autofocus: true,
-                validator: (value) =>
-                    value?.isNotEmpty == true ? null : 'Required',
+                validator: (value) => value?.isNotEmpty == true ? null : 'Required',
               ),
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Unit'),
@@ -93,9 +98,7 @@ class _AddExercisePageState extends State<AddExercisePage> {
               const SizedBox(height: 8),
               ListTile(
                 title: cardio ? const Text('Cardio') : const Text('Strength'),
-                leading: cardio
-                    ? const Icon(Icons.sports_gymnastics)
-                    : const Icon(Icons.fitness_center),
+                leading: cardio ? const Icon(Icons.sports_gymnastics) : const Icon(Icons.fitness_center),
                 onTap: () {
                   setState(() {
                     if (cardio)
@@ -113,7 +116,7 @@ class _AddExercisePageState extends State<AddExercisePage> {
                 ),
               ),
               Visibility(
-                visible: settings.value.showImages,
+                visible: settings.isEnabled(key: 'show_images'),
                 child: material.Column(
                   children: [
                     material.Row(
@@ -140,8 +143,7 @@ class _AddExercisePageState extends State<AddExercisePage> {
                       const SizedBox(height: 8),
                       Image.file(
                         File(image!),
-                        errorBuilder: (context, error, stackTrace) =>
-                            TextButton.icon(
+                        errorBuilder: (context, error, stackTrace) => TextButton.icon(
                           label: const Text('Image error'),
                           icon: const Icon(Icons.error),
                           onPressed: () => pick(),
@@ -181,22 +183,17 @@ class _AddExercisePageState extends State<AddExercisePage> {
   Future<void> save(String unit) async {
     if (!key.currentState!.validate()) return;
 
-    if (settings.value.strengthUnit != 'last-entry' && !cardio)
-      unit = settings.value.strengthUnit;
-    else if (settings.value.cardioUnit != 'last-entry' && cardio)
-      unit = settings.value.cardioUnit;
-
-    final insert = GymSetsCompanion.insert(
+    final insert = GymSets(
       created: DateTime.now().toLocal(),
       reps: 0,
       weight: 0,
       name: nameCtrl.text,
       unit: unit,
-      cardio: Value(cardio),
-      hidden: const Value(true),
-      image: Value(image),
+      cardio: cardio,
+      hidden: true,
+      image: image,
     );
-    await db.gymSets.insertOne(insert);
+    context.read<GymSetsRepository>().addGymSets(insert);
     if (!mounted) return;
 
     Navigator.pop(context, insert);

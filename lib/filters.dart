@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/gym_sets.dart';
-import 'package:fossfit/settings/settings_state.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -50,16 +49,12 @@ class _FiltersState extends State<Filters> {
   @override
   Widget build(BuildContext context) {
     String? reps;
-    if (widget.repsGtCtrl.text.isNotEmpty)
-      reps = '> ${widget.repsGtCtrl.text} ';
-    if (widget.repsLtCtrl.text.isNotEmpty)
-      reps = '${reps ?? ''}< ${widget.repsLtCtrl.text}';
+    if (widget.repsGtCtrl.text.isNotEmpty) reps = '> ${widget.repsGtCtrl.text} ';
+    if (widget.repsLtCtrl.text.isNotEmpty) reps = '${reps ?? ''}< ${widget.repsLtCtrl.text}';
 
     String? weight;
-    if (widget.weightGtCtrl.text.isNotEmpty)
-      weight = '> ${widget.weightGtCtrl.text} ';
-    if (widget.weightLtCtrl.text.isNotEmpty)
-      weight = '${weight ?? ''}< ${widget.weightLtCtrl.text}';
+    if (widget.weightGtCtrl.text.isNotEmpty) weight = '> ${widget.weightGtCtrl.text} ';
+    if (widget.weightLtCtrl.text.isNotEmpty) weight = '${weight ?? ''}< ${widget.weightLtCtrl.text}';
 
     return Badge.count(
       count: filtersCount,
@@ -108,8 +103,7 @@ class _FiltersState extends State<Filters> {
                                 decoration: const InputDecoration(
                                   labelText: "Greater than",
                                 ),
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
+                                keyboardType: const TextInputType.numberWithOptions(
                                   decimal: true,
                                 ),
                               ),
@@ -119,8 +113,7 @@ class _FiltersState extends State<Filters> {
                                 decoration: const InputDecoration(
                                   labelText: "Less than",
                                 ),
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
+                                keyboardType: const TextInputType.numberWithOptions(
                                   decimal: true,
                                 ),
                               ),
@@ -169,8 +162,7 @@ class _FiltersState extends State<Filters> {
                                 decoration: const InputDecoration(
                                   labelText: "Greater than",
                                 ),
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
+                                keyboardType: const TextInputType.numberWithOptions(
                                   decimal: true,
                                 ),
                               ),
@@ -180,8 +172,7 @@ class _FiltersState extends State<Filters> {
                                 decoration: const InputDecoration(
                                   labelText: "Less than",
                                 ),
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
+                                keyboardType: const TextInputType.numberWithOptions(
                                   decimal: true,
                                 ),
                               ),
@@ -218,15 +209,13 @@ class _FiltersState extends State<Filters> {
                     widget.setStart(null);
                     Navigator.pop(context);
                   },
-                  subtitle: Selector<SettingsState, String>(
+                  subtitle: Selector<SettingsRepository, String>(
                     selector: (p0, settings) => settings.value.shortDateFormat,
-                    builder: (context, shortDateFormat, child) =>
-                        widget.startDate != null
-                            ? Text(
-                                DateFormat(shortDateFormat)
-                                    .format(widget.startDate!),
-                              )
-                            : Text(shortDateFormat),
+                    builder: (context, shortDateFormat, child) => widget.startDate != null
+                        ? Text(
+                            DateFormat(shortDateFormat).format(widget.startDate!),
+                          )
+                        : Text(shortDateFormat),
                   ),
                   onTap: () async {
                     Navigator.pop(context);
@@ -236,8 +225,7 @@ class _FiltersState extends State<Filters> {
                       firstDate: DateTime(2000),
                       lastDate: DateTime(2100),
                     );
-                    if (pickedDate != null)
-                      widget.setStart(pickedDate.toLocal());
+                    if (pickedDate != null) widget.setStart(pickedDate.toLocal());
                   },
                 ),
               ),
@@ -245,15 +233,13 @@ class _FiltersState extends State<Filters> {
                 child: ListTile(
                   leading: const Icon(Icons.calendar_month),
                   title: const Text("End date"),
-                  subtitle: Selector<SettingsState, String>(
+                  subtitle: Selector<SettingsRepository, String>(
                     selector: (p0, settings) => settings.value.shortDateFormat,
-                    builder: (context, shortDateFormat, child) =>
-                        widget.endDate != null
-                            ? Text(
-                                DateFormat(shortDateFormat)
-                                    .format(widget.endDate!),
-                              )
-                            : Text(shortDateFormat),
+                    builder: (context, shortDateFormat, child) => widget.endDate != null
+                        ? Text(
+                            DateFormat(shortDateFormat).format(widget.endDate!),
+                          )
+                        : Text(shortDateFormat),
                   ),
                   onTap: () async {
                     Navigator.pop(context);

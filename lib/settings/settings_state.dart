@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
+
 import 'package:fossfit/main.dart';
 
 class SettingsState extends ChangeNotifier {
@@ -21,8 +21,7 @@ class SettingsState extends ChangeNotifier {
   }
 
   Future<void> init() async {
-    subscription =
-        (db.settings.select()..limit(1)).watchSingle().listen((event) {
+    subscription = (oldDb.settings.select()..limit(1)).watchSingle().listen((event) {
       value = event;
       notifyListeners();
     });

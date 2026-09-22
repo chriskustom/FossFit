@@ -1,18 +1,16 @@
 import 'dart:async';
 
-import 'package:drift/drift.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/constants.dart';
-import 'package:fossfit/database/database.dart';
-import 'package:fossfit/database/gym_sets.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/graph/cardio_data.dart';
 import 'package:fossfit/graph/edit_graph_page.dart';
 import 'package:fossfit/graph/flex_line.dart';
 import 'package:fossfit/graph/graph_history_page.dart';
-import 'package:fossfit/main.dart';
+import 'package:fossfit/models/gym_sets_model.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -58,8 +56,8 @@ class _CardioPageState extends State<CardioPage> {
   }
 
   void _onTabChanged() {
-    final settings = context.read<SettingsState>().value;
-    if (widget.tabCtrl.index == settings.tabs.indexOf('GraphsPage')) {
+    final settings = context.watch<SettingsRepository>();
+    if (widget.tabCtrl.index == settings.getSetting(key: 'tabs').indexOf('GraphsPage')) {
       setData();
     }
   }
@@ -81,8 +79,7 @@ class _CardioPageState extends State<CardioPage> {
                 break;
               case CardioMetric.duration:
                 final minutes = row.value.floor();
-                final seconds =
-                    ((row.value * 60) % 60).floor().toString().padLeft(2, '0');
+                final seconds = ((row.value * 60) % 60).floor().toString().padLeft(2, '0');
                 text = "$minutes:$seconds";
                 break;
               case CardioMetric.distance:
@@ -118,13 +115,14 @@ class _CardioPageState extends State<CardioPage> {
     final index = response?.lineBarSpots?[0].spotIndex;
     if (index == null) return;
     final row = data[index];
-    GymSet? gymSet = await (db.gymSets.select()
-          ..where(
-            (tbl) =>
-                tbl.created.equals(row.created) & tbl.name.equals(widget.name),
-          )
-          ..limit(1))
-        .getSingle();
+    if (!context.mounted) return;
+    GymSets? gymSet = context
+        .watch<GymSetsRepository>()
+        .gymsets
+        .where(
+          (tbl) => tbl.created == row.created && tbl.name == widget.name,
+        )
+        .first;
 
     if (!mounted) return;
     await Navigator.push(
@@ -153,19 +151,14 @@ class _CardioPageState extends State<CardioPage> {
         actions: [
           IconButton(
             onPressed: () async {
-              final gymSets = await (db.gymSets.select()
-                    ..orderBy(
-                      [
-                        (u) => OrderingTerm(
-                              expression: u.created,
-                              mode: OrderingMode.desc,
-                            ),
-                      ],
-                    )
-                    ..where((tbl) => tbl.name.equals(widget.name))
-                    ..where((tbl) => tbl.hidden.equals(false))
-                    ..limit(20))
-                  .get();
+              final gymSets = context
+                  .watch<GymSetsRepository>()
+                  .gymsets
+                  .where(
+                    (tbl) => tbl.name == widget.name && !tbl.hidden,
+                  )
+                  .toList();
+
               if (!context.mounted) return;
 
               await Navigator.of(context).push(
@@ -219,7 +212,7 @@ class _CardioPageState extends State<CardioPage> {
               }
             }
 
-            final settings = context.watch<SettingsState>().value;
+            final settings = context.watch<SettingsRepository>();
 
             return ListView(
               children: [
@@ -286,8 +279,8 @@ class _CardioPageState extends State<CardioPage> {
                 ),
                 SizedBox(height: 8),
                 if (metric == CardioMetric.distance)
-                  Selector<SettingsState, bool>(
-                    selector: (p0, p1) => p1.value.showUnits,
+                  Selector<SettingsRepository, bool>(
+                    selector: (_, config) => config.isEnabled(key: 'show_units'),
                     builder: (context, value, child) => Visibility(
                       visible: value,
                       child: Padding(
@@ -324,9 +317,8 @@ class _CardioPageState extends State<CardioPage> {
                     Expanded(
                       child: ListTile(
                         title: const Text('Start date'),
-                        subtitle: Selector<SettingsState, String>(
-                          selector: (p0, settings) =>
-                              settings.value.shortDateFormat,
+                        subtitle: Selector<SettingsRepository, String>(
+                          selector: (_, config) => config.getSetting(key: 'short_date_format'),
                           builder: (context, value, child) {
                             if (start == null) return Text(value);
 
@@ -345,9 +337,8 @@ class _CardioPageState extends State<CardioPage> {
                     Expanded(
                       child: ListTile(
                         title: const Text('Stop date'),
-                        subtitle: Selector<SettingsState, String>(
-                          selector: (context, settings) =>
-                              settings.value.shortDateFormat,
+                        subtitle: Selector<SettingsRepository, String>(
+                          selector: (_, config) => config.getSetting(key: 'short_date_format'),
                           builder: (context, value, child) {
                             if (end == null) return Text(value);
 
@@ -376,8 +367,7 @@ class _CardioPageState extends State<CardioPage> {
                 if (rows.isEmpty)
                   ListTile(
                     title: Text("No data yet for ${widget.name}"),
-                    subtitle:
-                        const Text("Complete some plans to view graphs here"),
+                    subtitle: const Text("Complete some plans to view graphs here"),
                     contentPadding: EdgeInsets.zero,
                   ),
                 if (rows.isNotEmpty)
@@ -387,8 +377,7 @@ class _CardioPageState extends State<CardioPage> {
                       padding: const EdgeInsets.only(right: 32.0, top: 16.0),
                       child: FlexLine(
                         spots: spots,
-                        tooltipData: () =>
-                            tooltipData(settings.shortDateFormat),
+                        tooltipData: () => tooltipData(settings.getSetting(key: 'shortDateFormat')),
                         touchLine: touchLine,
                         data: data,
                         timeBasedXAxis: useTimeBasedXAxis,
@@ -405,14 +394,14 @@ class _CardioPageState extends State<CardioPage> {
   }
 
   void setData() async {
-    final cardio = await getCardioData(
-      end: end,
-      period: period,
-      metric: metric,
-      name: widget.name,
-      start: start,
-      target: target,
-    );
+    final cardio = await context.watch<GymSetsRepository>().getCardioData(
+          end: end,
+          period: period,
+          metric: metric,
+          name: widget.name,
+          start: start,
+          target: target,
+        );
 
     if (!mounted) return;
     setState(() {

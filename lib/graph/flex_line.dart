@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:fossfit/settings/settings_state.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -88,9 +88,7 @@ class FlexLine extends StatelessWidget {
 
         final range = spots.last.x - spots.first.x;
         final spacing = range / (count - 1);
-        if (minDiff <= spacing / 2 &&
-            nearestIndex >= 0 &&
-            nearestIndex < data.length) {
+        if (minDiff <= spacing / 2 && nearestIndex >= 0 && nearestIndex < data.length) {
           DateTime created = data[nearestIndex].created;
           text = Text(
             DateFormat(format).format(created),
@@ -128,15 +126,11 @@ class FlexLine extends StatelessWidget {
       Theme.of(context).colorScheme.primary,
       Theme.of(context).colorScheme.surface,
     ];
-    final settings = context.watch<SettingsState>().value;
+    final settings = context.watch<SettingsRepository>();
 
     // CRITICAL FIX: Calculate Y-axis min/max to prevent decimal interval issues
-    double minY = spots.isEmpty
-        ? 0
-        : spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
-    double maxY = spots.isEmpty
-        ? 1
-        : spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+    double minY = spots.isEmpty ? 0 : spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
+    double maxY = spots.isEmpty ? 1 : spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
 
     // If range is very small (decimal-only data), expand it to prevent tiny intervals
     double range = maxY - minY;
@@ -147,17 +141,16 @@ class FlexLine extends StatelessWidget {
       maxY = center + 0.5;
     }
 
-    List<FlSpot> trendSpots =
-        showTrendLine == true ? _calculateTrendLine(spots) : [];
+    List<FlSpot> trendSpots = showTrendLine == true ? _calculateTrendLine(spots) : [];
 
     List<LineChartBarData> lineBarsData = [
       LineChartBarData(
         spots: spots,
-        isCurved: settings.curveLines,
+        isCurved: settings.isEnabled(key: 'curve_lines'),
         color: Theme.of(context).colorScheme.primary,
         barWidth: 3,
         isStrokeCapRound: true,
-        curveSmoothness: settings.curveSmoothness ?? 0.35,
+        curveSmoothness: settings.getDouble(key: 'curve_smoothness'),
         dotData: const FlDotData(
           show: false,
         ),
@@ -165,8 +158,7 @@ class FlexLine extends StatelessWidget {
         belowBarData: BarAreaData(
           show: true,
           gradient: LinearGradient(
-            colors:
-                colors.map((color) => color.withValues(alpha: 0.3)).toList(),
+            colors: colors.map((color) => color.withValues(alpha: 0.3)).toList(),
           ),
         ),
       ),
@@ -226,7 +218,7 @@ class FlexLine extends StatelessWidget {
               getTitlesWidget: (value, meta) => bottomTitleWidgets(
                 value,
                 meta,
-                settings.shortDateFormat,
+                settings.getSetting(key: 'short_date_format'),
                 context,
               ),
             ),
@@ -234,9 +226,7 @@ class FlexLine extends StatelessWidget {
         ),
         lineTouchData: LineTouchData(
           enabled: true,
-          touchCallback: touchLine != null
-              ? (event, touchResponse) => touchLine!(event, touchResponse)
-              : null,
+          touchCallback: touchLine != null ? (event, touchResponse) => touchLine!(event, touchResponse) : null,
           touchTooltipData: tooltipData(),
         ),
         lineBarsData: lineBarsData,

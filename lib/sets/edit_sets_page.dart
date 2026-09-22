@@ -1,11 +1,10 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
-import 'package:fossfit/database/database.dart';
-import 'package:fossfit/database/gym_sets.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
+import 'package:fossfit/models/gym_sets_model.dart';
 import 'package:fossfit/plan/plan_state.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:fossfit/utils.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -80,8 +79,7 @@ class _EditSetsPageState extends State<EditSetsPage> {
                         icon: const Icon(Icons.delete),
                         onPressed: () async {
                           Navigator.pop(dialogContext);
-                          await db.gymSets
-                              .deleteWhere((u) => u.id.isIn(widget.ids));
+                          await oldDb.gymSets.deleteWhere((u) => u.id.isIn(widget.ids));
                           if (context.mounted) Navigator.pop(context);
                         },
                       ),
@@ -101,8 +99,7 @@ class _EditSetsPageState extends State<EditSetsPage> {
             children: [
               TextField(
                 controller: name,
-                decoration:
-                    InputDecoration(labelText: "Name", hintText: oldNames),
+                decoration: InputDecoration(labelText: "Name", hintText: oldNames),
                 textCapitalization: TextCapitalization.sentences,
               ),
               if (cardio == true) ...[
@@ -138,8 +135,7 @@ class _EditSetsPageState extends State<EditSetsPage> {
                         textInputAction: TextInputAction.next,
                         validator: (value) {
                           if (value == null || value.isEmpty) return null;
-                          if (int.tryParse(value) == null)
-                            return 'Invalid number';
+                          if (int.tryParse(value) == null) return 'Invalid number';
                           return null;
                         },
                       ),
@@ -159,8 +155,7 @@ class _EditSetsPageState extends State<EditSetsPage> {
                         textInputAction: TextInputAction.next,
                         validator: (value) {
                           if (value == null || value.isEmpty) return null;
-                          if (int.tryParse(value) == null)
-                            return 'Invalid number';
+                          if (int.tryParse(value) == null) return 'Invalid number';
                           return null;
                         },
                       ),
@@ -187,8 +182,7 @@ class _EditSetsPageState extends State<EditSetsPage> {
               if (cardio == false || cardio == null) ...[
                 TextFormField(
                   controller: reps,
-                  decoration:
-                      InputDecoration(labelText: 'Reps', hintText: oldReps),
+                  decoration: InputDecoration(labelText: 'Reps', hintText: oldReps),
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
@@ -217,7 +211,7 @@ class _EditSetsPageState extends State<EditSetsPage> {
                 ),
               ],
               if (name.text != 'Weight')
-                Selector<SettingsState, bool>(
+                Selector<SettingsRepository, bool>(
                   builder: (context, showBodyWeight, child) => Visibility(
                     visible: showBodyWeight,
                     child: TextFormField(
@@ -232,16 +226,14 @@ class _EditSetsPageState extends State<EditSetsPage> {
                       onTap: () => selectAll(body),
                       validator: (value) {
                         if (value == null || value.isEmpty) return null;
-                        if (double.tryParse(value) == null)
-                          return 'Invalid number';
+                        if (double.tryParse(value) == null) return 'Invalid number';
                         return null;
                       },
                     ),
                   ),
-                  selector: (context, settings) =>
-                      settings.value.showBodyWeight,
+                  selector: (context, settings) => settings.value.showBodyWeight,
                 ),
-              Selector<SettingsState, bool>(
+              Selector<SettingsRepository, bool>(
                 builder: (context, showUnits, child) => Visibility(
                   visible: showUnits,
                   child: DropdownButtonFormField<String>(
@@ -282,7 +274,7 @@ class _EditSetsPageState extends State<EditSetsPage> {
                   );
                 },
               ),
-              Selector<SettingsState, String>(
+              Selector<SettingsRepository, String>(
                 builder: (context, longDateFormat, child) {
                   var subtitle = oldCreated ?? "";
 
@@ -368,9 +360,9 @@ class _EditSetsPageState extends State<EditSetsPage> {
   @override
   void initState() {
     super.initState();
-    final settings = context.read<SettingsState>().value;
+    final settings = context.watch<SettingsRepository>();
 
-    (db.gymSets.select()
+    (oldDb.gymSets.select()
           ..where((u) => u.id.isIn(widget.ids))
           ..limit(3))
         .get()
@@ -390,15 +382,12 @@ class _EditSetsPageState extends State<EditSetsPage> {
         else
           oldCreated = gymSets
               .map(
-                (gymSet) =>
-                    DateFormat(settings.longDateFormat).format(gymSet.created),
+                (gymSet) => DateFormat(settings.longDateFormat).format(gymSet.created),
               )
               .join(', ');
         oldDist = gymSets.map((gymSet) => gymSet.distance).join(', ');
         oldMin = gymSets.map((gymSet) => gymSet.duration.floor()).join(', ');
-        oldSec = gymSets
-            .map((gymSet) => ((gymSet.duration * 60) % 60).floor())
-            .join(', ');
+        oldSec = gymSets.map((gymSet) => ((gymSet.duration * 60) % 60).floor()).join(', ');
         oldInc = gymSets.map((gymSet) => gymSet.incline).join(', ');
         oldCat = gymSets.map((gymSet) => gymSet.category).join(', ');
       });
@@ -441,18 +430,15 @@ class _EditSetsPageState extends State<EditSetsPage> {
       weight: Value.absentIfNull(double.tryParse(weight.text)),
       bodyWeight: Value.absentIfNull(double.tryParse(body.text)),
       distance: Value.absentIfNull(double.tryParse(distance.text)),
-      duration: int.tryParse(seconds.text) == null &&
-              int.tryParse(minutes.text) == null
+      duration: int.tryParse(seconds.text) == null && int.tryParse(minutes.text) == null
           ? const Value.absent()
           : Value(
-              (int.tryParse(seconds.text) ?? 0) / 60 +
-                  (int.tryParse(minutes.text) ?? 0),
+              (int.tryParse(seconds.text) ?? 0) / 60 + (int.tryParse(minutes.text) ?? 0),
             ),
       category: Value.absentIfNull(category),
     );
 
-    await (db.gymSets.update()..where((u) => u.id.isIn(widget.ids)))
-        .write(gymSet);
+    await (oldDb.gymSets.update()..where((u) => u.id.isIn(widget.ids))).write(gymSet);
     planState.updateDefaults();
   }
 

@@ -1,9 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
@@ -42,7 +41,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
               ListTile(
                 title: const Text('Rest timers'),
                 onTap: () {
-                  db.settings.update().write(
+                  oldDb.settings.update().write(
                         SettingsCompanion(
                           restTimers: Value(!settings.value.restTimers),
                         ),
@@ -50,7 +49,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
                 },
                 trailing: Switch(
                   value: settings.value.restTimers,
-                  onChanged: (value) => db.settings.update().write(
+                  onChanged: (value) => oldDb.settings.update().write(
                         SettingsCompanion(
                           restTimers: Value(value),
                         ),
@@ -77,12 +76,10 @@ class _PermissionsPageState extends State<PermissionsPage> {
                 subtitle: const Text(
                   'Alarms cannot be accurate if this is disabled.',
                 ),
-                onTap: () async =>
-                    await requestPermission(Permission.scheduleExactAlarm),
+                onTap: () async => await requestPermission(Permission.scheduleExactAlarm),
                 trailing: Switch(
                   value: schedule,
-                  onChanged: (_) async =>
-                      await requestPermission(Permission.scheduleExactAlarm),
+                  onChanged: (_) async => await requestPermission(Permission.scheduleExactAlarm),
                 ),
               ),
               ListTile(
@@ -90,12 +87,10 @@ class _PermissionsPageState extends State<PermissionsPage> {
                 subtitle: const Text(
                   'Timer progress is sent to the notification bar',
                 ),
-                onTap: () async =>
-                    await requestPermission(Permission.notification),
+                onTap: () async => await requestPermission(Permission.notification),
                 trailing: Switch(
                   value: notify,
-                  onChanged: (_) async =>
-                      await requestPermission(Permission.notification),
+                  onChanged: (_) async => await requestPermission(Permission.notification),
                 ),
               ),
             ],
@@ -125,7 +120,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
                       onPressed: () async {
                         Navigator.pop(context);
                         Navigator.pop(context);
-                        db.settings.update().write(
+                        oldDb.settings.update().write(
                               const SettingsCompanion(
                                 explainedPermissions: Value(true),
                               ),
@@ -138,7 +133,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
             );
           else {
             Navigator.pop(context);
-            db.settings.update().write(
+            oldDb.settings.update().write(
                   const SettingsCompanion(
                     explainedPermissions: Value(true),
                   ),

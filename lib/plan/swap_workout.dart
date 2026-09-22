@@ -1,6 +1,5 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
 import 'package:fossfit/main.dart';
 import 'package:fossfit/plan/plan_state.dart';
 import 'package:provider/provider.dart';
@@ -29,12 +28,12 @@ class _SwapWorkoutState extends State<SwapWorkout> {
       });
     });
 
-    _distinctExercises = (db.gymSets.selectOnly(distinct: true)
-          ..addColumns([db.gymSets.name])
+    _distinctExercises = (oldDb.gymSets.selectOnly(distinct: true)
+          ..addColumns([oldDb.gymSets.name])
           ..orderBy([
-            drift.OrderingTerm(expression: db.gymSets.name),
+            drift.OrderingTerm(expression: oldDb.gymSets.name),
           ]))
-        .map((row) => row.read(db.gymSets.name)!)
+        .map((row) => row.read(oldDb.gymSets.name)!)
         .watch()
         .map((event) => event.where((name) => name.isNotEmpty).toList());
   }
@@ -80,9 +79,7 @@ class _SwapWorkoutState extends State<SwapWorkout> {
 
                 final exercises = snapshot.data!
                     .where(
-                      (name) => name
-                          .toLowerCase()
-                          .contains(_searchQuery.toLowerCase()),
+                      (name) => name.toLowerCase().contains(_searchQuery.toLowerCase()),
                     )
                     .toList();
 
@@ -93,16 +90,14 @@ class _SwapWorkoutState extends State<SwapWorkout> {
                     return ListTile(
                       title: Text(exercise),
                       onTap: () async {
-                        final old = await (db.planExercises.select()
+                        final old = await (oldDb.planExercises.select()
                               ..where(
-                                (tbl) =>
-                                    tbl.planId.equals(widget.planId) &
-                                    tbl.exercise.equals(widget.exercise),
+                                (tbl) => tbl.planId.equals(widget.planId) & tbl.exercise.equals(widget.exercise),
                               )
                               ..limit(1))
                             .getSingle();
-                        await db.planExercises.deleteOne(old);
-                        await db.planExercises.insertOne(
+                        await oldDb.planExercises.deleteOne(old);
+                        await oldDb.planExercises.insertOne(
                           PlanExercisesCompanion.insert(
                             enabled: true,
                             exercise: exercise,

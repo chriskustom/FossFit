@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/settings/settings_page.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:fossfit/timer/timer_progress_widgets.dart';
 import 'package:fossfit/timer/timer_state.dart';
 import 'package:provider/provider.dart';
@@ -16,8 +16,7 @@ class TimerPage extends StatefulWidget {
   createState() => TimerPageState();
 }
 
-class TimerPageState extends State<TimerPage>
-    with AutomaticKeepAliveClientMixin {
+class TimerPageState extends State<TimerPage> with AutomaticKeepAliveClientMixin {
   final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
 
   @override
@@ -32,7 +31,7 @@ class TimerPageState extends State<TimerPage>
       onPopWithResult: (result) {
         if (navKey.currentState!.canPop() == false) return;
         final ctrl = DefaultTabController.of(context);
-        final settings = context.read<SettingsState>().value;
+        final settings = context.watch<SettingsRepository>();
         final index = settings.tabs.split(',').indexOf('TimerPage');
         if (ctrl.index == index) navKey.currentState!.pop();
       },

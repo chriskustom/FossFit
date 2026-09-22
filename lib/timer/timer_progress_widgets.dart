@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:fossfit/settings/settings_state.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/timer/timer_state.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
@@ -10,12 +10,10 @@ import 'package:provider/provider.dart';
 class TimerCircularProgressIndicator extends StatefulWidget {
   const TimerCircularProgressIndicator({super.key});
   @override
-  State<TimerCircularProgressIndicator> createState() =>
-      _TimerCircularProgressIndicatorState();
+  State<TimerCircularProgressIndicator> createState() => _TimerCircularProgressIndicatorState();
 }
 
-class _TimerCircularProgressIndicatorState
-    extends State<TimerCircularProgressIndicator> {
+class _TimerCircularProgressIndicatorState extends State<TimerCircularProgressIndicator> {
   bool stopping = false;
   double lastValue = 0;
 
@@ -27,9 +25,7 @@ class _TimerCircularProgressIndicatorState
         final elapsed = timerState.timer.getElapsed();
         final remaining = timerState.timer.getRemaining();
 
-        if (duration > Duration.zero &&
-            remaining > Duration.zero &&
-            timerState.starting) {
+        if (duration > Duration.zero && remaining > Duration.zero && timerState.starting) {
           return TweenAnimationBuilder(
             key: UniqueKey(),
             tween: Tween<double>(
@@ -40,8 +36,7 @@ class _TimerCircularProgressIndicatorState
             onEnd: () {
               timerState.setStarting(false);
             },
-            builder: (context, value, child) =>
-                _TimerCircularProgressIndicatorTile(
+            builder: (context, value, child) => _TimerCircularProgressIndicatorTile(
               value: value,
               timerState: timerState,
             ),
@@ -57,8 +52,7 @@ class _TimerCircularProgressIndicatorState
               end: 0,
             ),
             duration: remaining,
-            builder: (context, value, child) =>
-                _TimerCircularProgressIndicatorTile(
+            builder: (context, value, child) => _TimerCircularProgressIndicatorTile(
               value: value,
               timerState: timerState,
             ),
@@ -80,8 +74,7 @@ class _TimerCircularProgressIndicatorState
               });
               timerState.setStarting(true);
             },
-            builder: (context, value, child) =>
-                _TimerCircularProgressIndicatorTile(
+            builder: (context, value, child) => _TimerCircularProgressIndicatorTile(
               value: value,
               timerState: timerState,
             ),
@@ -104,8 +97,7 @@ class TimerProgressIndicator extends StatefulWidget {
   State<TimerProgressIndicator> createState() => _TimerProgressIndicatorState();
 }
 
-class _TimerProgressIndicatorState extends State<TimerProgressIndicator>
-    with WidgetsBindingObserver {
+class _TimerProgressIndicatorState extends State<TimerProgressIndicator> with WidgetsBindingObserver {
   Duration? lastDuration;
   DateTime? lastTimestamp;
   GlobalKey? animationKey;
@@ -146,16 +138,10 @@ class _TimerProgressIndicatorState extends State<TimerProgressIndicator>
           return const SizedBox.shrink();
         }
 
-        final currentProgress =
-            elapsed.inMilliseconds / duration.inMilliseconds;
+        final currentProgress = elapsed.inMilliseconds / duration.inMilliseconds;
 
         final isNewTimer = lastDuration != duration ||
-            (lastTimestamp != null &&
-                timerState.timer.stamp
-                        .difference(lastTimestamp!)
-                        .inSeconds
-                        .abs() >
-                    1);
+            (lastTimestamp != null && timerState.timer.stamp.difference(lastTimestamp!).inSeconds.abs() > 1);
 
         if (isNewTimer) {
           lastDuration = duration;
@@ -207,8 +193,7 @@ class _TimerCircularProgressIndicatorTile extends StatelessWidget {
     Color lighten(Color color, [double amount = .1]) {
       assert(amount >= 0 && amount <= 1);
       final hsl = HSLColor.fromColor(color);
-      final hslLight =
-          hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0));
+      final hslLight = hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0));
       return hslLight.toColor();
     }
 
@@ -247,10 +232,7 @@ class _TimerCircularProgressIndicatorTile extends StatelessWidget {
                 strokeCap: StrokeCap.round,
                 value: value,
                 strokeWidth: strokeWidth,
-                backgroundColor: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.25),
+                backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.25),
                 valueColor: AlwaysStoppedAnimation<Color>(
                   Theme.of(context).colorScheme.primary,
                 ),
@@ -297,9 +279,8 @@ class _TimerCircularProgressIndicatorTile extends StatelessWidget {
             ),
             TextButton(
               onPressed: () async {
-                final settings = context.read<SettingsState>().value;
-                if (defaultTargetPlatform != TargetPlatform.linux)
-                  await requestNotificationPermission();
+                final settings = context.watch<SettingsRepository>();
+                if (defaultTargetPlatform != TargetPlatform.linux) await requestNotificationPermission();
                 await timerState.addOneMinute(
                   settings.alarmSound,
                   settings.vibrate,

@@ -31,7 +31,7 @@ class ExportData extends StatelessWidget {
                     onTap: () async {
                       Navigator.pop(context);
                       if (!await requestNotificationPermission()) return;
-                      final gymSets = await db.gymSets.select().get();
+                      final gymSets = await oldDb.gymSets.select().get();
                       final List<List<dynamic>> data = [
                         [
                           'id',
@@ -64,8 +64,7 @@ class ExportData extends StatelessWidget {
                           gymSet.incline,
                         ]);
                       }
-                      final csv =
-                          const CsvEncoder(lineDelimiter: "\n").convert(data);
+                      final csv = const CsvEncoder(lineDelimiter: "\n").convert(data);
                       final bytes = Uint8List.fromList(csv.codeUnits);
                       await FilePicker.saveFile(
                         fileName: 'graphs.csv',
@@ -78,12 +77,12 @@ class ExportData extends StatelessWidget {
                     title: const Text('Plans'),
                     onTap: () async {
                       Navigator.pop(context);
-                      final plans = await db.plans.select().get();
+                      final plans = await oldDb.plans.select().get();
                       final List<List<dynamic>> data = [
                         ['id', 'days', 'title', 'sequence', 'exercises'],
                       ];
                       for (var plan in plans) {
-                        final planExercises = await (db.planExercises.select()
+                        final planExercises = await (oldDb.planExercises.select()
                               ..where(
                                 (u) => u.planId.equals(plan.id) & u.enabled,
                               ))
@@ -99,8 +98,7 @@ class ExportData extends StatelessWidget {
 
                       if (!await requestNotificationPermission()) return;
 
-                      final csv =
-                          const CsvEncoder(lineDelimiter: "\n").convert(data);
+                      final csv = const CsvEncoder(lineDelimiter: "\n").convert(data);
                       final bytes = Uint8List.fromList(csv.codeUnits);
                       await FilePicker.saveFile(
                         fileName: 'plans.csv',
@@ -116,8 +114,7 @@ class ExportData extends StatelessWidget {
                     onTap: () async {
                       Navigator.pop(context);
                       final dbFolder = await getApplicationDocumentsDirectory();
-                      final file =
-                          File(p.join(dbFolder.path, 'fossfit.sqlite'));
+                      final file = File(p.join(dbFolder.path, 'fossfit.sqlite'));
                       final bytes = await file.readAsBytes();
                       final result = await FilePicker.saveFile(
                         fileName: 'fossfit.sqlite',
@@ -125,9 +122,7 @@ class ExportData extends StatelessWidget {
                         type: FileType.custom,
                         allowedExtensions: ['sqlite'],
                       );
-                      if (Platform.isMacOS ||
-                          Platform.isWindows ||
-                          Platform.isLinux) await file.copy(result!.path);
+                      if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) await file.copy(result!.path);
                     },
                   ),
                 ],

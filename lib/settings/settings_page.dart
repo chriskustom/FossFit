@@ -4,12 +4,11 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/about_page.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/settings/appearance_settings.dart';
 import 'package:fossfit/settings/data_settings.dart';
 import 'package:fossfit/settings/format_settings.dart';
 import 'package:fossfit/settings/plan_settings.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:fossfit/settings/tab_settings.dart';
 import 'package:fossfit/settings/timer_settings.dart';
 import 'package:fossfit/settings/workout_settings.dart';
@@ -22,8 +21,7 @@ class SettingsPage extends StatefulWidget {
   createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage>
-    with AutomaticKeepAliveClientMixin {
+class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClientMixin {
   final searchCtrl = TextEditingController();
 
   late final Setting settings;
@@ -238,15 +236,14 @@ class _SettingsPageState extends State<SettingsPage>
   void initState() {
     super.initState();
 
-    settings = context.read<SettingsState>().value;
+    settings = context.watch<SettingsRepository>();
     maxSets = TextEditingController(text: settings.maxSets.toString());
     warmupSets = TextEditingController(text: settings.warmupSets?.toString());
     minutes = TextEditingController(
       text: Duration(milliseconds: settings.timerDuration).inMinutes.toString(),
     );
     seconds = TextEditingController(
-      text: (Duration(milliseconds: settings.timerDuration).inSeconds % 60)
-          .toString(),
+      text: (Duration(milliseconds: settings.timerDuration).inSeconds % 60).toString(),
     );
 
     if (!kIsWeb) {

@@ -1,21 +1,24 @@
 import 'dart:async';
+import 'dart:math';
 
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
 import 'package:fossfit/constants.dart';
-import 'package:fossfit/database/database.dart';
 import 'package:fossfit/day_selector.dart';
+import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
+import 'package:fossfit/db/repositories/plans_repository.dart';
 import 'package:fossfit/graph/add_exercise_page.dart';
-import 'package:fossfit/main.dart';
+import 'package:fossfit/models/gym_sets_model.dart';
+import 'package:fossfit/models/plan_exercises_model.dart';
+import 'package:fossfit/models/plans_model.dart';
 import 'package:fossfit/plan/exercise_tile.dart';
 import 'package:fossfit/plan/plan_state.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
 class EditPlanPage extends StatefulWidget {
-  final PlansCompanion plan;
+  final Plan plan;
 
   const EditPlanPage({required this.plan, super.key});
 
@@ -25,7 +28,7 @@ class EditPlanPage extends StatefulWidget {
 
 class _EditPlanPageState extends State<EditPlanPage> {
   late List<bool> days;
-  late var exercises = context.read<PlanState>().exercises;
+  List<PlanExercises> exercises = [];
 
   bool showOff = true;
   String search = '';
@@ -37,10 +40,8 @@ class _EditPlanPageState extends State<EditPlanPage> {
   Iterable<Widget> get tiles {
     final match = exercises.where(
       (pe) {
-        if (showOff)
-          return pe.exercise.value.toLowerCase().contains(search.toLowerCase());
-        if (pe.enabled.value)
-          return pe.exercise.value.toLowerCase().contains(search.toLowerCase());
+        if (showOff) return pe.exercise.toLowerCase().contains(search.toLowerCase());
+        if (pe.enabled) return pe.exercise.toLowerCase().contains(search.toLowerCase());
         return false;
       },
     );
@@ -51,7 +52,7 @@ class _EditPlanPageState extends State<EditPlanPage> {
           title: const Text("Nothing found"),
           subtitle: Text("Tap to create $search"),
           onTap: () async {
-            GymSetsCompanion? gymSet = await Navigator.of(context).push(
+            GymSets? gymSet = await Navigator.of(context).push(
               material.MaterialPageRoute(
                 builder: (context) => AddExercisePage(
                   name: search,
@@ -60,10 +61,10 @@ class _EditPlanPageState extends State<EditPlanPage> {
             );
             if (gymSet == null || !mounted) return;
 
-            final state = context.read<PlanState>();
+            final state = context.read<PlansRepository>();
             state.addExercise(gymSet);
             setState(() {
-              exercises = state.exercises;
+              exercises = exercises;
               search = '';
             });
             searchCtrl.text = '';
@@ -75,8 +76,7 @@ class _EditPlanPageState extends State<EditPlanPage> {
           (pe) => ExerciseTile(
             planExercise: pe,
             onChange: (value) {
-              final id = exercises
-                  .indexWhere((exercise) => exercise.exercise == pe.exercise);
+              final id = exercises.indexWhere((exercise) => exercise.exercise == pe.exercise);
               if (id == -1) return;
               setState(() {
                 exercises[id] = value;
@@ -88,11 +88,9 @@ class _EditPlanPageState extends State<EditPlanPage> {
 
   @override
   Widget build(BuildContext context) {
-    exercises = context.select<PlanState, List<PlanExercisesCompanion>>(
-      (value) => value.exercises,
-    );
+    exercises = context.watch<PlanExercisesRepository>().planexercises;
 
-    var title = widget.plan.days.value.replaceAll(",", ", ");
+    var title = widget.plan.days.replaceAll(",", ", ");
     if (title.isNotEmpty)
       title = title[0].toUpperCase() + title.substring(1).toLowerCase();
     else
@@ -130,9 +128,7 @@ class _EditPlanPageState extends State<EditPlanPage> {
                 hintText: 'Search exercises...',
                 trailing: [
                   IconButton(
-                    icon: showOff
-                        ? const Icon(Icons.visibility)
-                        : const Icon(Icons.visibility_off),
+                    icon: showOff ? const Icon(Icons.visibility) : const Icon(Icons.visibility_off),
                     onPressed: () {
                       setState(() {
                         showOff = !showOff;
@@ -172,40 +168,63 @@ class _EditPlanPageState extends State<EditPlanPage> {
   void initState() {
     super.initState();
 
-    titleCtrl.text = widget.plan.title.value ?? "";
-    final list = widget.plan.days.value.split(',');
+    titleCtrl.text = widget.plan.title ?? "";
+    final list = widget.plan.days.split(',');
     days = weekdays.map((day) => list.contains(day)).toList();
   }
 
   Future<void> save() async {
     final selected = [];
-    for (int i = 0; i < days.length; i++)
-      if (days[i]) selected.add(weekdays[i]);
+    for (int i = 0; i < days.length; i++) if (days[i]) selected.add(weekdays[i]);
 
     if (selected.isEmpty && titleCtrl.text.isEmpty) return toast('Select days');
 
-    if (exercises.where((exercise) => exercise.enabled.value).isEmpty)
-      return toast('Select exercises');
+    if (exercises.where((exercise) => exercise.enabled).isEmpty) return toast('Select exercises');
+    var planRepo = context.read<PlansRepository>();
+    var peRepo = context.read<PlanExercisesRepository>();
 
-    var newPlan = PlansCompanion.insert(
-      days: selected.join(','),
-      title: Value(titleCtrl.text),
-    );
+    //Update
+    if (widget.plan.id != null) {
+      var oldPlan = planRepo.getPlanById(widget.plan.id!);
 
-    if (widget.plan.id.present) {
-      await db.update(db.plans).replace(newPlan.copyWith(id: widget.plan.id));
-      await db.planExercises
-          .deleteWhere((tbl) => tbl.planId.equals(widget.plan.id.value));
-      await db.planExercises.insertAll(
-        exercises.map((pe) => pe.copyWith(planId: widget.plan.id)),
+      var newPlan = oldPlan!.copyWith(
+        days: selected.join(','),
+        title: titleCtrl.text,
       );
+      await planRepo.updatePlan(newPlan);
+      await peRepo.deleteAllExerciseForPlanById(oldPlan.id!);
+      for (final e in exercises) {
+        var newPe = PlanExercises(
+          enabled: e.enabled,
+          timers: e.timers,
+          exercise: e.exercise,
+          id: e.id!,
+          planId: e.planId!,
+          sequence: e.sequence!,
+          maxsets: e.maxsets,
+        );
+        await peRepo.addPlanExercises(newPe);
+      }
+      //INSERT
     } else {
-      final id = await db.into(db.plans).insert(newPlan);
-      await db.planExercises.insertAll(
-        exercises
-            .where((element) => element.enabled.value)
-            .map((pe) => pe.copyWith(planId: Value(id))),
+      final newPlan = await planRepo.addPlans(
+        Plan(
+          days: selected.join(','),
+          title: titleCtrl.text,
+        ),
       );
+      for (final e in exercises) {
+        var newPe = PlanExercises(
+          enabled: e.enabled,
+          timers: e.timers,
+          exercise: e.exercise,
+          id: e.id!,
+          planId: newPlan.id!,
+          sequence: e.sequence!,
+          maxsets: e.maxsets,
+        );
+        await peRepo.addPlanExercises(newPe);
+      }
     }
 
     if (!mounted) return;

@@ -3,12 +3,11 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/delete_records_button.dart';
 import 'package:fossfit/export_data.dart';
 import 'package:fossfit/import_data.dart';
 import 'package:fossfit/main.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -16,7 +15,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 void tapBackup(bool value) async {
-  await db.settings.update().write(
+  await oldDb.settings.update().write(
         SettingsCompanion(
           automaticBackups: Value(value),
         ),
@@ -39,18 +38,14 @@ List<Widget> getDataSettings(
     if ('automatic backup'.contains(term.toLowerCase()))
       ListTile(
         title: const Text('Automatic backup'),
-        leading: settings.value.automaticBackups
-            ? const Icon(Icons.timer)
-            : const Icon(Icons.timer_outlined),
+        leading: settings.value.automaticBackups ? const Icon(Icons.timer) : const Icon(Icons.timer_outlined),
         onTap: () => tapBackup(!settings.value.automaticBackups),
         trailing: Switch(
           value: settings.value.automaticBackups,
           onChanged: (value) => tapBackup(value),
         ),
       ),
-    if ('share database'.contains(term.toLowerCase()) &&
-        !kIsWeb &&
-        !Platform.isLinux)
+    if ('share database'.contains(term.toLowerCase()) && !kIsWeb && !Platform.isLinux)
       TextButton.icon(
         onPressed: () async {
           final dbFolder = await getApplicationDocumentsDirectory();
@@ -62,8 +57,7 @@ List<Widget> getDataSettings(
       ),
     if ('export data'.contains(term.toLowerCase())) const ExportData(),
     if ('import data'.contains(term.toLowerCase())) ImportData(ctx: context),
-    if ('delete records'.contains(term.toLowerCase()))
-      DeleteRecordsButton(ctx: context),
+    if ('delete records'.contains(term.toLowerCase())) DeleteRecordsButton(ctx: context),
   ];
 }
 

@@ -1,12 +1,11 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:fossfit/constants.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
 import 'package:fossfit/plan/edit_plan_page.dart';
 import 'package:fossfit/plan/plan_state.dart';
 import 'package:fossfit/plan/plan_tile.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:provider/provider.dart';
 
 class PlansList extends StatefulWidget {
@@ -63,8 +62,7 @@ class _PlansListState extends State<PlansList> {
 
     final filteredPlans = widget.plans!.where((plan) {
       final term = widget.search.toLowerCase();
-      return plan.title?.toLowerCase().contains(term) == true ||
-          plan.days.toLowerCase().contains(term);
+      return plan.title?.toLowerCase().contains(term) == true || plan.days.toLowerCase().contains(term);
     }).toList();
 
     if (widget.plans!.isEmpty || filteredPlans.isEmpty) return noneFound;
@@ -100,12 +98,11 @@ class _PlansListState extends State<PlansList> {
 
           final state = context.read<PlanState>();
           state.updatePlans(filteredPlans);
-          await db.transaction(() async {
+          await oldDb.transaction(() async {
             for (int i = 0; i < filteredPlans.length; i++) {
               final plan = filteredPlans[i];
-              final updated =
-                  plan.toCompanion(false).copyWith(sequence: drift.Value(i));
-              await db.update(db.plans).replace(updated);
+              final updated = plan.toCompanion(false).copyWith(sequence: drift.Value(i));
+              await oldDb.update(oldDb.plans).replace(updated);
             }
           });
         },

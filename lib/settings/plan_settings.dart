@@ -1,9 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/constants.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
@@ -27,7 +26,7 @@ List<Widget> getPlanSettings(
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: false),
             onTap: () => selectAll(warmup),
-            onChanged: (value) => db.settings.update().write(
+            onChanged: (value) => oldDb.settings.update().write(
                   SettingsCompanion(
                     warmupSets: Value(int.parse(value)),
                   ),
@@ -49,7 +48,7 @@ List<Widget> getPlanSettings(
             onTap: () => selectAll(max),
             onChanged: (value) {
               if (int.parse(value) > 0 && int.parse(value) <= 20) {
-                db.settings.update().write(
+                oldDb.settings.update().write(
                       SettingsCompanion(
                         maxSets: Value(int.parse(value)),
                       ),
@@ -118,7 +117,7 @@ List<Widget> getPlanSettings(
                 child: Text("None"),
               ),
             ],
-            onChanged: (value) => db.settings.update().write(
+            onChanged: (value) => oldDb.settings.update().write(
                   SettingsCompanion(
                     planTrailing: Value(value.toString()),
                   ),
@@ -137,12 +136,11 @@ class PlanSettings extends StatefulWidget {
 }
 
 class _PlanSettingsState extends State<PlanSettings> {
-  late var settings = context.read<SettingsState>().value;
+  late var settings = context.watch<SettingsRepository>();
 
   late final max = TextEditingController(text: settings.maxSets.toString());
 
-  late final warmup =
-      TextEditingController(text: settings.warmupSets?.toString());
+  late final warmup = TextEditingController(text: settings.warmupSets?.toString());
 
   @override
   Widget build(BuildContext context) {

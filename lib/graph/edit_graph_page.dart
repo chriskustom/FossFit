@@ -1,14 +1,13 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
-import 'package:fossfit/database/database.dart';
-import 'package:fossfit/database/gym_sets.dart';
-import 'package:fossfit/main.dart';
-import 'package:fossfit/plan/plan_state.dart';
-import 'package:fossfit/settings/settings_state.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
+import 'package:fossfit/db/repositories/plans_repository.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
+import 'package:fossfit/models/gym_sets_model.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
@@ -22,12 +21,11 @@ class EditGraphPage extends StatefulWidget {
 }
 
 class _EditGraphPageState extends State<EditGraphPage> {
-  late final TextEditingController name =
-      TextEditingController(text: widget.name);
+  late final TextEditingController name = TextEditingController(text: widget.name);
   final TextEditingController minutes = TextEditingController();
   final TextEditingController seconds = TextEditingController();
   final key = GlobalKey<FormState>();
-
+  List<GymSets> gymSets = [];
   bool? cardio;
   String? unit;
   String? image;
@@ -35,6 +33,18 @@ class _EditGraphPageState extends State<EditGraphPage> {
 
   @override
   Widget build(BuildContext context) {
+    gymSets = context.watch<GymSetsRepository>().gymsets;
+    var firstGymSet = gymSets.last;
+    image = firstGymSet.image;
+    cardio = firstGymSet.cardio;
+    category = firstGymSet.category;
+
+    if (firstGymSet.restMs != null) {
+      final duration = Duration(milliseconds: firstGymSet.restMs!);
+      minutes.text = duration.inMinutes.toString();
+      seconds.text = (duration.inSeconds % 60).toString();
+    }
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
@@ -58,14 +68,12 @@ class _EditGraphPageState extends State<EditGraphPage> {
                     child: TextFormField(
                       controller: minutes,
                       textInputAction: TextInputAction.next,
-                      decoration:
-                          const InputDecoration(labelText: "Rest minutes"),
+                      decoration: const InputDecoration(labelText: "Rest minutes"),
                       keyboardType: material.TextInputType.number,
                       onTap: () => selectAll(minutes),
                       validator: (value) {
                         if (value == null || value.isEmpty) return null;
-                        if (int.tryParse(value) == null)
-                          return 'Invalid number';
+                        if (int.tryParse(value) == null) return 'Invalid number';
                         return null;
                       },
                     ),
@@ -77,32 +85,29 @@ class _EditGraphPageState extends State<EditGraphPage> {
                     child: TextFormField(
                       controller: seconds,
                       textInputAction: TextInputAction.next,
-                      decoration:
-                          const InputDecoration(labelText: "Rest seconds"),
+                      decoration: const InputDecoration(labelText: "Rest seconds"),
                       keyboardType: material.TextInputType.number,
                       onTap: () {
                         selectAll(seconds);
                       },
                       validator: (value) {
                         if (value == null || value.isEmpty) return null;
-                        if (int.tryParse(value) == null)
-                          return 'Invalid number';
+                        if (int.tryParse(value) == null) return 'Invalid number';
                         return null;
                       },
                     ),
                   ),
                 ],
               ),
-              Selector<SettingsState, bool>(
-                selector: (p0, settings) => settings.value.showCategories,
+              Selector<SettingsRepository, bool>(
+                selector: (p0, settings) => settings.isEnabled(key: 'showCategories'),
                 builder: (context, showCategories, child) {
                   if (!showCategories) return const SizedBox();
-                  return StreamBuilder(
-                    stream: getCategoriesStream(),
+                  return FutureBuilder(
+                    future: context.watch<GymSetsRepository>().getCategoriesList(),
                     builder: (context, snapshot) {
                       return DropdownButtonFormField(
-                        decoration:
-                            const InputDecoration(labelText: 'Category'),
+                        decoration: const InputDecoration(labelText: 'Category'),
                         initialValue: category,
                         items: snapshot.data
                             ?.map(
@@ -155,11 +160,8 @@ class _EditGraphPageState extends State<EditGraphPage> {
               ),
               if (cardio != null)
                 ListTile(
-                  leading: cardio!
-                      ? const Icon(Icons.sports_gymnastics)
-                      : const Icon(Icons.fitness_center),
-                  title:
-                      cardio! ? const Text('Cardio') : const Text('Strength'),
+                  leading: cardio! ? const Icon(Icons.sports_gymnastics) : const Icon(Icons.fitness_center),
+                  title: cardio! ? const Text('Cardio') : const Text('Strength'),
                   onTap: () {
                     setState(() {
                       cardio = !cardio!;
@@ -177,7 +179,7 @@ class _EditGraphPageState extends State<EditGraphPage> {
                     }),
                   ),
                 ),
-              Selector<SettingsState, bool>(
+              Selector<SettingsRepository, bool>(
                 builder: (context, showImages, child) {
                   return Visibility(
                     visible: showImages,
@@ -207,8 +209,7 @@ class _EditGraphPageState extends State<EditGraphPage> {
                           const SizedBox(height: 8),
                           Image.file(
                             File(image!),
-                            errorBuilder: (context, error, stackTrace) =>
-                                TextButton.icon(
+                            errorBuilder: (context, error, stackTrace) => TextButton.icon(
                               label: const Text('Image error'),
                               icon: const Icon(Icons.error),
                               onPressed: () => pick(),
@@ -219,7 +220,7 @@ class _EditGraphPageState extends State<EditGraphPage> {
                     ),
                   );
                 },
-                selector: (context, settings) => settings.value.showImages,
+                selector: (context, settings) => settings.isEnabled(key: 'show_images'),
               ),
             ],
           ),
@@ -242,6 +243,8 @@ class _EditGraphPageState extends State<EditGraphPage> {
   }
 
   Future<void> doUpdate() async {
+    var repo = context.read<GymSetsRepository>();
+    var peRepo = context.read<PlanExercisesRepository>();
     Duration? duration;
     if (int.tryParse(minutes.text) != null && int.tryParse(minutes.text)! > 0 ||
         int.tryParse(seconds.text) != null && int.tryParse(seconds.text)! > 0)
@@ -249,68 +252,48 @@ class _EditGraphPageState extends State<EditGraphPage> {
         minutes: int.tryParse(minutes.text) ?? 0,
         seconds: int.tryParse(seconds.text) ?? 0,
       );
-
-    await (db.gymSets.update()..where((tbl) => tbl.name.equals(widget.name)))
-        .write(
-      GymSetsCompanion(
-        name: name.text.isEmpty ? const Value.absent() : Value(name.text),
-        cardio: Value.absentIfNull(cardio),
-        unit: Value.absentIfNull(unit),
-        restMs: Value(duration?.inMilliseconds),
-        image: Value(image),
-        category: Value.absentIfNull(category),
-      ),
-    );
-
-    await (db.planExercises.update()
-          ..where((tbl) => tbl.exercise.equals(widget.name)))
-        .write(
-      PlanExercisesCompanion(
-        exercise: name.text.isEmpty ? const Value.absent() : Value(name.text),
-      ),
-    );
+    var toUpdate = gymSets.where((tbl) => tbl.name == widget.name);
+    for (final oldGymSet in toUpdate) {
+      var newGymSet = oldGymSet.copyWith(
+        name: name.text.isEmpty ? '' : name.text,
+        cardio: cardio,
+        unit: unit,
+        restMs: duration?.inMilliseconds,
+        image: image,
+        category: category,
+        created: null,
+        hidden: null,
+        reps: null,
+        weight: null,
+      );
+      await repo.updateGymSets(newGymSet);
+      if (oldGymSet.planId != null) {
+        var planExercies = peRepo.getPlanExercisesByPlanId(oldGymSet.planId!);
+        for (final pe in planExercies) {
+          var newPe = pe.copyWith(
+            exercise: name.text.isEmpty ? '' : name.text,
+          );
+          await peRepo.updatePlanExercises(newPe);
+        }
+      }
+    }
 
     if (!mounted) return;
-    context.read<PlanState>().updatePlans(null);
+    await context.read<PlansRepository>().updatePlans(null);
   }
 
   Future<int> getCount() async {
-    final result = await (db.gymSets.selectOnly()
-          ..addColumns([db.gymSets.name.count()])
-          ..where(db.gymSets.name.equals(name.text)))
-        .getSingle();
-    return result.read(db.gymSets.name.count()) ?? 0;
+    final result = context.watch<GymSetsRepository>().gymsets.where((t) => t.name == name.text).length;
+    return result;
   }
 
   @override
   void initState() {
     super.initState();
-
-    (db.gymSets.select()
-          ..where((tbl) => tbl.name.equals(widget.name))
-          ..limit(1))
-        .getSingle()
-        .then(
-          (gymSet) => setState(() {
-            image = gymSet.image;
-            cardio = gymSet.cardio;
-            category = gymSet.category;
-
-            if (gymSet.restMs != null) {
-              final duration = Duration(milliseconds: gymSet.restMs!);
-              minutes.text = duration.inMinutes.toString();
-              seconds.text = (duration.inSeconds % 60).toString();
-            }
-          }),
-        );
   }
 
   Future<bool> mixedUnits() async {
-    final result = await (db.gymSets.selectOnly(distinct: true)
-          ..addColumns([db.gymSets.unit])
-          ..where(db.gymSets.name.equals(name.text)))
-        .get();
-    return result.length > 1;
+    return gymSets.map((t) => t.unit).toSet().length > 1;
   }
 
   void pick() async {
@@ -394,83 +377,6 @@ class _EditGraphPageState extends State<EditGraphPage> {
   }
 
   Future<void> convertUnits() async {
-    if (unit == 'kg')
-      await db.customUpdate(
-        '''
-        UPDATE gym_sets SET weight = weight * 0.45359237, 
-          unit = 'kg'
-        WHERE name = ? AND unit = 'lb';
-      ''',
-        updates: {db.gymSets},
-        variables: [Variable(widget.name)],
-      );
-    else if (unit == 'lb')
-      await db.customUpdate(
-        '''
-        UPDATE gym_sets SET weight = weight * 2.20462262, 
-          unit = 'lb'
-        WHERE name = ? AND unit = 'kg';
-      ''',
-        updates: {db.gymSets},
-        variables: [Variable(widget.name)],
-      );
-    else if (unit == 'km') {
-      await db.customUpdate(
-        '''
-        UPDATE gym_sets SET weight = weight * 1.609, 
-          unit = 'km'
-        WHERE name = ? AND unit = 'mi';
-      ''',
-        updates: {db.gymSets},
-        variables: [Variable(widget.name)],
-      );
-      await db.customUpdate(
-        '''
-        UPDATE gym_sets SET weight = weight / 1000, 
-          unit = 'km'
-        WHERE name = ? AND unit = 'm';
-      ''',
-        updates: {db.gymSets},
-        variables: [Variable(widget.name)],
-      );
-    } else if (unit == 'mi') {
-      await db.customUpdate(
-        '''
-        UPDATE gym_sets SET weight = weight / 1.609, 
-          unit = 'mi'
-        WHERE name = ? AND unit = 'km';
-      ''',
-        updates: {db.gymSets},
-        variables: [Variable(widget.name)],
-      );
-      await db.customUpdate(
-        '''
-        UPDATE gym_sets SET weight = weight / 1609.34, 
-          unit = 'mi'
-        WHERE name = ? AND unit = 'm';
-      ''',
-        updates: {db.gymSets},
-        variables: [Variable(widget.name)],
-      );
-    } else if (unit == 'm') {
-      await db.customUpdate(
-        '''
-        UPDATE gym_sets SET weight = weight * 1000, 
-          unit = 'm'
-        WHERE name = ? AND unit = 'km';
-      ''',
-        updates: {db.gymSets},
-        variables: [Variable(widget.name)],
-      );
-      await db.customUpdate(
-        '''
-        UPDATE gym_sets SET weight = weight * 1609.34, 
-          unit = 'm'
-        WHERE name = ? AND unit = 'mi';
-      ''',
-        updates: {db.gymSets},
-        variables: [Variable(widget.name)],
-      );
-    }
+    await context.read<GymSetsRepository>().convertUnits(unit ?? '', widget.name);
   }
 }

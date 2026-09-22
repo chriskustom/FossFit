@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
 
 class CustomSetIndicator extends StatelessWidget {
   const CustomSetIndicator({

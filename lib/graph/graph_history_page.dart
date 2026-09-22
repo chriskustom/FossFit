@@ -1,14 +1,13 @@
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
-import 'package:fossfit/main.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
+import 'package:fossfit/models/gym_sets_model.dart';
 import 'package:fossfit/sets/history_list.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:provider/provider.dart';
 
 class GraphHistoryPage extends StatefulWidget {
   final String name;
-  final List<GymSet> gymSets;
+  final List<GymSets> gymSets;
   final bool? peek;
 
   const GraphHistoryPage({
@@ -23,7 +22,7 @@ class GraphHistoryPage extends StatefulWidget {
 }
 
 class _GraphHistoryPageState extends State<GraphHistoryPage> {
-  late List<GymSet> sets = widget.gymSets;
+  late List<GymSets> sets = widget.gymSets;
   int limit = 20;
   final scroll = ScrollController();
   TabController? ctrl;
@@ -80,27 +79,25 @@ class _GraphHistoryPageState extends State<GraphHistoryPage> {
   }
 
   void setSets() async {
-    final result = await (db.gymSets.select()
-          ..orderBy(
-            [
-              (u) => OrderingTerm(
-                    expression: u.created,
-                    mode: OrderingMode.desc,
-                  ),
-            ],
-          )
-          ..where((tbl) => tbl.name.equals(widget.name))
-          ..where((tbl) => tbl.hidden.equals(false))
-          ..limit(limit))
-        .get();
+    final result = context
+        .watch<GymSetsRepository>()
+        .gymsets
+        .where(
+          (e) => !e.hidden && e.name == widget.name,
+        )
+        .take(limit)
+        .toList();
+    result.sort(
+      (a, b) => a.created.compareTo(b.created),
+    );
     setState(() {
       sets = result;
     });
   }
 
   void tabListener() {
-    final settings = context.read<SettingsState>().value;
-    final index = settings.tabs.split(',').indexOf('GraphsPage');
+    final settings = context.watch<SettingsRepository>();
+    final index = settings.getSetting(key: 'tabs').split(',').indexOf('GraphsPage');
     if (ctrl!.indexIsChanging == true) return;
     if (ctrl!.index != index) return;
     setSets();

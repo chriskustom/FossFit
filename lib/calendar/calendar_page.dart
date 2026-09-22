@@ -1,13 +1,12 @@
-import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
-import 'package:fossfit/database/database.dart';
-import 'package:fossfit/main.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
+import 'package:fossfit/models/gym_sets_model.dart';
 import 'package:fossfit/sets/edit_sets_page.dart';
 import 'package:fossfit/sets/history_collapsed.dart';
 import 'package:fossfit/sets/history_list.dart';
 import 'package:fossfit/sets/history_page.dart';
 import 'package:fossfit/settings/settings_page.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -24,8 +23,7 @@ class CalendarPage extends StatefulWidget {
   State<CalendarPage> createState() => CalendarPageState();
 }
 
-class CalendarPageState extends State<CalendarPage>
-    with AutomaticKeepAliveClientMixin {
+class CalendarPageState extends State<CalendarPage> with AutomaticKeepAliveClientMixin {
   final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
 
   @override
@@ -39,8 +37,8 @@ class CalendarPageState extends State<CalendarPage>
       onPopWithResult: (result) {
         if (navKey.currentState!.canPop() == false) return;
 
-        final settings = context.read<SettingsState>().value;
-        final index = settings.tabs.split(',').indexOf('CalendarPage');
+        final settings = context.watch<SettingsRepository>();
+        final index = settings.getSetting(key: 'tabs').split(',').indexOf('CalendarPage');
 
         if (widget.tabController.index == index) {
           navKey.currentState!.pop();
@@ -71,7 +69,7 @@ class _CalendarPageWidget extends StatefulWidget {
 }
 
 class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
-  late final Stream<List<GymSet>> stream;
+  List<GymSets> gymSets = [];
 
   DateTime? _selectedDay;
   DateTime _focusedDay = DateTime.now();
@@ -87,20 +85,6 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
   @override
   void initState() {
     super.initState();
-    final query = db.gymSets.select()
-      ..orderBy(
-        [
-          (u) => OrderingTerm(
-                expression: u.created,
-                mode: OrderingMode.desc,
-              ),
-        ],
-      )
-      ..where(
-        (tbl) => tbl.hidden.equals(false),
-      );
-
-    stream = query.watch();
   }
 
   @override
@@ -111,46 +95,17 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
 
   @override
   Widget build(BuildContext context) {
+    gymSets = context.watch<GymSetsRepository>().gymsets;
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      body: StreamBuilder<List<GymSet>>(
-        stream: stream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Column(
-              children: [
-                _buildTitleBar([]),
-                const Expanded(
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-              ],
-            );
-          }
-
-          if (snapshot.hasError) {
-            return Column(
-              children: [
-                _buildTitleBar([]),
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      'Error loading workouts:\n${snapshot.error}',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }
-          final allGymSets = snapshot.data ?? <GymSet>[];
+      body: Builder(
+        builder: (context) {
+          final allGymSets = gymSets;
 
           final thisMonthsGymSets = allGymSets
               .where(
-                (t) =>
-                    t.created.month == monthToFilter &&
-                    t.created.year == yearToFilter,
+                (t) => t.created.month == monthToFilter && t.created.year == yearToFilter,
               )
               .toList();
 
@@ -278,13 +233,11 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
                             },
                           );
 
-                          if (confirmed != true || !context.mounted) return;
+                          if (confirmed != true || !mounted) return;
 
                           final ids = selected.toList();
 
-                          await (db.delete(db.gymSets)
-                                ..where((tbl) => tbl.id.isIn(ids)))
-                              .go();
+                          context.read<GymSetsRepository>().deleteGymSetsById(ids);
 
                           if (!context.mounted) return;
 
@@ -307,12 +260,9 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
                   icon: const Icon(Icons.more_vert),
                   tooltip: 'Show menu',
                   onPressed: () async {
-                    final RenderBox button = _menuKey.currentContext!
-                        .findRenderObject() as RenderBox;
+                    final RenderBox button = _menuKey.currentContext!.findRenderObject() as RenderBox;
 
-                    final RenderBox overlay = Overlay.of(context)
-                        .context
-                        .findRenderObject() as RenderBox;
+                    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
 
                     final Offset buttonPosition = button.localToGlobal(
                       Offset.zero,
@@ -368,7 +318,7 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
                           selected
                             ..clear()
                             ..addAll(
-                              selectedDayGymSets.map((gymSet) => gymSet.id),
+                              selectedDayGymSets.map((gymSet) => gymSet.id!),
                             );
                         });
                         break;
@@ -522,15 +472,12 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
                 shape: BoxShape.circle,
               ),
               cellMargin: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-              cellPadding: EdgeInsets.only(bottom: 2),
-              todayTextStyle:
-                  TextStyle(color: Theme.of(context).colorScheme.primary),
+              todayTextStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
               selectedDecoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primary,
                 shape: BoxShape.circle,
               ),
-              selectedTextStyle:
-                  TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+              selectedTextStyle: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
               markerDecoration: BoxDecoration(
                 color: Colors.transparent,
                 shape: BoxShape.circle,
@@ -578,9 +525,7 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
                   );
                 }
 
-                final groupHistory = context.select<SettingsState, bool>(
-                  (settings) => settings.value.groupHistory,
-                );
+                final groupHistory = context.watch<SettingsRepository>().isEnabled(key: 'group_history');
 
                 if (groupHistory) {
                   return HistoryCollapsed(
@@ -626,7 +571,7 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
     );
   }
 
-  List<ExerciseItem> _getExerciseItems(List<GymSet> gymSets) {
+  List<ExerciseItem> _getExerciseItems(List<GymSets> gymSets) {
     List<ExerciseItem> exerciseItems = [];
     for (final gymSet in gymSets) {
       final day = DateUtils.dateOnly(gymSet.created);

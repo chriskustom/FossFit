@@ -16,16 +16,15 @@ import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
 import 'package:fossfit/constants.dart';
 import 'package:fossfit/custom_set_indicator.dart';
-import 'package:fossfit/database/database.dart';
-import 'package:fossfit/database/gym_sets.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/graph/graph_history_page.dart';
 import 'package:fossfit/main.dart';
+import 'package:fossfit/models/gym_sets_model.dart';
 import 'package:fossfit/permissions_page.dart';
 import 'package:fossfit/plan/edit_plan_page.dart';
 import 'package:fossfit/plan/exercise_modal.dart';
 import 'package:fossfit/plan/plan_state.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:fossfit/timer/timer_state.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
@@ -47,8 +46,7 @@ typedef Tapped = ({
   DateTime dateTime,
 });
 
-class _StartPlanPageState extends State<StartPlanPage>
-    with WidgetsBindingObserver {
+class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserver {
   final reps = TextEditingController(text: '0.0');
   final weight = TextEditingController(text: '0.0');
   final notes = TextEditingController();
@@ -101,14 +99,11 @@ class _StartPlanPageState extends State<StartPlanPage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
-    if (state != AppLifecycleState.resumed ||
-        rpms == null ||
-        !mounted ||
-        lastSaved == null) {
+    if (state != AppLifecycleState.resumed || rpms == null || !mounted || lastSaved == null) {
       return;
     }
 
-    final settings = context.read<SettingsState>().value;
+    final settings = context.watch<SettingsRepository>();
     final difference = DateTime.now().difference(lastSaved!);
 
     if (cardio && settings.durationEstimation) {
@@ -138,7 +133,7 @@ class _StartPlanPageState extends State<StartPlanPage>
   }
 
   Future<void> _loadExercises() async {
-    stream = (db.planExercises.select()
+    stream = (oldDb.planExercises.select()
           ..where(
             (pe) => pe.planId.equals(widget.plan.id) & pe.enabled,
           )
@@ -154,7 +149,7 @@ class _StartPlanPageState extends State<StartPlanPage>
 
     if (!mounted) return;
 
-    final settings = context.read<SettingsState>().value;
+    final settings = context.watch<SettingsRepository>();
 
     if (settings.repEstimation) {
       getRpms().then((value) {
@@ -188,10 +183,7 @@ class _StartPlanPageState extends State<StartPlanPage>
     if (matchingRpms.isEmpty) return;
 
     final closestRpm = matchingRpms.reduce(
-      (rpm1, rpm2) => (rpm1.weight - parsedWeight).abs() <
-              (rpm2.weight - parsedWeight).abs()
-          ? rpm1
-          : rpm2,
+      (rpm1, rpm2) => (rpm1.weight - parsedWeight).abs() < (rpm2.weight - parsedWeight).abs() ? rpm1 : rpm2,
     );
 
     final estimatedReps = (difference.inMinutes * closestRpm.rpm).clamp(1, 50);
@@ -280,7 +272,7 @@ class _StartPlanPageState extends State<StartPlanPage>
   Future<void> _showHistory() async {
     final exercise = currentExercise;
     if (exercise == null) return;
-    final gymSets = await (db.gymSets.select()
+    final gymSets = await (oldDb.gymSets.select()
           ..orderBy([
             (u) => OrderingTerm(
                   expression: u.created,
@@ -324,8 +316,7 @@ class _StartPlanPageState extends State<StartPlanPage>
   }
 
   Future<void> _editPlan() async {
-    final plan =
-        await (db.plans.select()..whereSamePrimaryKey(widget.plan)).getSingle();
+    final plan = await (oldDb.plans.select()..whereSamePrimaryKey(widget.plan)).getSingle();
 
     await planState.setExercises(plan.toCompanion(false));
 
@@ -472,7 +463,7 @@ class _StartPlanPageState extends State<StartPlanPage>
       controller: weight,
       decoration: InputDecoration(
         labelText: 'Weight ($unit)',
-        suffixIcon: Selector<SettingsState, bool>(
+        suffixIcon: Selector<SettingsRepository, bool>(
           selector: (context, settings) => settings.value.showBodyWeight,
           builder: (context, showBodyWeight, child) {
             if (!showBodyWeight) {
@@ -529,7 +520,7 @@ class _StartPlanPageState extends State<StartPlanPage>
   }
 
   Widget unitSelector() {
-    return Selector<SettingsState, bool>(
+    return Selector<SettingsRepository, bool>(
       selector: (context, settings) => settings.value.showUnits,
       builder: (context, showUnits, child) {
         if (!showUnits) {
@@ -553,7 +544,7 @@ class _StartPlanPageState extends State<StartPlanPage>
   }
 
   Widget notesField() {
-    return Selector<SettingsState, bool>(
+    return Selector<SettingsRepository, bool>(
       selector: (context, settings) => settings.value.showNotes,
       builder: (context, showNotes, child) {
         if (!showNotes) {
@@ -573,7 +564,7 @@ class _StartPlanPageState extends State<StartPlanPage>
   }
 
   Future<GymSet?> getLast(String exercise) {
-    return (db.gymSets.select()
+    return (oldDb.gymSets.select()
           ..where((tbl) => tbl.name.equals(exercise))
           ..orderBy([
             (u) => OrderingTerm(
@@ -586,7 +577,7 @@ class _StartPlanPageState extends State<StartPlanPage>
   }
 
   void _updateGymSetTextFields(GymSet gymSet) {
-    final settings = context.read<SettingsState>().value;
+    final settings = context.watch<SettingsRepository>();
 
     if ((!gymSet.cardio && settings.strengthUnit == 'last-entry') ||
         (gymSet.cardio && settings.cardioUnit == 'last-entry')) {
@@ -615,7 +606,7 @@ class _StartPlanPageState extends State<StartPlanPage>
     final startOfDay = DateTime(now.year, now.month, now.day);
     final startOfTomorrow = startOfDay.add(const Duration(days: 1));
 
-    return (db.gymSets.select()
+    return (oldDb.gymSets.select()
           ..where(
             (set) =>
                 set.planId.equals(widget.plan.id) &
@@ -633,7 +624,7 @@ class _StartPlanPageState extends State<StartPlanPage>
   }
 
   Stream<List<GymSet>> _getExerciseImage(String exercise) {
-    return (db.gymSets.select()
+    return (oldDb.gymSets.select()
           ..where(
             (set) => set.name.equals(exercise) & set.image.isNotNull(),
           )
@@ -670,7 +661,7 @@ class _StartPlanPageState extends State<StartPlanPage>
     if (!mounted) return;
 
     final exercise = snapshot.data![selected].exercise;
-    final settings = context.read<SettingsState>().value;
+    final settings = context.watch<SettingsRepository>();
 
     final bodyWeight = await _getBodyWeight(exercise, settings);
 
@@ -729,8 +720,7 @@ class _StartPlanPageState extends State<StartPlanPage>
 
     final finishedSetCount = count == (maxSets ?? settings.maxSets);
 
-    final finishedPlan =
-        finishedSetCount && selected == snapshot.data!.length - 1;
+    final finishedPlan = finishedSetCount && selected == snapshot.data!.length - 1;
 
     final isWarmup = count <= (warmupSets ?? settings.warmupSets ?? 0);
 
@@ -745,10 +735,9 @@ class _StartPlanPageState extends State<StartPlanPage>
           );
     }
 
-    final finishedExercise =
-        finishedSetCount && selected < snapshot.data!.length - 1;
+    final finishedExercise = finishedSetCount && selected < snapshot.data!.length - 1;
 
-    final gymSet = await db.into(db.gymSets).insertReturning(gymSetInsert);
+    final gymSet = await oldDb.into(oldDb.gymSets).insertReturning(gymSetInsert);
 
     await planState.updateGymCounts(widget.plan.id);
     await planState.updateDefaults();
@@ -789,8 +778,7 @@ class _StartPlanPageState extends State<StartPlanPage>
   }
 
   double _durationInMinutes() {
-    return (int.tryParse(seconds.text) ?? 0) / 60 +
-        (int.tryParse(minutes.text) ?? 0);
+    return (int.tryParse(seconds.text) ?? 0) / 60 + (int.tryParse(minutes.text) ?? 0);
   }
 
   Future<double?> _getBodyWeight(
@@ -850,8 +838,7 @@ class _StartPlanPageState extends State<StartPlanPage>
 
     final now = DateTime.now();
 
-    if (now.difference(lastTap.dateTime) >= const Duration(milliseconds: 300) ||
-        index != lastTap.index) {
+    if (now.difference(lastTap.dateTime) >= const Duration(milliseconds: 300) || index != lastTap.index) {
       setState(() {
         lastTap = (
           index: index,
@@ -862,7 +849,7 @@ class _StartPlanPageState extends State<StartPlanPage>
       return;
     }
 
-    final gymSet = await (db.gymSets.select()
+    final gymSet = await (oldDb.gymSets.select()
           ..where((tbl) => tbl.name.equals(exercise))
           ..orderBy([
             (u) => OrderingTerm(
@@ -927,16 +914,15 @@ class _StartPlanPageState extends State<StartPlanPage>
           }
 
           final selectedId = exercises[selected].id;
-          final expandedId =
-              expandedIndex != null ? exercises[expandedIndex!].id : null;
+          final expandedId = expandedIndex != null ? exercises[expandedIndex!].id : null;
 
           final item = exercises.removeAt(oldIndex);
           exercises.insert(newIndex, item);
 
-          await db.batch((batch) {
+          await oldDb.batch((batch) {
             for (var i = 0; i < exercises.length; i++) {
               batch.update(
-                db.planExercises,
+                oldDb.planExercises,
                 PlanExercisesCompanion(
                   sequence: Value(i),
                 ),
@@ -1010,9 +996,8 @@ class _StartPlanPageState extends State<StartPlanPage>
       count = gymCount.count;
       max = gymCount.maxSets ?? maxSets;
     }
-    final iconColor = index == expandedIndex
-        ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).colorScheme.onSurface;
+    final iconColor =
+        index == expandedIndex ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface;
     return GestureDetector(
       key: ValueKey(planItem.id),
       onLongPressStart: (_) => _showExerciseModal(
@@ -1109,19 +1094,14 @@ class _StartPlanPageState extends State<StartPlanPage>
           child: StreamBuilder<List<GymSet>>(
             stream: _getExerciseImage(planItem.exercise),
             builder: (context, snapshot) {
-              return showImages &&
-                      snapshot.hasData &&
-                      snapshot.data!.isNotEmpty &&
-                      snapshot.data!.first.image != null
+              return showImages && snapshot.hasData && snapshot.data!.isNotEmpty && snapshot.data!.first.image != null
                   ? Stack(
                       children: [
                         Image.file(
                           width: 24,
                           height: 24,
                           File(snapshot.data!.first.image!),
-                          opacity: count == max
-                              ? AlwaysStoppedAnimation(0.75)
-                              : null,
+                          opacity: count == max ? AlwaysStoppedAnimation(0.75) : null,
                         ),
                         count == max
                             ? Icon(
@@ -1139,17 +1119,14 @@ class _StartPlanPageState extends State<StartPlanPage>
                               color: iconColor,
                               size: 20,
                             )
-                          : Padding(
-                              padding: EdgeInsets.only(bottom: 2),
-                              child: Text(
-                                planItem.exercise[0].toUpperCase(),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: iconColor,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'monospace',
-                                ),
+                          : Text(
+                              planItem.exercise[0].toUpperCase(),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: iconColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'monospace',
                               ),
                             ),
                     );
@@ -1164,8 +1141,7 @@ class _StartPlanPageState extends State<StartPlanPage>
           ),
         ),
         const SizedBox(width: 8),
-        if (controllers[planItem.id]?.isExpanded == false)
-          ..._buildBlips(max, count),
+        if (controllers[planItem.id]?.isExpanded == false) ..._buildBlips(max, count),
       ],
     );
   }

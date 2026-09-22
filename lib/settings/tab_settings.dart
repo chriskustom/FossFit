@@ -2,9 +2,8 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
@@ -43,8 +42,7 @@ class _TabSettingsState extends State<TabSettings> {
   }
 
   void setTab(String name, bool enabled) {
-    if (!enabled && tabs.where((tab) => tab.enabled == true).length == 1)
-      return toast('You need at least one tab');
+    if (!enabled && tabs.where((tab) => tab.enabled == true).length == 1) return toast('You need at least one tab');
     final index = tabs.indexWhere((tappedTab) => tappedTab.name == name);
     setState(() {
       tabs[index] = (name: name, enabled: enabled);
@@ -69,7 +67,7 @@ class _TabSettingsState extends State<TabSettings> {
                   const Text("Swipe between tabs"),
                 ],
               ),
-              onTap: () => db.settings.update().write(
+              onTap: () => oldDb.settings.update().write(
                     SettingsCompanion(
                       scrollableTabs: Value(!settings.value.scrollableTabs),
                     ),
@@ -77,7 +75,7 @@ class _TabSettingsState extends State<TabSettings> {
               leading: Switch(
                 value: settings.value.scrollableTabs,
                 onChanged: (value) {
-                  db.settings.update().write(
+                  oldDb.settings.update().write(
                         SettingsCompanion(
                           scrollableTabs: Value(value),
                         ),
@@ -231,13 +229,10 @@ class _TabSettingsState extends State<TabSettings> {
       ),
       floatingActionButton: AnimatedFab(
         onPressed: () async {
-          await (db.settings.update().write(
+          await (oldDb.settings.update().write(
                 SettingsCompanion(
                   tabs: Value(
-                    tabs
-                        .where((tab) => tab.enabled)
-                        .map((tab) => tab.name)
-                        .join(','),
+                    tabs.where((tab) => tab.enabled).map((tab) => tab.name).join(','),
                   ),
                 ),
               ));

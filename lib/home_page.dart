@@ -2,13 +2,12 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/bottom_nav.dart';
 import 'package:fossfit/calendar/calendar_page.dart';
-import 'package:fossfit/database/database.dart';
+import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/graph/graphs_page.dart';
 import 'package:fossfit/main.dart';
 import 'package:fossfit/plan/plans_page.dart';
 import 'package:fossfit/sets/history_page.dart';
 import 'package:fossfit/settings/settings_page.dart';
-import 'package:fossfit/settings/settings_state.dart';
 import 'package:fossfit/settings/whats_new.dart';
 import 'package:fossfit/timer/timer_page.dart';
 import 'package:fossfit/timer/timer_progress_widgets.dart';
@@ -36,13 +35,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     final info = PackageInfo.fromPlatform();
     info.then((pkg) async {
-      final meta = await (db.metadata.select()..limit(1)).getSingleOrNull();
+      final meta = await (oldDb.metadata.select()..limit(1)).getSingleOrNull();
       if (meta == null)
-        return db.metadata.insertOne(
+        return oldDb.metadata.insertOne(
           MetadataCompanion(buildNumber: Value(int.parse(pkg.buildNumber))),
         );
       else
-        db.metadata.update().write(
+        oldDb.metadata.update().write(
               MetadataCompanion(
                 buildNumber: Value(int.parse(pkg.buildNumber)),
               ),
@@ -78,7 +77,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     if (tabs.length == 1) return toast("Can't hide everything!");
     tabs.remove(tab);
-    db.settings.update().write(
+    oldDb.settings.update().write(
           SettingsCompanion(
             tabs: Value(tabs.join(',')),
           ),
@@ -88,7 +87,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       action: SnackBarAction(
         label: 'Undo',
         onPressed: () {
-          db.settings.update().write(
+          oldDb.settings.update().write(
                 SettingsCompanion(
                   tabs: Value(old),
                 ),
@@ -100,8 +99,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final setting = context
-        .select<SettingsState, String>((settings) => settings.value.tabs);
+    final setting = context.select<SettingsState, String>((settings) => settings.value.tabs);
     final tabs = setting.split(',');
     final scrollableTabs = context.select<SettingsState, bool>(
       (settings) => settings.value.scrollableTabs,
@@ -128,9 +126,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           children: [
             TabBarView(
               controller: controller,
-              physics: scrollableTabs
-                  ? const AlwaysScrollableScrollPhysics()
-                  : const NeverScrollableScrollPhysics(),
+              physics: scrollableTabs ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
               children: tabs.map((tab) {
                 if (tab == 'HistoryPage')
                   return HistoryPage(tabController: controller);
