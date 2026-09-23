@@ -1,3 +1,4 @@
+import 'package:fossfit/models/constants.dart';
 import 'package:sqflite/sqflite.dart';
 
 ///Drop settings, re-create settings as key value
@@ -94,7 +95,7 @@ Future<void> migrateToV2(Database db) async {
     await txn.execute('DROP TABLE settings_old');
   });
   await db.transaction((txn) async {
-// 1. Create the new exercises table.
+    //Create exercises table
     await txn.execute('''
     CREATE TABLE exercises (
       id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -104,16 +105,12 @@ Future<void> migrateToV2(Database db) async {
       image TEXT NULL
     );
   ''');
-
-    // 2. Insert the special "Weight" exercise first.
+    //insert 'Weight' as a default
     await txn.execute('''
     INSERT INTO exercises (name, cardio, category, image)
     VALUES ('Weight', 0, NULL, NULL);
   ''');
-
-    // 3. Populate exercises from gym_sets.
-    // DISTINCT names are guaranteed by the UNIQUE constraint.
-    // Exclude "Weight" because it already exists.
+    //Insert all existing user exercises from gym sets
     await txn.execute('''
     INSERT INTO exercises (name, cardio, category, image)
     SELECT
@@ -130,9 +127,7 @@ Future<void> migrateToV2(Database db) async {
         GROUP BY gs2.name
       );
   ''');
-
-    // 4. Add exercises which only exist in plan_exercises.
-    // Only insert names that don't already exist in exercises.
+    //insert any unique exercises from plan exercsies
     await txn.execute('''
     INSERT INTO exercises (name, cardio, category, image)
     SELECT
@@ -149,8 +144,27 @@ Future<void> migrateToV2(Database db) async {
       )
     GROUP BY pe.exercise;
   ''');
+    //if only weight exists in exercises, populate with defaults
+    final exerciseCount = Sqflite.firstIntValue(
+          await txn.rawQuery('SELECT COUNT(*) FROM exercises'),
+        ) ??
+        0;
 
-    // 4. Rebuild gym_sets with exercise_id instead of name/category.
+    if (exerciseCount == 1) {
+      final batch = txn.batch();
+
+      for (final exercise in defaultExercises) {
+        batch.insert('exercises', {
+          'name': exercise.$1,
+          'cardio': exercise.$2,
+          'category': exercise.$3,
+          'image': exercise.$4,
+        });
+      }
+
+      await batch.commit(noResult: true);
+    }
+    //create new gymset with exercise_id
     await txn.execute('''
         CREATE TABLE gym_sets_new (
           id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -170,7 +184,7 @@ Future<void> migrateToV2(Database db) async {
           FOREIGN KEY (exercise_id) REFERENCES exercises(id)
         );
       ''');
-
+    //insert existing gymsets into new gymsets with exercsie id
     await txn.execute('''
         INSERT INTO gym_sets_new (
           id,
@@ -206,17 +220,15 @@ Future<void> migrateToV2(Database db) async {
         FROM gym_sets gs
         INNER JOIN exercises e ON e.name = gs.name;
       ''');
-
+    //drop, rename and index
     await txn.execute('DROP TABLE gym_sets;');
     await txn.execute('ALTER TABLE gym_sets_new RENAME TO gym_sets;');
-
-    // 5. Recreate the gym_sets index, now that name no longer exists.
     await txn.execute('''
         CREATE INDEX gym_sets_exercise_id_created
         ON gym_sets(exercise_id, created);
       ''');
 
-    // 6. Rebuild plan_exercises without exercise.
+    //create new plan exercises table with exercise id
     await txn.execute('''
         CREATE TABLE plan_exercises_new (
           id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -231,7 +243,7 @@ Future<void> migrateToV2(Database db) async {
           FOREIGN KEY(plan_id) REFERENCES plans(id)
         );
       ''');
-
+    //insert plan exercises into new table with exercise id
     await txn.execute('''
         INSERT INTO plan_exercises_new (
           id,
@@ -255,7 +267,7 @@ Future<void> migrateToV2(Database db) async {
         FROM plan_exercises pe
         INNER JOIN exercises e ON e.name = pe.exercise;
       ''');
-
+    //drop and rename
     await txn.execute('DROP TABLE plan_exercises;');
     await txn.execute(
       'ALTER TABLE plan_exercises_new RENAME TO plan_exercises;',
