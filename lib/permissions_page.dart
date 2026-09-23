@@ -1,8 +1,8 @@
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/main.dart';
+import 'package:fossfit/models/constants.dart';
+import 'package:fossfit/widgets/setting_switch.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
@@ -38,23 +38,14 @@ class _PermissionsPageState extends State<PermissionsPage> {
                   "If you disable rest timers, then these permissions aren't needed.",
                 ),
               ),
-              ListTile(
-                title: const Text('Rest timers'),
-                onTap: () {
-                  oldDb.settings.update().write(
-                        SettingsCompanion(
-                          restTimers: Value(!settings.value.restTimers),
-                        ),
-                      );
-                },
-                trailing: Switch(
-                  value: settings.value.restTimers,
-                  onChanged: (value) => oldDb.settings.update().write(
-                        SettingsCompanion(
-                          restTimers: Value(value),
-                        ),
-                      ),
-                ),
+              SettingSwitch(
+                settings: settings,
+                category: SettingCategory.timers,
+                keyName: 'rest_timers',
+                title: 'Rest timers',
+                tooltip: 'Rest timers',
+                enabledIcon: null,
+                disabledIcon: null,
               ),
               ListTile(
                 title: const Text('Disable battery optimizations'),
@@ -103,7 +94,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
       ),
       floatingActionButton: AnimatedFab(
         onPressed: () {
-          if ((!ignore || !schedule) && settings.value.restTimers)
+          if ((!ignore || !schedule) && settings.isEnabled(key: 'rest_timers'))
             showDialog(
               context: context,
               builder: (BuildContext context) {
@@ -124,11 +115,10 @@ class _PermissionsPageState extends State<PermissionsPage> {
                       onPressed: () async {
                         Navigator.pop(context);
                         Navigator.pop(context);
-                        oldDb.settings.update().write(
-                              const SettingsCompanion(
-                                explainedPermissions: Value(true),
-                              ),
-                            );
+                        settings.setSetting(
+                            category: SettingCategory.timers,
+                            key: 'explained_permissions',
+                            value: '1');
                       },
                     ),
                   ],
@@ -137,11 +127,11 @@ class _PermissionsPageState extends State<PermissionsPage> {
             );
           else {
             Navigator.pop(context);
-            oldDb.settings.update().write(
-                  const SettingsCompanion(
-                    explainedPermissions: Value(true),
-                  ),
-                );
+
+            settings.setSetting(
+                category: SettingCategory.timers,
+                key: 'explained_permissions',
+                value: '1');
           }
         },
         label: const Text("Confirm"),

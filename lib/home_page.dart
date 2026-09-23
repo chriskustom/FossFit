@@ -1,18 +1,15 @@
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/bottom_nav.dart';
 import 'package:fossfit/calendar/calendar_page.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/graph/graphs_page.dart';
-import 'package:fossfit/main.dart';
+import 'package:fossfit/models/constants.dart';
 import 'package:fossfit/plan/plans_page.dart';
 import 'package:fossfit/sets/history_page.dart';
 import 'package:fossfit/settings/settings_page.dart';
-import 'package:fossfit/settings/whats_new.dart';
 import 'package:fossfit/timer/timer_page.dart';
 import 'package:fossfit/timer/timer_progress_widgets.dart';
 import 'package:fossfit/utils.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -29,39 +26,37 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    final setting = context.read<SettingsRepository>().value.tabs;
+    final setting = context.read<SettingsRepository>().getSetting(key: 'tabs');
     final tabs = setting.split(',');
     controller = TabController(length: tabs.length, vsync: this);
 
-    final info = PackageInfo.fromPlatform();
-    info.then((pkg) async {
-      final meta = await (oldDb.metadata.select()..limit(1)).getSingleOrNull();
-      if (meta == null)
-        return oldDb.metadata.insertOne(
-          MetadataCompanion(buildNumber: Value(int.parse(pkg.buildNumber))),
-        );
-      else
-        oldDb.metadata.update().write(
-              MetadataCompanion(
-                buildNumber: Value(int.parse(pkg.buildNumber)),
-              ),
-            );
-
-      if (int.parse(pkg.buildNumber) == meta.buildNumber) return null;
-
-      if (mounted)
-        toast(
-          "New version ${pkg.version}",
-          action: SnackBarAction(
-            label: 'Changes',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const WhatsNew(),
-              ),
-            ),
-          ),
-        );
-    });
+    // final info = PackageInfo.fromPlatform();
+    // info.then((pkg) async {
+    //   final meta = await (oldDb.metadata.select()..limit(1)).getSingleOrNull();
+    //   if (meta == null)
+    //     return oldDb.metadata.insertOne(
+    //       MetadataCompanion(buildNumber: Value(int.parse(pkg.buildNumber))),
+    //     );
+    //   else
+    //     oldDb.metadata.update().write(
+    //           MetadataCompanion(
+    //             buildNumber: Value(int.parse(pkg.buildNumber)),
+    //           ),
+    //         );
+    //   if (int.parse(pkg.buildNumber) == meta.buildNumber) return null;
+    //   if (mounted)
+    //     toast(
+    //       "New version ${pkg.version}",
+    //       action: SnackBarAction(
+    //         label: 'Changes',
+    //         onPressed: () => Navigator.of(context).push(
+    //           MaterialPageRoute(
+    //             builder: (context) => const WhatsNew(),
+    //           ),
+    //         ),
+    //       ),
+    //     );
+    // });
   }
 
   @override
@@ -71,27 +66,27 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void hideTab(BuildContext context, String tab) {
-    final state = context.read<SettingsRepository>();
-    final old = state.value.tabs;
-    var tabs = state.value.tabs.split(',');
+    final settings = context.read<SettingsRepository>();
+    final old = settings.getSetting(key: 'tabs');
+    var tabs = old.split(',');
 
     if (tabs.length == 1) return toast("Can't hide everything!");
     tabs.remove(tab);
-    oldDb.settings.update().write(
-          SettingsCompanion(
-            tabs: Value(tabs.join(',')),
-          ),
-        );
+    settings.setSetting(
+      category: SettingCategory.tabs,
+      key: 'tabs',
+      value: tabs.join(''),
+    );
     toast(
       'Hid $tab',
       action: SnackBarAction(
         label: 'Undo',
         onPressed: () {
-          oldDb.settings.update().write(
-                SettingsCompanion(
-                  tabs: Value(old),
-                ),
-              );
+          settings.setSetting(
+            category: SettingCategory.tabs,
+            key: 'tabs',
+            value: old,
+          );
         },
       ),
     );
@@ -99,11 +94,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final setting = context.select<SettingsRepository, String>((settings) => settings.value.tabs);
-    final tabs = setting.split(',');
-    final scrollableTabs = context.select<SettingsRepository, bool>(
-      (settings) => settings.value.scrollableTabs,
-    );
+    final settings = context.read<SettingsRepository>();
+    final tabSettings = settings.getSetting(key: 'tabs');
+
+    final tabs = tabSettings.split(',');
+    final scrollableTabs = settings.isEnabled(key: 'scrollable_tabs');
 
     if (tabs.length != controller.length) {
       controller.dispose();
@@ -126,7 +121,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           children: [
             TabBarView(
               controller: controller,
-              physics: scrollableTabs ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
+              physics: scrollableTabs
+                  ? const AlwaysScrollableScrollPhysics()
+                  : const NeverScrollableScrollPhysics(),
               children: tabs.map((tab) {
                 if (tab == 'HistoryPage')
                   return HistoryPage(tabController: controller);

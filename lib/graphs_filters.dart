@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:provider/provider.dart';
 
 import 'constants.dart';
 
@@ -22,7 +24,9 @@ class GraphsFilters extends StatefulWidget {
 }
 
 class _GraphsFiltersState extends State<GraphsFilters> {
-  int get count => (widget.category != null ? 1 : 0) + (widget.sort != GraphSort.dateDesc ? 1 : 0);
+  int get count =>
+      (widget.category != null ? 1 : 0) +
+      (widget.sort != GraphSort.dateDesc ? 1 : 0);
 
   @override
   Widget build(BuildContext context) {
@@ -30,8 +34,8 @@ class _GraphsFiltersState extends State<GraphsFilters> {
       count: count,
       isLabelVisible: count > 0,
       backgroundColor: Theme.of(context).colorScheme.primary,
-      child: StreamBuilder(
-        stream: getCategoriesStream(),
+      child: FutureBuilder(
+        future: context.watch<GymSetsRepository>().getCategoriesList(),
         builder: (context, snapshot) {
           return PopupMenuButton(
             tooltip: "Filter",

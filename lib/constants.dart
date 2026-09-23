@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 
 const weekdays = [
@@ -35,27 +34,6 @@ enum GraphSort {
   dateAsc,
   name,
 }
-
-final defaultSettings = SettingsCompanion.insert(
-  themeMode: ThemeMode.system.toString(),
-  planTrailing: PlanTrailing.reorder.toString(),
-  longDateFormat: 'timeago',
-  shortDateFormat: 'd/M/yy',
-  timerDuration: const Duration(minutes: 3, seconds: 30).inMilliseconds,
-  maxSets: 3,
-  vibrate: true,
-  restTimers: false,
-  showUnits: true,
-  alarmSound: '',
-  cardioUnit: 'last-entry',
-  curveLines: true,
-  explainedPermissions: false,
-  groupHistory: false,
-  showBodyWeight: const Value(true),
-  strengthUnit: 'last-entry',
-  systemColors: false,
-  showCategories: const Value(true),
-);
 
 const positiveReinforcement = [
   'Great work! You are incredible.',

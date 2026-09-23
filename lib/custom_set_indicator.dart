@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 
 class CustomSetIndicator extends StatelessWidget {
   const CustomSetIndicator({
@@ -43,19 +44,25 @@ class CustomSetIndicator extends StatelessWidget {
                 SizedBox(
                   height: 6,
                   width: double.infinity,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(2),
-                      color: theme.colorScheme.outlineVariant,
+                  child: AnimatedFractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: sets.length > i ? 1 : 0,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.ease,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(2),
+                        color: theme.colorScheme.outlineVariant,
+                      ),
+                      child: i < sets.length
+                          ? DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(2),
+                                color: theme.colorScheme.primary,
+                              ),
+                            )
+                          : null,
                     ),
-                    child: i < sets.length
-                        ? DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(2),
-                              color: theme.colorScheme.primary,
-                            ),
-                          )
-                        : null,
                   ),
                 ),
               ],

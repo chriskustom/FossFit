@@ -1,10 +1,10 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/main.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
@@ -57,7 +57,8 @@ class _WeightPageState extends State<WeightPage> {
               ),
               const SizedBox(height: 8),
               Selector<SettingsRepository, String>(
-                selector: (context, settings) => settings.value.strengthUnit,
+                selector: (context, settings) =>
+                    settings.getSetting(key: 'strength_unit'),
                 builder: (context, value, child) =>
                     DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Unit'),
@@ -139,27 +140,28 @@ class _WeightPageState extends State<WeightPage> {
           if (!key.currentState!.validate()) return;
 
           final settings = context.watch<SettingsRepository>();
+          final gymSetsRepo = context.watch<GymSetsRepository>();
+          var su = settings.getSetting(key: 'strength_unit');
           Navigator.pop(context);
 
-          if (settings.strengthUnit != 'last-entry')
-            unit = settings.strengthUnit;
+          if (su != 'last-entry') unit = su;
 
-          oldDb.gymSets.insertOne(
-            GymSetsCompanion.insert(
+          await gymSetsRepo.addGymSets(
+            GymSet(
               created: DateTime.now().toLocal(),
-              name: "Weight",
               reps: 1,
               unit: unit ?? 'kg',
               weight: double.parse(ctrl.text),
-              image: drift.Value(image),
+              exerciseId: 1,
+              hidden: false,
             ),
           );
-          (oldDb.gymSets.update()..where((tbl) => tbl.bodyWeight.equals(0)))
-              .write(
-            GymSetsCompanion(
-              bodyWeight: drift.Value(double.parse(ctrl.text)),
-            ),
-          );
+          for (var gymSet
+              in gymSetsRepo.gymsets.where((t) => t.bodyWeight?.toInt() == 0)) {
+            await gymSetsRepo.updateGymSet(
+              gymSet.copyWith(bodyWeight: double.parse(ctrl.text)),
+            );
+          }
         },
         label: const Text("Save"),
         icon: const Icon(Icons.save),
@@ -178,9 +180,10 @@ class _WeightPageState extends State<WeightPage> {
     super.initState();
     final settings = context.watch<SettingsRepository>();
 
-    getBodyWeight().then(
+    getBodyWeight(context).then(
       (value) => setState(() {
-        prev = "${value?.weight ?? 0} ${value?.unit ?? settings.strengthUnit}";
+        prev =
+            "${value?.weight ?? 0} ${value?.unit ?? settings.getSetting(key: 'strength_unit')}";
         unit = value?.unit;
       }),
     );

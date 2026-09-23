@@ -94,45 +94,61 @@ Future<void> migrateToV2(Database db) async {
     await txn.execute('DROP TABLE settings_old');
   });
   await db.transaction((txn) async {
-    // 1. Create the new exercises table.
+// 1. Create the new exercises table.
     await txn.execute('''
-        CREATE TABLE exercises (
-          id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL UNIQUE,
-          cardio INTEGER NOT NULL CHECK (cardio IN (0, 1)),
-          category TEXT NULL,
-          image TEXT NULL
-        );
-      ''');
+    CREATE TABLE exercises (
+      id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      cardio INTEGER NOT NULL CHECK (cardio IN (0, 1)),
+      category TEXT NULL,
+      image TEXT NULL
+    );
+  ''');
 
-    // 2. Populate exercises from gym_sets first.
+    // 2. Insert the special "Weight" exercise first.
     await txn.execute('''
-        INSERT INTO exercises (name, cardio, category, image)
-        SELECT          
-          name,
-          MAX(cardio),
-          category,
-          image
-        FROM gym_sets
-        GROUP BY name;
-      ''');
+    INSERT INTO exercises (name, cardio, category, image)
+    VALUES ('Weight', 0, NULL, NULL);
+  ''');
 
-    // 3. Add exercises which only exist in plan_exercises.
+    // 3. Populate exercises from gym_sets.
+    // DISTINCT names are guaranteed by the UNIQUE constraint.
+    // Exclude "Weight" because it already exists.
     await txn.execute('''
-        INSERT INTO exercises (name, cardio, category, image)
-        SELECT
-          pe.exercise,
-          0,
-          NULL,
-          NULL
-        FROM plan_exercises pe
-        WHERE NOT EXISTS (
-          SELECT 1
-          FROM exercises e
-          WHERE e.name = pe.exercise
-        )
-        GROUP BY pe.exercise;
-      ''');
+    INSERT INTO exercises (name, cardio, category, image)
+    SELECT
+      gs.name,
+      gs.cardio,
+      gs.category,
+      gs.image
+    FROM gym_sets gs
+    WHERE gs.name <> 'Weight'
+      AND gs.id IN (
+        SELECT MIN(gs2.id)
+        FROM gym_sets gs2
+        WHERE gs2.name <> 'Weight'
+        GROUP BY gs2.name
+      );
+  ''');
+
+    // 4. Add exercises which only exist in plan_exercises.
+    // Only insert names that don't already exist in exercises.
+    await txn.execute('''
+    INSERT INTO exercises (name, cardio, category, image)
+    SELECT
+      pe.exercise,
+      0,
+      NULL,
+      NULL
+    FROM plan_exercises pe
+    WHERE pe.exercise <> 'Weight'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM exercises e
+        WHERE e.name = pe.exercise
+      )
+    GROUP BY pe.exercise;
+  ''');
 
     // 4. Rebuild gym_sets with exercise_id instead of name/category.
     await txn.execute('''

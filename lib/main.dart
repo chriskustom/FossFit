@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:fossfit/database/failed_migrations_page.dart';
 import 'package:fossfit/db/database_helper.dart';
+import 'package:fossfit/db/failed_migrations_page.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
 import 'package:fossfit/db/repositories/plans_repository.dart';
@@ -50,13 +50,17 @@ Future<void> main() async {
   runApp(appProviders(db, settingsRepo));
 }
 
-MethodChannel androidChannel = const MethodChannel("com.kustom.fossfit/android");
+MethodChannel androidChannel =
+    const MethodChannel("com.kustom.fossfit/android");
 
 Widget appProviders(Database db, SettingsRepository repo) => MultiProvider(
       providers: [
-        ChangeNotifierProvider<GymSetsRepository>(create: (_) => GymSetsRepository(db)..loadAll()),
-        ChangeNotifierProvider<PlansRepository>(create: (_) => PlansRepository(db)..loadAll()),
-        ChangeNotifierProvider<PlanExercisesRepository>(create: (_) => PlanExercisesRepository(db)..loadAll()),
+        ChangeNotifierProvider<GymSetsRepository>(
+            create: (_) => GymSetsRepository(db)..loadAll()),
+        ChangeNotifierProvider<PlansRepository>(
+            create: (_) => PlansRepository(db)..loadAll()),
+        ChangeNotifierProvider<PlanExercisesRepository>(
+            create: (_) => PlanExercisesRepository(db)..loadAll()),
         ChangeNotifierProvider<SettingsRepository>.value(value: repo),
         ChangeNotifierProvider(create: (context) => TimerState()),
       ],
@@ -68,7 +72,8 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settingsRepo = Provider.of<SettingsRepository>(context, listen: false);
+    final settingsRepo =
+        Provider.of<SettingsRepository>(context, listen: false);
 
     final light = ColorScheme.fromSeed(seedColor: Colors.deepPurple);
     final dark = ColorScheme.fromSeed(
@@ -109,15 +114,22 @@ class App extends StatelessWidget {
             return DynamicColorBuilder(
               builder: (lightDynamic, darkDynamic) {
                 final currentBrightness = themeMode.name == 'dark' ||
-                        (themeMode.name == 'system' && MediaQuery.of(context).platformBrightness == Brightness.dark)
+                        (themeMode.name == 'system' &&
+                            MediaQuery.of(context).platformBrightness ==
+                                Brightness.dark)
                     ? Brightness.dark
                     : Brightness.light;
 
                 SystemChrome.setSystemUIOverlayStyle(
                   SystemUiOverlayStyle(
-                    statusBarIconBrightness: currentBrightness == Brightness.dark ? Brightness.light : Brightness.dark,
+                    statusBarIconBrightness:
+                        currentBrightness == Brightness.dark
+                            ? Brightness.light
+                            : Brightness.dark,
                     systemNavigationBarIconBrightness:
-                        currentBrightness == Brightness.dark ? Brightness.light : Brightness.dark,
+                        currentBrightness == Brightness.dark
+                            ? Brightness.light
+                            : Brightness.dark,
                     statusBarColor: Colors.transparent,
                     systemNavigationBarColor: Colors.transparent,
                   ),

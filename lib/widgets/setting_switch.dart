@@ -10,8 +10,8 @@ class SettingSwitch extends StatelessWidget {
     required this.keyName,
     required this.title,
     required this.tooltip,
-    required this.enabledIcon,
-    required this.disabledIcon,
+    this.enabledIcon,
+    this.disabledIcon,
   });
 
   final SettingsRepository settings;
@@ -19,8 +19,8 @@ class SettingSwitch extends StatelessWidget {
   final String keyName;
   final String title;
   final String tooltip;
-  final IconData enabledIcon;
-  final IconData disabledIcon;
+  final IconData? enabledIcon;
+  final IconData? disabledIcon;
 
   @override
   Widget build(BuildContext context) {

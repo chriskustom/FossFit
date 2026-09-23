@@ -68,7 +68,7 @@ class _EditSetPageState extends State<EditSetPage> {
     if (showBodyWeight)
       updateFields(last);
     else {
-      final bodyWeight = await getBodyWeight();
+      final bodyWeight = await getBodyWeight(context);
       updateFields(
         last.copyWith(
           bodyWeight: bodyWeight?.weight,

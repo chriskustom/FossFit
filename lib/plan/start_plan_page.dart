@@ -717,7 +717,7 @@ class _StartPlanPageState extends State<StartPlanPage>
       return null;
     }
 
-    final current = await getBodyWeight();
+    final current = await getBodyWeight(context);
 
     if (current != null) {
       return current.weight;
@@ -741,7 +741,7 @@ class _StartPlanPageState extends State<StartPlanPage>
   }
 
   Future<void> useBodyWeight() async {
-    final weightSet = await getBodyWeight();
+    final weightSet = await getBodyWeight(context);
 
     if (!mounted) return;
 
