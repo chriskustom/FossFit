@@ -1,17 +1,17 @@
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/main.dart';
+import 'package:fossfit/models/constants.dart';
 import 'package:fossfit/utils.dart';
+import 'package:fossfit/widgets/setting_switch.dart';
 import 'package:provider/provider.dart';
 
 class TabSettings extends StatefulWidget {
   const TabSettings({super.key});
 
   @override
-  createState() => _TabSettingsState();
+  createState() => _TabSettingsRepository();
 }
 
 typedef TabSetting = ({
@@ -19,7 +19,7 @@ typedef TabSetting = ({
   bool enabled,
 });
 
-class _TabSettingsState extends State<TabSettings> {
+class _TabSettingsRepository extends State<TabSettings> {
   List<TabSetting> tabs = [
     (name: 'HistoryPage', enabled: false),
     (name: 'PlansPage', enabled: false),
@@ -32,8 +32,8 @@ class _TabSettingsState extends State<TabSettings> {
   @override
   void initState() {
     super.initState();
-    final settings = context.read<SettingsState>();
-    final tabSplit = settings.value.tabs.split(',');
+    final settings = context.read<SettingsRepository>();
+    final tabSplit = settings.getSetting(key: 'tabs').split(',');
 
     final enabled = tabSplit.map((tab) => (name: tab, enabled: true)).toList();
     final disabled = tabs.where((tab) => !tabSplit.contains(tab.name)).toList();
@@ -42,7 +42,8 @@ class _TabSettingsState extends State<TabSettings> {
   }
 
   void setTab(String name, bool enabled) {
-    if (!enabled && tabs.where((tab) => tab.enabled == true).length == 1) return toast('You need at least one tab');
+    if (!enabled && tabs.where((tab) => tab.enabled == true).length == 1)
+      return toast('You need at least one tab');
     final index = tabs.indexWhere((tappedTab) => tappedTab.name == name);
     setState(() {
       tabs[index] = (name: name, enabled: enabled);
@@ -51,7 +52,7 @@ class _TabSettingsState extends State<TabSettings> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsState>();
+    final settings = context.watch<SettingsRepository>();
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(title: const Text("Tabs")),
@@ -59,29 +60,14 @@ class _TabSettingsState extends State<TabSettings> {
         padding: const EdgeInsets.all(8),
         child: material.Column(
           children: [
-            ListTile(
-              title: material.Row(
-                children: [
-                  const Icon(Icons.swipe),
-                  SizedBox(width: 8),
-                  const Text("Swipe between tabs"),
-                ],
-              ),
-              onTap: () => oldDb.settings.update().write(
-                    SettingsCompanion(
-                      scrollableTabs: Value(!settings.value.scrollableTabs),
-                    ),
-                  ),
-              leading: Switch(
-                value: settings.value.scrollableTabs,
-                onChanged: (value) {
-                  oldDb.settings.update().write(
-                        SettingsCompanion(
-                          scrollableTabs: Value(value),
-                        ),
-                      );
-                },
-              ),
+            SettingSwitch(
+              settings: settings,
+              category: SettingCategory.tabs,
+              keyName: 'scrollable_tabs',
+              title: 'Swipe between tabs',
+              tooltip: 'Swipe between tabs',
+              enabledIcon: Icons.swipe,
+              disabledIcon: Icons.swipe,
             ),
             Expanded(
               child: ReorderableListView.builder(
@@ -229,13 +215,14 @@ class _TabSettingsState extends State<TabSettings> {
       ),
       floatingActionButton: AnimatedFab(
         onPressed: () async {
-          await (oldDb.settings.update().write(
-                SettingsCompanion(
-                  tabs: Value(
-                    tabs.where((tab) => tab.enabled).map((tab) => tab.name).join(','),
-                  ),
-                ),
-              ));
+          await settings.setSetting(
+            category: SettingCategory.tabs,
+            key: 'tabs',
+            value: tabs
+                .where((tab) => tab.enabled)
+                .map((tab) => tab.name)
+                .join(','),
+          );
           if (context.mounted) Navigator.of(context).pop();
         },
         icon: const Icon(Icons.save),

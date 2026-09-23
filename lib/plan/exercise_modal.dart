@@ -1,13 +1,11 @@
-import 'package:drift/drift.dart' as drift;
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
+import 'package:fossfit/db/repositories/plans_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/main.dart';
-import 'package:fossfit/models/plan_exercises_model.dart';
-import 'package:fossfit/plan/plan_state.dart';
+import 'package:fossfit/models/exercise_model.dart';
+import 'package:fossfit/models/plan_exercise_model.dart';
 import 'package:fossfit/plan/swap_workout.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
 import 'package:fossfit/timer/timer_state.dart';
@@ -15,7 +13,7 @@ import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
 class ExerciseModal extends StatefulWidget {
-  final String exercise;
+  final Exercise exercise;
   final bool hasData;
   final Function() onSelect;
   final Function() onMax;
@@ -38,7 +36,7 @@ class _ExerciseModalState extends State<ExerciseModal> {
   final max = TextEditingController();
   final warmup = TextEditingController();
   bool timers = true;
-  List<PlanExercises> planExercises = [];
+  List<PlanExercise> planExercises = [];
   @override
   void initState() {
     super.initState();
@@ -47,12 +45,14 @@ class _ExerciseModalState extends State<ExerciseModal> {
   @override
   Widget build(BuildContext context) {
     var repo = context.watch<PlanExercisesRepository>();
-    var planExercise =
-        repo.planexercises.where((p) => p.id == widget.planId && p.exercise == widget.exercise).take(1).first;
-    max.text = planExercise.maxsets.toString();
+    var planExercise = repo.planexercises
+        .where((p) => p.id == widget.planId && p.exercise == widget.exercise)
+        .take(1)
+        .first;
+    max.text = planExercise.maxSets.toString();
     warmup.text = planExercise.warmupSets?.toString() ?? '';
 
-    timers = planExercise.timers;
+    timers = planExercise.timers ?? true;
     var setsRepo = context.watch<GymSetsRepository>();
     var gymSets = setsRepo.gymsets;
     return Wrap(
@@ -67,12 +67,13 @@ class _ExerciseModalState extends State<ExerciseModal> {
               context: context,
               builder: (context) {
                 return AlertDialog.adaptive(
-                  title: Text(widget.exercise),
+                  title: Text(widget.exercise.name),
                   content: SingleChildScrollView(
                     child: material.Column(
                       children: [
                         Selector<SettingsRepository, int?>(
-                          selector: (context, settings) => settings.getInt(key: 'warmup_sets'),
+                          selector: (context, settings) =>
+                              settings.getInt(key: 'warmup_sets'),
                           builder: (context, value, child) => TextField(
                             controller: warmup,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -89,7 +90,8 @@ class _ExerciseModalState extends State<ExerciseModal> {
                         ),
                         const SizedBox(height: 16),
                         Selector<SettingsRepository, int>(
-                          selector: (context, settings) => settings.getInt(key: 'max_sets'),
+                          selector: (context, settings) =>
+                              settings.getInt(key: 'max_sets'),
                           builder: (context, value, child) => TextField(
                             controller: max,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -142,7 +144,10 @@ class _ExerciseModalState extends State<ExerciseModal> {
             title: const Text('Edit'),
             onTap: () async {
               Navigator.pop(context);
-              final gymSet = gymSets.where((r) => r.name == (widget.exercise)).take(1).first;
+              final gymSet = gymSets
+                  .where((r) => r.exerciseId == (widget.exercise.id))
+                  .take(1)
+                  .first;
               if (!context.mounted) return;
               await Navigator.push(
                 context,
@@ -159,10 +164,13 @@ class _ExerciseModalState extends State<ExerciseModal> {
             title: const Text('Undo'),
             onTap: () async {
               Navigator.pop(context);
-              final gymSet = gymSets.where((r) => r.name == (widget.exercise)).take(1).first;
+              final gymSet = gymSets
+                  .where((r) => r.exerciseId == (widget.exercise.id))
+                  .take(1)
+                  .first;
               await setsRepo.deleteGymSetById(gymSet.id!);
               if (!context.mounted) return;
-              final planState = context.read<PlanState>();
+              final planState = context.read<PlansRepository>();
               planState.updateGymCounts(widget.planId);
               widget.onSelect();
               final timerState = context.read<TimerState>();
@@ -193,40 +201,34 @@ class _ExerciseModalState extends State<ExerciseModal> {
     );
   }
 
-  void changeTimers(bool value) {
-    (oldDb.planExercises.update()
-          ..where(
-            (u) => u.planId.equals(widget.planId) & u.exercise.equals(widget.exercise),
-          ))
-        .write(
-      PlanExercisesCompanion(
-        timers: Value(value),
-      ),
+  void changeTimers(bool value) async {
+    var repo = context.read<PlanExercisesRepository>();
+    var pe = repo.getPlanExercisesByPlanId(widget.planId);
+    await repo.updatePlanExercise(
+      pe.where((p) => p.exerciseId == widget.exercise.id).first.copyWith(
+            timers: value,
+          ),
     );
   }
 
-  void changeMax(String value) {
-    (oldDb.planExercises.update()
-          ..where(
-            (u) => u.planId.equals(widget.planId) & u.exercise.equals(widget.exercise),
-          ))
-        .write(
-      PlanExercisesCompanion(
-        maxSets: Value(int.tryParse(max.text)),
-      ),
+  void changeMax(String value) async {
+    var repo = context.read<PlanExercisesRepository>();
+    var pe = repo.getPlanExercisesByPlanId(widget.planId);
+    await repo.updatePlanExercise(
+      pe.where((p) => p.exerciseId == widget.exercise.id).first.copyWith(
+            maxSets: int.tryParse(max.text),
+          ),
     );
     widget.onMax();
   }
 
-  void changeWarmup(String value) {
-    (oldDb.planExercises.update()
-          ..where(
-            (u) => u.planId.equals(widget.planId) & u.exercise.equals(widget.exercise),
-          ))
-        .write(
-      PlanExercisesCompanion(
-        warmupSets: Value(int.tryParse(warmup.text)),
-      ),
+  void changeWarmup(String value) async {
+    var repo = context.read<PlanExercisesRepository>();
+    var pe = repo.getPlanExercisesByPlanId(widget.planId);
+    await repo.updatePlanExercise(
+      pe.where((p) => p.exerciseId == widget.exercise.id).first.copyWith(
+            warmupSets: int.tryParse(warmup.text),
+          ),
     );
   }
 }

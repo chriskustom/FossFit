@@ -1,24 +1,38 @@
-import 'package:drift/drift.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/graph/cardio_data.dart';
 import 'package:fossfit/graph/flex_line.dart';
-import 'package:fossfit/main.dart';
+import 'package:fossfit/models/constants.dart';
+import 'package:fossfit/widgets/setting_switch.dart';
 import 'package:provider/provider.dart';
+
+void enableDisable(SettingsRepository settings, String k, bool v) =>
+    setSetting(settings, k, v ? '1' : '0');
+
+void setSetting(SettingsRepository settings, String k, String v) =>
+    settings.setSetting(
+      category: SettingCategory.appearance,
+      key: k,
+      value: v,
+    );
 
 List<Widget> getAppearanceSettings(
   BuildContext context,
   String term,
-  SettingsState settings,
+  SettingsRepository settings,
 ) {
   return [
     if ('theme'.contains(term.toLowerCase()))
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: DropdownButtonFormField<ThemeMode>(
-          initialValue: ThemeMode.values.byName(settings.value.themeMode.replaceFirst('ThemeMode.', '')),
+          initialValue: ThemeMode.values.byName(
+            settings
+                .getSetting(key: 'theme_mode')
+                .replaceFirst('ThemeMode.', ''),
+          ),
           decoration: const InputDecoration(
             labelStyle: TextStyle(),
             labelText: 'Theme',
@@ -37,144 +51,69 @@ List<Widget> getAppearanceSettings(
               child: Text("Light"),
             ),
           ],
-          onChanged: (value) => oldDb.settings.update().write(
-                SettingsCompanion(
-                  themeMode: Value(value.toString()),
-                ),
-              ),
+          onChanged: (value) =>
+              setSetting(settings, 'theme_mode', value.toString()),
         ),
       ),
     if ('system color scheme'.contains(term.toLowerCase()))
-      Padding(
-        padding: const EdgeInsets.only(top: 8.0),
-        child: Tooltip(
-          message: 'Use the primary color of your device for the app',
-          child: ListTile(
-            title: const Text('System color scheme'),
-            leading: settings.value.systemColors ? const Icon(Icons.color_lens) : const Icon(Icons.color_lens_outlined),
-            onTap: () => oldDb.settings.update().write(
-                  SettingsCompanion(
-                    systemColors: Value(!settings.value.systemColors),
-                  ),
-                ),
-            trailing: Switch(
-              value: settings.value.systemColors,
-              onChanged: (value) => oldDb.settings.update().write(
-                    SettingsCompanion(
-                      systemColors: Value(value),
-                    ),
-                  ),
-            ),
-          ),
-        ),
+      SettingSwitch(
+        settings: settings,
+        category: SettingCategory.appearance,
+        keyName: 'system_colors',
+        title: 'System color scheme',
+        tooltip: 'Use the primary color of your device for the app',
+        enabledIcon: Icons.color_lens,
+        disabledIcon: Icons.color_lens_outlined,
       ),
     if ('show images'.contains(term.toLowerCase()))
-      Tooltip(
-        message: 'Pick/display images on the history page',
-        child: ListTile(
-          title: const Text('Show images'),
-          leading: settings.value.showImages ? const Icon(Icons.image) : const Icon(Icons.image_outlined),
-          onTap: () => oldDb.settings.update().write(
-                SettingsCompanion(
-                  showImages: Value(!settings.value.showImages),
-                ),
-              ),
-          trailing: Switch(
-            value: settings.value.showImages,
-            onChanged: (value) => oldDb.settings.update().write(
-                  SettingsCompanion(
-                    showImages: Value(value),
-                  ),
-                ),
-          ),
-        ),
+      SettingSwitch(
+        settings: settings,
+        category: SettingCategory.appearance,
+        keyName: 'show_images',
+        title: 'Show images',
+        tooltip: 'Pick/display images on the history page',
+        enabledIcon: Icons.image,
+        disabledIcon: Icons.image_outlined,
       ),
     if ('show global progress'.contains(term.toLowerCase()))
-      Tooltip(
-        message: 'Add a graph entry charting your progress by category',
-        child: ListTile(
-          title: const Text('Show global progress'),
-          leading: settings.value.showGlobalProgress ? const Icon(Icons.public) : const Icon(Icons.public_off),
-          onTap: () => oldDb.settings.update().write(
-                SettingsCompanion(
-                  showGlobalProgress: Value(!settings.value.showGlobalProgress),
-                ),
-              ),
-          trailing: Switch(
-            value: settings.value.showGlobalProgress,
-            onChanged: (value) => oldDb.settings.update().write(
-                  SettingsCompanion(
-                    showGlobalProgress: Value(value),
-                  ),
-                ),
-          ),
-        ),
+      SettingSwitch(
+        settings: settings,
+        category: SettingCategory.appearance,
+        keyName: 'show_global_progress',
+        title: 'Show global progress',
+        tooltip: 'Add a graph entry charting your progress by category',
+        enabledIcon: Icons.public,
+        disabledIcon: Icons.public_off,
       ),
     if ('show stats panel'.contains(term.toLowerCase()))
-      Padding(
-        padding: const EdgeInsets.only(top: 8.0),
-        child: Tooltip(
-          message: 'Show stats panel above workout history',
-          child: ListTile(
-            title: const Text('Show stats panel'),
-            leading: settings.value.statsPanel ? const Icon(Icons.analytics) : const Icon(Icons.analytics_outlined),
-            onTap: () => oldDb.settings.update().write(
-                  SettingsCompanion(
-                    statsPanel: Value(!settings.value.statsPanel),
-                  ),
-                ),
-            trailing: Switch(
-              value: settings.value.statsPanel,
-              onChanged: (value) => oldDb.settings.update().write(
-                    SettingsCompanion(
-                      statsPanel: Value(value),
-                    ),
-                  ),
-            ),
-          ),
-        ),
+      SettingSwitch(
+        settings: settings,
+        category: SettingCategory.appearance,
+        keyName: 'stats_panel',
+        title: 'Show stats panel',
+        tooltip: 'Show stats panel above workout history',
+        enabledIcon: Icons.analytics,
+        disabledIcon: Icons.analytics_outlined,
       ),
     if ('peek graph'.contains(term.toLowerCase()))
-      Tooltip(
-        message: 'Show the first line graph on graphs page',
-        child: ListTile(
-          title: const Text('Peek graph'),
-          leading: const Icon(Icons.visibility_outlined),
-          onTap: () => oldDb.settings.update().write(
-                SettingsCompanion(
-                  peekGraph: Value(!settings.value.peekGraph),
-                ),
-              ),
-          trailing: Switch(
-            value: settings.value.peekGraph,
-            onChanged: (value) => oldDb.settings.update().write(
-                  SettingsCompanion(
-                    peekGraph: Value(value),
-                  ),
-                ),
-          ),
-        ),
+      SettingSwitch(
+        settings: settings,
+        category: SettingCategory.appearance,
+        keyName: 'peek_graph',
+        title: 'Peek graph',
+        tooltip: 'Show the first line graph on graphs page',
+        enabledIcon: Icons.visibility,
+        disabledIcon: Icons.visibility_outlined,
       ),
     if ('curve line graphs'.contains(term.toLowerCase()))
-      Tooltip(
-        message: 'Use wavy curves in the graphs page',
-        child: ListTile(
-          title: const Text('Curve line graphs'),
-          leading: const Icon(Icons.insights),
-          onTap: () => oldDb.settings.update().write(
-                SettingsCompanion(
-                  curveLines: Value(!settings.value.curveLines),
-                ),
-              ),
-          trailing: Switch(
-            value: settings.value.curveLines,
-            onChanged: (value) => oldDb.settings.update().write(
-                  SettingsCompanion(
-                    curveLines: Value(value),
-                  ),
-                ),
-          ),
-        ),
+      SettingSwitch(
+        settings: settings,
+        category: SettingCategory.appearance,
+        keyName: 'curve_lines',
+        title: 'Curve line graphs',
+        tooltip: 'Use wavy curves in the graphs page',
+        enabledIcon: Icons.insights,
+        disabledIcon: Icons.insights_outlined,
       ),
     if ('curve smoothness'.contains(term.toLowerCase()))
       material.Column(
@@ -187,15 +126,14 @@ List<Widget> getAppearanceSettings(
             ),
           ),
           Slider(
-            value: settings.value.curveSmoothness ?? 0.35,
-            inactiveColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
-            onChanged: (value) {
-              oldDb.settings.update().write(
-                    SettingsCompanion(
-                      curveSmoothness: Value(value),
-                    ),
-                  );
-            },
+            value: settings.getDouble(key: 'curve_smoothness'),
+            inactiveColor:
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
+            onChanged: (value) => setSetting(
+              settings,
+              'curve_smoothness',
+              value.toString(),
+            ),
           ),
         ],
       ),
@@ -207,9 +145,14 @@ List<Widget> getAppearanceSettings(
           child: FlexLine(
             hideBottom: true,
             hideLeft: true,
-            spots: const [FlSpot(0, 0.13), FlSpot(1, 5), FlSpot(2, 2)],
+            spots: const [
+              FlSpot(0, 0.13),
+              FlSpot(1, 5),
+              FlSpot(2, 2),
+            ],
             tooltipData: () => LineTouchTooltipData(
-              getTooltipColor: (touchedSpot) => Theme.of(context).colorScheme.surface,
+              getTooltipColor: (touchedSpot) =>
+                  Theme.of(context).colorScheme.surface,
               getTooltipItems: (touchedSpots) => touchedSpots
                   .map(
                     (spot) => LineTooltipItem(
@@ -249,7 +192,7 @@ class AppearanceSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsState>();
+    final settings = context.watch<SettingsRepository>();
 
     return Scaffold(
       resizeToAvoidBottomInset: false,

@@ -1,7 +1,6 @@
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/main.dart';
+import 'package:fossfit/models/constants.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -33,14 +32,14 @@ final List<String> short = [
   'dd.MM.yy',
 ];
 
-List<Widget> getFormatSettings(String term, Setting settings) {
+List<Widget> getFormatSettings(String term, SettingsRepository settings) {
   return [
     if ('strength unit'.contains(term.toLowerCase()))
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: DropdownButtonFormField<String>(
           decoration: const InputDecoration(labelText: 'Strength unit'),
-          initialValue: settings.strengthUnit,
+          initialValue: settings.getSetting(key: 'strength_unit'),
           items: const [
             DropdownMenuItem(
               value: "last-entry",
@@ -59,13 +58,10 @@ List<Widget> getFormatSettings(String term, Setting settings) {
               child: Text("Stone"),
             ),
           ],
-          onChanged: (value) {
-            oldDb.settings.update().write(
-                  SettingsCompanion(
-                    strengthUnit: Value(value!),
-                  ),
-                );
-          },
+          onChanged: (value) => settings.setSetting(
+              category: SettingCategory.formats,
+              key: 'strength_unit',
+              value: value ?? 'last-entry'),
         ),
       ),
     if ('cardio unit'.contains(term.toLowerCase()))
@@ -73,7 +69,7 @@ List<Widget> getFormatSettings(String term, Setting settings) {
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: DropdownButtonFormField<String>(
           decoration: const InputDecoration(labelText: 'Cardio unit'),
-          initialValue: settings.cardioUnit,
+          initialValue: settings.getSetting(key: 'cardio_unit'),
           items: const [
             DropdownMenuItem(
               value: "last-entry",
@@ -96,13 +92,10 @@ List<Widget> getFormatSettings(String term, Setting settings) {
               child: Text("Kilocalories (kcal)"),
             ),
           ],
-          onChanged: (value) {
-            oldDb.settings.update().write(
-                  SettingsCompanion(
-                    cardioUnit: Value(value!),
-                  ),
-                );
-          },
+          onChanged: (value) => settings.setSetting(
+              category: SettingCategory.formats,
+              key: 'cardio_unit',
+              value: value ?? 'last-entry'),
         ),
       ),
     if ('long date format'.contains(term.toLowerCase()))
@@ -114,22 +107,23 @@ List<Widget> getFormatSettings(String term, Setting settings) {
             builder: (context) {
               var format = timeago.format(DateTime.now());
 
-              if (settings.longDateFormat != 'timeago')
-                format = DateFormat(settings.longDateFormat).format(DateTime.now());
+              if (settings.getSetting(key: 'long_date_format') != 'timeago')
+                format =
+                    DateFormat(settings.getSetting(key: 'long_date_format'))
+                        .format(DateTime.now());
 
               return DropdownButtonFormField<String>(
-                initialValue: settings.longDateFormat,
+                initialValue: settings.getSetting(key: 'long_date_format'),
                 items: long.map((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(value),
                   );
                 }).toList(),
-                onChanged: (value) => oldDb.settings.update().write(
-                      SettingsCompanion(
-                        longDateFormat: Value(value!),
-                      ),
-                    ),
+                onChanged: (value) => settings.setSetting(
+                    category: SettingCategory.formats,
+                    key: 'long_date_format',
+                    value: value ?? 'timeago'),
                 decoration: InputDecoration(
                   labelText: 'Long date format ($format)',
                 ),
@@ -144,20 +138,20 @@ List<Widget> getFormatSettings(String term, Setting settings) {
         child: Tooltip(
           message: 'For where space is cramped (Graph lines)',
           child: DropdownButtonFormField<String>(
-            initialValue: settings.shortDateFormat,
+            initialValue: settings.getSetting(key: 'short_date_format'),
             items: short.map((String value) {
               return DropdownMenuItem<String>(
                 value: value,
                 child: Text(value),
               );
             }).toList(),
-            onChanged: (value) => oldDb.settings.update().write(
-                  SettingsCompanion(
-                    shortDateFormat: Value(value!),
-                  ),
-                ),
+            onChanged: (value) => settings.setSetting(
+                category: SettingCategory.formats,
+                key: 'short_date_format',
+                value: value ?? 'd/m/y'),
             decoration: InputDecoration(
-              labelText: 'Short date format (${DateFormat(settings.shortDateFormat).format(DateTime.now())})',
+              labelText:
+                  'Short date format (${DateFormat(settings.getSetting(key: 'short_date_format')).format(DateTime.now())})',
             ),
           ),
         ),
@@ -170,7 +164,7 @@ class FormatSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsState>();
+    final settings = context.watch<SettingsRepository>();
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -178,7 +172,7 @@ class FormatSettings extends StatelessWidget {
         title: const Text("Formats"),
       ),
       body: ListView(
-        children: getFormatSettings('', settings.value),
+        children: getFormatSettings('', settings),
       ),
     );
   }

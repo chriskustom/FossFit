@@ -21,10 +21,11 @@ class SettingsPage extends StatefulWidget {
   createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClientMixin {
+class _SettingsPageState extends State<SettingsPage>
+    with AutomaticKeepAliveClientMixin {
   final searchCtrl = TextEditingController();
 
-  late final Setting settings;
+  late final SettingsRepository settings;
   late final TextEditingController maxSets;
   late final TextEditingController warmupSets;
   late final TextEditingController minutes;
@@ -39,24 +40,24 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
   Widget build(BuildContext context) {
     super.build(context);
     List<Widget> filtered = [];
-    final settings = context.watch<SettingsState>();
+    final settings = context.watch<SettingsRepository>();
     if (searchCtrl.text.isNotEmpty) {
       filtered.addAll(
         getAppearanceSettings(context, searchCtrl.text, settings),
       );
-      filtered.addAll(getFormatSettings(searchCtrl.text, settings.value));
+      filtered.addAll(getFormatSettings(searchCtrl.text, settings));
       filtered.addAll(
         getWorkoutSettings(
           context,
           searchCtrl.text,
-          settings.value,
+          settings,
         ),
       );
       if (player != null)
         filtered.addAll(
           getTimerSettings(
             searchCtrl.text,
-            settings.value,
+            settings,
             minutes,
             seconds,
             player!,
@@ -67,7 +68,7 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
       filtered.addAll(
         getPlanSettings(
           searchCtrl.text,
-          settings.value,
+          settings,
           maxSets,
           warmupSets,
         ),
@@ -237,13 +238,20 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
     super.initState();
 
     settings = context.watch<SettingsRepository>();
-    maxSets = TextEditingController(text: settings.maxSets.toString());
-    warmupSets = TextEditingController(text: settings.warmupSets?.toString());
+    maxSets = TextEditingController(
+        text: settings.getInt(key: 'max_sets').toString());
+    warmupSets = TextEditingController(
+        text: settings.getInt(key: 'warmup_sets').toString());
     minutes = TextEditingController(
-      text: Duration(milliseconds: settings.timerDuration).inMinutes.toString(),
+      text: Duration(milliseconds: settings.getInt(key: 'timer_duration'))
+          .inMinutes
+          .toString(),
     );
     seconds = TextEditingController(
-      text: (Duration(milliseconds: settings.timerDuration).inSeconds % 60).toString(),
+      text: (Duration(milliseconds: settings.getInt(key: 'timer_duration'))
+                  .inSeconds %
+              60)
+          .toString(),
     );
 
     if (!kIsWeb) {

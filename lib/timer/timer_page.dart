@@ -16,7 +16,8 @@ class TimerPage extends StatefulWidget {
   createState() => TimerPageState();
 }
 
-class TimerPageState extends State<TimerPage> with AutomaticKeepAliveClientMixin {
+class TimerPageState extends State<TimerPage>
+    with AutomaticKeepAliveClientMixin {
   final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
 
   @override
@@ -32,7 +33,8 @@ class TimerPageState extends State<TimerPage> with AutomaticKeepAliveClientMixin
         if (navKey.currentState!.canPop() == false) return;
         final ctrl = DefaultTabController.of(context);
         final settings = context.watch<SettingsRepository>();
-        final index = settings.tabs.split(',').indexOf('TimerPage');
+        final index =
+            settings.getSetting(key: 'tabs').split(',').indexOf('TimerPage');
         if (ctrl.index == index) navKey.currentState!.pop();
       },
       child: Navigator(

@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
@@ -8,18 +7,19 @@ import 'package:fossfit/delete_records_button.dart';
 import 'package:fossfit/export_data.dart';
 import 'package:fossfit/import_data.dart';
 import 'package:fossfit/main.dart';
+import 'package:fossfit/models/constants.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-void tapBackup(bool value) async {
-  await oldDb.settings.update().write(
-        SettingsCompanion(
-          automaticBackups: Value(value),
-        ),
-      );
+void tapBackup(bool value, SettingsRepository settings) async {
+  settings.setSetting(
+    category: SettingCategory.data,
+    key: 'automatic_backups',
+    value: value ? '1' : '0',
+  );
 
   if (value) {
     final dbFolder = await getApplicationDocumentsDirectory();
@@ -31,21 +31,26 @@ void tapBackup(bool value) async {
 
 List<Widget> getDataSettings(
   String term,
-  SettingsState settings,
+  SettingsRepository settings,
   BuildContext context,
 ) {
   return [
     if ('automatic backup'.contains(term.toLowerCase()))
       ListTile(
         title: const Text('Automatic backup'),
-        leading: settings.value.automaticBackups ? const Icon(Icons.timer) : const Icon(Icons.timer_outlined),
-        onTap: () => tapBackup(!settings.value.automaticBackups),
+        leading: settings.isEnabled(key: 'automatic_backups')
+            ? const Icon(Icons.timer)
+            : const Icon(Icons.timer_outlined),
+        onTap: () =>
+            tapBackup(!settings.isEnabled(key: 'automatic_backups'), settings),
         trailing: Switch(
-          value: settings.value.automaticBackups,
-          onChanged: (value) => tapBackup(value),
+          value: settings.isEnabled(key: 'automatic_backups'),
+          onChanged: (value) => tapBackup(value, settings),
         ),
       ),
-    if ('share database'.contains(term.toLowerCase()) && !kIsWeb && !Platform.isLinux)
+    if ('share database'.contains(term.toLowerCase()) &&
+        !kIsWeb &&
+        !Platform.isLinux)
       TextButton.icon(
         onPressed: () async {
           final dbFolder = await getApplicationDocumentsDirectory();
@@ -57,7 +62,8 @@ List<Widget> getDataSettings(
       ),
     if ('export data'.contains(term.toLowerCase())) const ExportData(),
     if ('import data'.contains(term.toLowerCase())) ImportData(ctx: context),
-    if ('delete records'.contains(term.toLowerCase())) DeleteRecordsButton(ctx: context),
+    if ('delete records'.contains(term.toLowerCase()))
+      DeleteRecordsButton(ctx: context),
   ];
 }
 
@@ -66,7 +72,7 @@ class DataSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsState>();
+    final settings = context.watch<SettingsRepository>();
 
     return Scaffold(
       resizeToAvoidBottomInset: false,

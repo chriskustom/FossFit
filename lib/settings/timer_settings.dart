@@ -1,54 +1,62 @@
 import 'package:audioplayers/audioplayers.dart';
-import 'package:drift/drift.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
+import 'package:fossfit/models/constants.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
 List<Widget> getTimerSettings(
   String term,
-  Setting settings,
+  SettingsRepository settings,
   TextEditingController minCtrl,
   TextEditingController secCtrl,
   AudioPlayer player,
   BuildContext context,
 ) {
+  var restTimers = settings.isEnabled(key: 'rest_timers');
+  var vibrate = settings.isEnabled(key: 'vibrate');
+  var enableSound = settings.isEnabled(key: 'enable_sound');
+  var alarmSound = settings.getSetting(key: 'alarm_sound');
   return [
     if ('rest timers'.contains(term.toLowerCase()))
       Tooltip(
         message: 'Alarm that goes off after completing a set',
         child: ListTile(
           title: const Text('Rest timers'),
-          leading: settings.restTimers ? const Icon(Icons.timer) : const Icon(Icons.timer_outlined),
+          leading: restTimers
+              ? const Icon(Icons.timer)
+              : const Icon(Icons.timer_outlined),
           onTap: () async {
-            final newValue = !settings.restTimers;
+            final newValue = !restTimers;
 
             if (newValue) {
               await androidChannel.invokeMethod('requestTimerPermissions');
             }
 
-            oldDb.settings.update().write(
-                  SettingsCompanion(
-                    restTimers: Value(newValue),
-                  ),
-                );
+            await settings.setSetting(
+              category: SettingCategory.timers,
+              key: 'rest_timers',
+              value: newValue ? '1' : '0',
+            );
           },
           trailing: Switch(
-            value: settings.restTimers,
+            value: restTimers,
             onChanged: (value) async {
               if (value) {
                 await androidChannel.invokeMethod('requestTimerPermissions');
               }
 
-              oldDb.settings.update().write(
-                    SettingsCompanion(
-                      restTimers: Value(value),
-                    ),
-                  );
+              await settings.setSetting(
+                category: SettingCategory.timers,
+                key: 'rest_timers',
+                value: value ? '1' : '0',
+              );
             },
           ),
         ),
@@ -60,12 +68,12 @@ List<Widget> getTimerSettings(
           title: const Text('Vibrate'),
           leading: const Icon(Icons.vibration),
           onTap: () async {
-            final newValue = !settings.vibrate;
-            await oldDb.settings.update().write(
-                  SettingsCompanion(
-                    vibrate: Value(newValue),
-                  ),
-                );
+            final newValue = !vibrate;
+            await settings.setSetting(
+              category: SettingCategory.timers,
+              key: 'vibrate',
+              value: newValue ? '1' : '0',
+            );
             if (newValue) {
               try {
                 await androidChannel.invokeMethod('previewVibration');
@@ -75,13 +83,13 @@ List<Widget> getTimerSettings(
             }
           },
           trailing: Switch(
-            value: settings.vibrate,
+            value: vibrate,
             onChanged: (value) async {
-              await oldDb.settings.update().write(
-                    SettingsCompanion(
-                      vibrate: Value(value),
-                    ),
-                  );
+              await settings.setSetting(
+                category: SettingCategory.timers,
+                key: 'vibrate',
+                value: value ? '1' : '0',
+              );
               if (value) {
                 try {
                   await androidChannel.invokeMethod('previewVibration');
@@ -99,18 +107,18 @@ List<Widget> getTimerSettings(
         child: ListTile(
           title: const Text('Enable sound'),
           leading: const Icon(Icons.music_note_outlined),
-          onTap: () => oldDb.settings.update().write(
-                SettingsCompanion(
-                  enableSound: Value(!settings.enableSound),
-                ),
-              ),
+          onTap: () => settings.setSetting(
+            category: SettingCategory.timers,
+            key: 'enable_sound',
+            value: !enableSound ? '1' : '0',
+          ),
           trailing: Switch(
-            value: settings.enableSound,
-            onChanged: (value) => oldDb.settings.update().write(
-                  SettingsCompanion(
-                    enableSound: Value(value),
-                  ),
-                ),
+            value: enableSound,
+            onChanged: (value) => settings.setSetting(
+              category: SettingCategory.timers,
+              key: 'enable_sound',
+              value: value ? '1' : '0',
+            ),
           ),
         ),
       ),
@@ -142,19 +150,18 @@ List<Widget> getTimerSettings(
                       controller: minCtrl,
                       keyboardType: TextInputType.number,
                       onTap: () => selectAll(minCtrl),
-                      onChanged: (value) => oldDb.settings.update().write(
-                            SettingsCompanion(
-                              timerDuration: Value(
-                                Duration(
-                                  minutes: int.parse(value),
-                                  seconds: Duration(
-                                        milliseconds: settings.timerDuration,
-                                      ).inSeconds %
-                                      60,
-                                ).inMilliseconds,
-                              ),
-                            ),
-                          ),
+                      onChanged: (value) => settings.setSetting(
+                        category: SettingCategory.timers,
+                        key: 'timer_duration',
+                        value: Duration(
+                          minutes: int.parse(value),
+                          seconds: Duration(
+                                milliseconds:
+                                    settings.getInt(key: 'timer_duration'),
+                              ).inSeconds %
+                              60,
+                        ).inMilliseconds.toString(),
+                      ),
                     ),
                   ),
                   const SizedBox(
@@ -168,18 +175,17 @@ List<Widget> getTimerSettings(
                       controller: secCtrl,
                       keyboardType: TextInputType.number,
                       onTap: () => selectAll(secCtrl),
-                      onChanged: (value) => oldDb.settings.update().write(
-                            SettingsCompanion(
-                              timerDuration: Value(
-                                Duration(
-                                  seconds: int.parse(value),
-                                  minutes: Duration(
-                                    milliseconds: settings.timerDuration,
-                                  ).inMinutes.floor(),
-                                ).inMilliseconds,
-                              ),
-                            ),
-                          ),
+                      onChanged: (value) => settings.setSetting(
+                        category: SettingCategory.timers,
+                        key: 'timer_duration',
+                        value: Duration(
+                          seconds: int.parse(value),
+                          minutes: Duration(
+                            milliseconds:
+                                settings.getInt(key: 'timer_duration'),
+                          ).inMinutes.floor(),
+                        ).inMilliseconds.toString(),
+                      ),
                     ),
                   ),
                 ],
@@ -199,25 +205,26 @@ List<Widget> getTimerSettings(
               onPressed: () async {
                 final result = await FilePicker.pickFile(type: FileType.audio);
                 if (result == null || result.path == null) return;
-                oldDb.settings.update().write(
-                      SettingsCompanion(
-                        alarmSound: Value(result.path!),
-                      ),
-                    );
+                settings.setSetting(
+                  category: SettingCategory.timers,
+                  key: 'alarm_sound',
+                  value: result.path!,
+                );
                 player.play(DeviceFileSource(result.path!));
               },
               icon: const Icon(Icons.music_note),
-              label:
-                  settings.alarmSound.isEmpty ? const Text("Alarm sound") : Text(settings.alarmSound.split('/').last),
+              label: alarmSound.isEmpty
+                  ? const Text("Alarm sound")
+                  : Text(alarmSound.split('/').last),
             ),
-            if (settings.alarmSound.isNotEmpty)
+            if (alarmSound.isNotEmpty)
               TextButton.icon(
                 onPressed: () {
-                  oldDb.settings.update().write(
-                        const SettingsCompanion(
-                          alarmSound: Value(''),
-                        ),
-                      );
+                  settings.setSetting(
+                    category: SettingCategory.timers,
+                    key: 'alarm_sound',
+                    value: '',
+                  );
                 },
                 label: const Text("Delete"),
                 icon: const Icon(Icons.delete),
@@ -232,22 +239,28 @@ class TimerSettings extends StatefulWidget {
   const TimerSettings({super.key});
 
   @override
-  State<TimerSettings> createState() => _TimerSettingsState();
+  State<TimerSettings> createState() => _TimerSettingsRepository();
 }
 
-class _TimerSettingsState extends State<TimerSettings> {
-  late SettingsState settings = context.read<SettingsState>();
+class _TimerSettingsRepository extends State<TimerSettings> {
+  late SettingsRepository settings = context.read<SettingsRepository>();
+  late GymSetsRepository gymSetRepository = context.read<GymSetsRepository>();
   late final minCtrl = TextEditingController(
-    text: (Duration(milliseconds: settings.value.timerDuration)).inMinutes.toString(),
+    text: (Duration(milliseconds: settings.getInt(key: 'timer_duration')))
+        .inMinutes
+        .toString(),
   );
   late final secCtrl = TextEditingController(
-    text: ((Duration(milliseconds: settings.value.timerDuration)).inSeconds % 60).toString(),
+    text: ((Duration(milliseconds: settings.getInt(key: 'timer_duration')))
+                .inSeconds %
+            60)
+        .toString(),
   );
 
   AudioPlayer? player;
-  List<GymSetsCompanion> exercisesWithCustomTimers = [];
-  Map<String, TextEditingController> minuteControllers = {};
-  Map<String, TextEditingController> secondControllers = {};
+  List<GymSet> setsWithCustomTimers = [];
+  Map<int, TextEditingController> minuteControllers = {};
+  Map<int, TextEditingController> secondControllers = {};
 
   @override
   void initState() {
@@ -266,32 +279,29 @@ class _TimerSettingsState extends State<TimerSettings> {
   }
 
   Future<void> _loadExercisesWithCustomTimers() async {
-    final exercises = await (oldDb.selectOnly(oldDb.gymSets)
-          ..addColumns([oldDb.gymSets.name, oldDb.gymSets.restMs])
-          ..where(oldDb.gymSets.restMs.isNotNull())
-          ..groupBy([oldDb.gymSets.name]))
-        .get();
+    final gymSets = gymSetRepository.gymsets
+        .where((set) => set.restMs != null)
+        .fold<Map<String, GymSet>>({}, (map, set) {
+          map.putIfAbsent(set.exercise!.name, () => set);
+          return map;
+        })
+        .values
+        .toList();
 
     setState(() {
-      exercisesWithCustomTimers = exercises
-          .map(
-            (result) => GymSetsCompanion(
-              name: Value(result.read(oldDb.gymSets.name)!),
-              restMs: Value(result.read(oldDb.gymSets.restMs)),
-            ),
-          )
-          .toList();
+      setsWithCustomTimers = gymSets;
 
-      // Initialize controllers for each exercise
-      for (final result in exercises) {
-        final exerciseName = result.read(oldDb.gymSets.name)!;
-        final restMs = result.read(oldDb.gymSets.restMs);
+      for (final gymSet in gymSets) {
+        final restMs = gymSet.restMs;
+
         if (restMs != null) {
           final duration = Duration(milliseconds: restMs);
-          minuteControllers[exerciseName] = TextEditingController(
+
+          minuteControllers[gymSet.id!] = TextEditingController(
             text: duration.inMinutes.toString(),
           );
-          secondControllers[exerciseName] = TextEditingController(
+
+          secondControllers[gymSet.id!] = TextEditingController(
             text: (duration.inSeconds % 60).toString(),
           );
         }
@@ -300,7 +310,7 @@ class _TimerSettingsState extends State<TimerSettings> {
   }
 
   Future<void> _updateExerciseRestTime(
-    String exerciseName,
+    GymSet gymSet,
     int? minutes,
     int? seconds,
   ) async {
@@ -311,39 +321,34 @@ class _TimerSettingsState extends State<TimerSettings> {
     if (mins > 0 || secs > 0) {
       duration = Duration(minutes: mins, seconds: secs);
     }
-
-    await (oldDb.gymSets.update()..where((tbl) => tbl.name.equals(exerciseName))).write(
-      GymSetsCompanion(
-        restMs: Value(duration?.inMilliseconds),
-      ),
+    await gymSetRepository.updateGymSet(
+      gymSet.copyWith(duration: duration?.inMilliseconds.toDouble()),
     );
 
     // If duration is null (both minutes and seconds are 0), remove from list
     if (duration == null) {
       setState(() {
-        exercisesWithCustomTimers.removeWhere((e) => e.name.value == exerciseName);
-        minuteControllers.remove(exerciseName);
-        secondControllers.remove(exerciseName);
+        setsWithCustomTimers.removeWhere((e) => e.id == gymSet.id);
+        minuteControllers.remove(gymSet.id);
+        secondControllers.remove(gymSet.id);
       });
     }
   }
 
-  Future<void> _removeCustomTimer(String exerciseName) async {
-    await (oldDb.gymSets.update()..where((tbl) => tbl.name.equals(exerciseName))).write(
-      const GymSetsCompanion(
-        restMs: Value(null),
-      ),
+  Future<void> _removeCustomTimer(GymSet gymSet) async {
+    await gymSetRepository.updateGymSet(
+      gymSet.copyWith(duration: null),
     );
 
     setState(() {
-      exercisesWithCustomTimers.removeWhere((e) => e.name.value == exerciseName);
-      minuteControllers.remove(exerciseName);
-      secondControllers.remove(exerciseName);
+      setsWithCustomTimers.removeWhere((e) => e.id == gymSet.id!);
+      minuteControllers.remove(gymSet.id!);
+      secondControllers.remove(gymSet.id!);
     });
   }
 
   Widget _buildPerExerciseSection() {
-    if (exercisesWithCustomTimers.isEmpty) {
+    if (setsWithCustomTimers.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -367,16 +372,19 @@ class _TimerSettingsState extends State<TimerSettings> {
           Text(
             "These exercises have custom rest durations",
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).textTheme.bodyMedium?.color?.withAlpha((255 * 0.7).round()),
+                  color: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.color
+                      ?.withAlpha((255 * 0.7).round()),
                 ),
           ),
           const SizedBox(height: 16),
-          ...exercisesWithCustomTimers.map((exercise) {
-            final exerciseName = exercise.name.value;
-            if (minuteControllers[exerciseName] == null || secondControllers[exerciseName] == null)
-              return const SizedBox();
-            final minController = minuteControllers[exerciseName]!;
-            final secController = secondControllers[exerciseName]!;
+          ...setsWithCustomTimers.map((gymSet) {
+            if (minuteControllers[gymSet.id!] == null ||
+                secondControllers[gymSet.id!] == null) return const SizedBox();
+            final minController = minuteControllers[gymSet.id!]!;
+            final secController = secondControllers[gymSet.id!]!;
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
@@ -389,13 +397,13 @@ class _TimerSettingsState extends State<TimerSettings> {
                       children: [
                         Expanded(
                           child: Text(
-                            exerciseName,
+                            gymSet.exercise!.name,
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline),
-                          onPressed: () => _removeCustomTimer(exerciseName),
+                          onPressed: () => _removeCustomTimer(gymSet),
                           tooltip: 'Remove custom timer (use global default)',
                         ),
                       ],
@@ -414,9 +422,10 @@ class _TimerSettingsState extends State<TimerSettings> {
                             onTap: () => selectAll(minController),
                             onChanged: (value) {
                               final minutes = int.tryParse(value) ?? 0;
-                              final seconds = int.tryParse(secController.text) ?? 0;
+                              final seconds =
+                                  int.tryParse(secController.text) ?? 0;
                               _updateExerciseRestTime(
-                                exerciseName,
+                                gymSet,
                                 minutes,
                                 seconds,
                               );
@@ -434,10 +443,11 @@ class _TimerSettingsState extends State<TimerSettings> {
                             keyboardType: TextInputType.number,
                             onTap: () => selectAll(secController),
                             onChanged: (value) {
-                              final minutes = int.tryParse(minController.text) ?? 0;
+                              final minutes =
+                                  int.tryParse(minController.text) ?? 0;
                               final seconds = int.tryParse(value) ?? 0;
                               _updateExerciseRestTime(
-                                exercise.name.value,
+                                gymSet,
                                 minutes,
                                 seconds,
                               );
@@ -458,7 +468,7 @@ class _TimerSettingsState extends State<TimerSettings> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsState>();
+    final settings = context.watch<SettingsRepository>();
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -470,7 +480,7 @@ class _TimerSettingsState extends State<TimerSettings> {
             ? [
                 ...getTimerSettings(
                   '',
-                  settings.value,
+                  settings,
                   minCtrl,
                   secCtrl,
                   player!,

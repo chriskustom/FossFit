@@ -1,14 +1,13 @@
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/constants.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/main.dart';
+import 'package:fossfit/models/constants.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
 List<Widget> getPlanSettings(
   String term,
-  Setting settings,
+  SettingsRepository settings,
   TextEditingController max,
   TextEditingController warmup,
 ) {
@@ -26,11 +25,11 @@ List<Widget> getPlanSettings(
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: false),
             onTap: () => selectAll(warmup),
-            onChanged: (value) => oldDb.settings.update().write(
-                  SettingsCompanion(
-                    warmupSets: Value(int.parse(value)),
-                  ),
-                ),
+            onChanged: (value) => settings.setSetting(
+              category: SettingCategory.plans,
+              key: 'warmup_sets',
+              value: value.toString(),
+            ),
           ),
         ),
       ),
@@ -48,11 +47,11 @@ List<Widget> getPlanSettings(
             onTap: () => selectAll(max),
             onChanged: (value) {
               if (int.parse(value) > 0 && int.parse(value) <= 20) {
-                oldDb.settings.update().write(
-                      SettingsCompanion(
-                        maxSets: Value(int.parse(value)),
-                      ),
-                    );
+                settings.setSetting(
+                  category: SettingCategory.plans,
+                  key: 'max_sets',
+                  value: value.toString(),
+                );
               }
             },
           ),
@@ -65,7 +64,9 @@ List<Widget> getPlanSettings(
           message: 'Right side of list displays in Plans + Plan view',
           child: DropdownButtonFormField<PlanTrailing>(
             initialValue: PlanTrailing.values.byName(
-              settings.planTrailing.replaceFirst('PlanTrailing.', ''),
+              settings
+                  .getSetting(key: 'plan_trailing')
+                  .replaceFirst('PlanTrailing.', ''),
             ),
             decoration: const InputDecoration(
               labelStyle: TextStyle(),
@@ -117,11 +118,11 @@ List<Widget> getPlanSettings(
                 child: Text("None"),
               ),
             ],
-            onChanged: (value) => oldDb.settings.update().write(
-                  SettingsCompanion(
-                    planTrailing: Value(value.toString()),
-                  ),
-                ),
+            onChanged: (value) => settings.setSetting(
+              category: SettingCategory.plans,
+              key: 'plan_trailing',
+              value: value.toString(),
+            ),
           ),
         ),
       ),
@@ -132,19 +133,22 @@ class PlanSettings extends StatefulWidget {
   const PlanSettings({super.key});
 
   @override
-  State<PlanSettings> createState() => _PlanSettingsState();
+  State<PlanSettings> createState() => _PlanSettingsRepository();
 }
 
-class _PlanSettingsState extends State<PlanSettings> {
+class _PlanSettingsRepository extends State<PlanSettings> {
   late var settings = context.watch<SettingsRepository>();
 
-  late final max = TextEditingController(text: settings.maxSets.toString());
+  late final max =
+      TextEditingController(text: settings.getInt(key: 'max_sets').toString());
 
-  late final warmup = TextEditingController(text: settings.warmupSets?.toString());
+  late final warmup = TextEditingController(
+    text: settings.getInt(key: 'warmup_sets').toString(),
+  );
 
   @override
   Widget build(BuildContext context) {
-    settings = context.watch<SettingsState>().value;
+    settings = context.watch<SettingsRepository>();
 
     return Scaffold(
       resizeToAvoidBottomInset: false,

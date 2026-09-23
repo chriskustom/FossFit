@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/models/gym_sets_model.dart';
+import 'package:fossfit/models/exercise_model.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/sets/history_list.dart';
 import 'package:provider/provider.dart';
 
 class GraphHistoryPage extends StatefulWidget {
-  final String name;
-  final List<GymSets> gymSets;
+  final Exercise exercise;
+  final List<GymSet> gymSets;
   final bool? peek;
 
   const GraphHistoryPage({
     super.key,
-    required this.name,
+    required this.exercise,
     required this.gymSets,
     this.peek = false,
   });
@@ -22,7 +23,7 @@ class GraphHistoryPage extends StatefulWidget {
 }
 
 class _GraphHistoryPageState extends State<GraphHistoryPage> {
-  late List<GymSets> sets = widget.gymSets;
+  late List<GymSet> sets = widget.gymSets;
   int limit = 20;
   final scroll = ScrollController();
   TabController? ctrl;
@@ -32,13 +33,13 @@ class _GraphHistoryPageState extends State<GraphHistoryPage> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: Text(widget.name),
+        title: Text(widget.exercise.name),
       ),
       body: Builder(
         builder: (context) {
           if (sets.isEmpty)
             return ListTile(
-              title: Text("No data yet for ${widget.name}"),
+              title: Text("No data yet for ${widget.exercise.name}"),
               subtitle: const Text("Enter some data to view graphs here"),
             );
 
@@ -83,7 +84,7 @@ class _GraphHistoryPageState extends State<GraphHistoryPage> {
         .watch<GymSetsRepository>()
         .gymsets
         .where(
-          (e) => !e.hidden && e.name == widget.name,
+          (e) => !e.hidden && e.exerciseId == widget.exercise.id,
         )
         .take(limit)
         .toList();
@@ -97,7 +98,8 @@ class _GraphHistoryPageState extends State<GraphHistoryPage> {
 
   void tabListener() {
     final settings = context.watch<SettingsRepository>();
-    final index = settings.getSetting(key: 'tabs').split(',').indexOf('GraphsPage');
+    final index =
+        settings.getSetting(key: 'tabs').split(',').indexOf('GraphsPage');
     if (ctrl!.indexIsChanging == true) return;
     if (ctrl!.index != index) return;
     setSets();

@@ -39,6 +39,7 @@ dependencies:
   timezone: ^0.11.1
   flutter_timezone: ^5.1.0
   platform_detail: ^5.5.0
+  collection: ^1.19.1
 
 dev_dependencies:
   flutter_test:
@@ -130,7 +131,6 @@ flutter:
         - asset: assets/fonts/Roboto/Roboto-VariableFont_wdth,wght.ttf
           weight: 100
           style: normal
-
 
 flutter_launcher_icons:
   android: true

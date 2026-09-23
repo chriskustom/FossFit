@@ -100,7 +100,8 @@ class _AppSearchState extends State<AppSearch> {
         onChanged: widget.onChange,
         leading: AnimatedSwitcher(
           duration: const Duration(milliseconds: 150),
-          transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+          transitionBuilder: (child, animation) =>
+              ScaleTransition(scale: animation, child: child),
           child: widget.selected.isEmpty && ctrl.text.isEmpty == true
               ? const Padding(
                   padding: EdgeInsets.only(left: 16.0, right: 8.0),
@@ -123,20 +124,26 @@ class _AppSearchState extends State<AppSearch> {
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 150),
             child: trailingMain,
-            transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+            transitionBuilder: (child, animation) =>
+                ScaleTransition(scale: animation, child: child),
           ),
           Badge.count(
             count: widget.selected.length,
             isLabelVisible: widget.selected.isNotEmpty,
             backgroundColor: Theme.of(context).colorScheme.primary,
             child: Selector<SettingsRepository, bool>(
-              selector: (p0, settings) => settings.value.showBodyWeight,
+              selector: (p0, settings) =>
+                  settings.isEnabled(key: 'show_body_weight'),
               builder: (context, showBodyWeight, child) => IconButton(
                 icon: const Icon(Icons.more_vert),
                 tooltip: "Show menu",
                 onPressed: () async {
-                  final RenderBox button = context.findRenderObject() as RenderBox;
-                  final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
+                  final RenderBox button =
+                      context.findRenderObject() as RenderBox;
+                  final RenderBox overlay = Navigator.of(context)
+                      .overlay!
+                      .context
+                      .findRenderObject() as RenderBox;
                   final RelativeRect position = RelativeRect.fromRect(
                     Rect.fromPoints(
                       button.localToGlobal(Offset.zero, ancestor: overlay),

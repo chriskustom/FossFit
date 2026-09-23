@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
-import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/models/gym_sets_model.dart';
+import 'package:fossfit/models/exercise_model.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
@@ -20,9 +20,11 @@ class AddExercisePage extends StatefulWidget {
 
 class _AddExercisePageState extends State<AddExercisePage> {
   final TextEditingController nameCtrl = TextEditingController();
+  TextEditingController catController = TextEditingController();
   bool cardio = false;
 
   String unit = 'kg';
+  String? category;
 
   String? image;
   final key = GlobalKey<FormState>();
@@ -62,7 +64,8 @@ class _AddExercisePageState extends State<AddExercisePage> {
                 decoration: const InputDecoration(labelText: 'Name'),
                 textCapitalization: TextCapitalization.sentences,
                 autofocus: true,
-                validator: (value) => value?.isNotEmpty == true ? null : 'Required',
+                validator: (value) =>
+                    value?.isNotEmpty == true ? null : 'Required',
               ),
               DropdownButtonFormField<String>(
                 decoration: const InputDecoration(labelText: 'Unit'),
@@ -96,9 +99,20 @@ class _AddExercisePageState extends State<AddExercisePage> {
                 },
               ),
               const SizedBox(height: 8),
+              TextFormField(
+                controller: catController,
+                decoration: const InputDecoration(
+                  labelText: 'Category',
+                ),
+                onChanged: (value) => setState(() {
+                  category = value;
+                }),
+              ),
               ListTile(
                 title: cardio ? const Text('Cardio') : const Text('Strength'),
-                leading: cardio ? const Icon(Icons.sports_gymnastics) : const Icon(Icons.fitness_center),
+                leading: cardio
+                    ? const Icon(Icons.sports_gymnastics)
+                    : const Icon(Icons.fitness_center),
                 onTap: () {
                   setState(() {
                     if (cardio)
@@ -143,7 +157,8 @@ class _AddExercisePageState extends State<AddExercisePage> {
                       const SizedBox(height: 8),
                       Image.file(
                         File(image!),
-                        errorBuilder: (context, error, stackTrace) => TextButton.icon(
+                        errorBuilder: (context, error, stackTrace) =>
+                            TextButton.icon(
                           label: const Text('Image error'),
                           icon: const Icon(Icons.error),
                           onPressed: () => pick(),
@@ -183,19 +198,72 @@ class _AddExercisePageState extends State<AddExercisePage> {
   Future<void> save(String unit) async {
     if (!key.currentState!.validate()) return;
 
-    final insert = GymSets(
-      created: DateTime.now().toLocal(),
-      reps: 0,
-      weight: 0,
+    final insert = Exercise(
       name: nameCtrl.text,
-      unit: unit,
       cardio: cardio,
-      hidden: true,
       image: image,
+      category: category,
     );
-    context.read<GymSetsRepository>().addGymSets(insert);
+    context.read<ExercisesRepository>().addExercise(insert);
     if (!mounted) return;
 
     Navigator.pop(context, insert);
+  }
+
+  Widget categorySelector() {
+    return Selector<SettingsRepository, bool>(
+      selector: (context, settings) =>
+          settings.isEnabled(key: 'show_categories'),
+      builder: (context, showCategories, child) {
+        if (!showCategories || !cardio) {
+          return const SizedBox();
+        }
+        var repo = context.watch<ExercisesRepository>();
+        return FutureBuilder(
+          future: repo.getDistinctCategories(),
+          builder: (context, snapshot) {
+            return Autocomplete<String>(
+              initialValue: TextEditingValue(
+                text: repo.getExerciseByName(widget.name ?? '')?.category ?? "",
+              ),
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (snapshot.data == null) return [];
+                if (textEditingValue.text == '') {
+                  return snapshot.data!;
+                }
+                return snapshot.data!.where((String option) {
+                  return option.toLowerCase().contains(
+                        textEditingValue.text.toLowerCase(),
+                      );
+                });
+              },
+              onSelected: (String selection) {
+                setState(() {
+                  category = selection;
+                });
+              },
+              fieldViewBuilder: (
+                BuildContext context,
+                TextEditingController textEditingController,
+                FocusNode focusNode,
+                VoidCallback onFieldSubmitted,
+              ) {
+                catController = textEditingController;
+                return TextFormField(
+                  controller: textEditingController,
+                  focusNode: focusNode,
+                  decoration: const InputDecoration(
+                    labelText: 'Category',
+                  ),
+                  onChanged: (value) => setState(() {
+                    category = value;
+                  }),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 }

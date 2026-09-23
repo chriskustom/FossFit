@@ -29,7 +29,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    final setting = context.read<SettingsState>().value.tabs;
+    final setting = context.read<SettingsRepository>().value.tabs;
     final tabs = setting.split(',');
     controller = TabController(length: tabs.length, vsync: this);
 
@@ -71,7 +71,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void hideTab(BuildContext context, String tab) {
-    final state = context.read<SettingsState>();
+    final state = context.read<SettingsRepository>();
     final old = state.value.tabs;
     var tabs = state.value.tabs.split(',');
 
@@ -99,9 +99,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final setting = context.select<SettingsState, String>((settings) => settings.value.tabs);
+    final setting = context.select<SettingsRepository, String>((settings) => settings.value.tabs);
     final tabs = setting.split(',');
-    final scrollableTabs = context.select<SettingsState, bool>(
+    final scrollableTabs = context.select<SettingsRepository, bool>(
       (settings) => settings.value.scrollableTabs,
     );
 

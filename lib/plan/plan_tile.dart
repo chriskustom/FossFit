@@ -1,10 +1,11 @@
-import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/constants.dart';
+import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
+import 'package:fossfit/db/repositories/plans_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/main.dart';
-import 'package:fossfit/plan/plan_state.dart';
+import 'package:fossfit/models/plan_exercise_model.dart';
+import 'package:fossfit/models/plan_model.dart';
 import 'package:fossfit/plan/start_plan_page.dart';
 import 'package:provider/provider.dart';
 
@@ -31,27 +32,19 @@ class PlanTile extends StatefulWidget {
 }
 
 class _PlanTileState extends State<PlanTile> {
-  late Stream<List<PlanExercise>> _exercisesStream;
+  late List<PlanExercise> _exercisesStream;
 
   @override
   void initState() {
     super.initState();
-    _exercisesStream = _getExercises();
-  }
-
-  Stream<List<PlanExercise>> _getExercises() {
-    return (oldDb.planExercises.select()
-          ..where((tbl) => tbl.planId.equals(widget.plan.id) & tbl.enabled)
-          ..orderBy(
-            [
-              (u) => OrderingTerm(expression: u.sequence, mode: OrderingMode.asc),
-            ],
-          ))
-        .watch();
   }
 
   @override
   Widget build(BuildContext context) {
+    _exercisesStream = context
+        .watch<PlanExercisesRepository>()
+        .getPlanExercisesByPlanId(widget.plan.id!);
+    var settingsRepo = context.watch<SettingsRepository>();
     Widget title = const Text("Daily");
     if (widget.plan.title?.isNotEmpty == true) {
       final today = widget.plan.days.split(',').contains(widget.weekday);
@@ -71,14 +64,14 @@ class _PlanTileState extends State<PlanTile> {
       child: Checkbox(
         value: widget.selected.contains(widget.plan.id),
         onChanged: (value) {
-          widget.onSelect(widget.plan.id);
+          widget.onSelect(widget.plan.id!);
         },
       ),
     );
 
     if (widget.selected.isEmpty)
       leading = GestureDetector(
-        onTap: () => widget.onSelect(widget.plan.id),
+        onTap: () => widget.onSelect(widget.plan.id!),
         child: Container(
           width: 24,
           height: 24,
@@ -88,7 +81,9 @@ class _PlanTileState extends State<PlanTile> {
           ),
           child: Center(
             child: Text(
-              widget.plan.title?.isNotEmpty == true ? widget.plan.title![0] : widget.plan.days[0].toUpperCase(),
+              widget.plan.title?.isNotEmpty == true
+                  ? widget.plan.title![0]
+                  : widget.plan.days[0].toUpperCase(),
               textAlign: TextAlign.justify,
               style: const TextStyle(
                 color: Colors.white,
@@ -125,40 +120,36 @@ class _PlanTileState extends State<PlanTile> {
       ),
       child: ListTile(
         title: title,
-        subtitle: StreamBuilder(
-          stream: _exercisesStream,
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              return Text(
+        subtitle: _exercisesStream.isNotEmpty
+            ? Text(
                 overflow: TextOverflow.ellipsis,
-                snapshot.data!.map((e) => e.exercise).join(', '),
+                _exercisesStream.map((e) => e.exercise!.name).join(', '),
                 maxLines: 2,
-              );
-            } else if (snapshot.hasError) {
-              return Text('Error: ${snapshot.error}');
-            }
-            return const Text('Loading exercises...');
-          },
-        ),
+              )
+            : Text('No exercises found...'),
         leading: leading,
         trailing: Builder(
           builder: (context) {
-            final trailing = context.select<SettingsState, PlanTrailing>(
-              (settings) => PlanTrailing.values.byName(
-                settings.value.planTrailing.replaceFirst('PlanTrailing.', ''),
-              ),
+            final trailing = PlanTrailing.values.byName(
+              settingsRepo
+                  .getSetting(key: 'plan_trailing')
+                  .replaceFirst('PlanTrailing.', ''),
             );
+
             if (trailing == PlanTrailing.none) return const SizedBox();
-            if (trailing == PlanTrailing.reorder && defaultTargetPlatform == TargetPlatform.linux)
+            if (trailing == PlanTrailing.reorder &&
+                defaultTargetPlatform == TargetPlatform.linux)
               return const SizedBox();
-            else if (trailing == PlanTrailing.reorder && defaultTargetPlatform == TargetPlatform.android)
+            else if (trailing == PlanTrailing.reorder &&
+                defaultTargetPlatform == TargetPlatform.android)
               return ReorderableDragStartListener(
                 index: widget.index,
                 child: const Icon(Icons.drag_handle),
               );
 
-            final state = context.watch<PlanState>();
-            final idx = state.planCounts.indexWhere((element) => element.planId == widget.plan.id);
+            final state = context.watch<PlansRepository>();
+            final idx = state.planCounts
+                .indexWhere((element) => element.planId == widget.plan.id);
             PlanCount count;
             if (idx != -1)
               count = state.planCounts[idx];
@@ -184,9 +175,10 @@ class _PlanTileState extends State<PlanTile> {
           },
         ),
         onTap: () async {
-          if (widget.selected.isNotEmpty) return widget.onSelect(widget.plan.id);
-          final state = context.read<PlanState>();
-          await state.updateGymCounts(widget.plan.id);
+          if (widget.selected.isNotEmpty)
+            return widget.onSelect(widget.plan.id!);
+          final state = context.read<PlansRepository>();
+          await state.updateGymCounts(widget.plan.id!);
 
           widget.navigatorKey.currentState!.push(
             MaterialPageRoute(
@@ -197,7 +189,7 @@ class _PlanTileState extends State<PlanTile> {
           );
         },
         onLongPress: () {
-          widget.onSelect(widget.plan.id);
+          widget.onSelect(widget.plan.id!);
         },
       ),
     );
@@ -213,9 +205,11 @@ class _PlanTileState extends State<PlanTile> {
         TextSpan(
           text: day.trim(),
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontWeight: widget.weekday == day.trim() ? FontWeight.bold : null,
-                decoration: widget.weekday == day.trim() ? TextDecoration.underline : null,
-//                color: widget.weekday == day.trim() ? Theme.of(context).colorScheme.inversePrimary : null,
+                fontWeight:
+                    widget.weekday == day.trim() ? FontWeight.bold : null,
+                decoration: widget.weekday == day.trim()
+                    ? TextDecoration.underline
+                    : null,
               ),
         ),
       );

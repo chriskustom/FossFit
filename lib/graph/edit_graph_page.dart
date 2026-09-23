@@ -3,29 +3,31 @@ import 'dart:io';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
+import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
-import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
 import 'package:fossfit/db/repositories/plans_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/models/gym_sets_model.dart';
+import 'package:fossfit/models/exercise_model.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
 class EditGraphPage extends StatefulWidget {
-  final String name;
+  final Exercise exercise;
 
-  const EditGraphPage({required this.name, super.key});
+  const EditGraphPage({required this.exercise, super.key});
 
   @override
   createState() => _EditGraphPageState();
 }
 
 class _EditGraphPageState extends State<EditGraphPage> {
-  late final TextEditingController name = TextEditingController(text: widget.name);
+  late final TextEditingController name =
+      TextEditingController(text: widget.exercise.name);
   final TextEditingController minutes = TextEditingController();
   final TextEditingController seconds = TextEditingController();
   final key = GlobalKey<FormState>();
-  List<GymSets> gymSets = [];
+  List<GymSet> gymSets = [];
   bool? cardio;
   String? unit;
   String? image;
@@ -34,10 +36,10 @@ class _EditGraphPageState extends State<EditGraphPage> {
   @override
   Widget build(BuildContext context) {
     gymSets = context.watch<GymSetsRepository>().gymsets;
-    var firstGymSet = gymSets.last;
-    image = firstGymSet.image;
-    cardio = firstGymSet.cardio;
-    category = firstGymSet.category;
+    var firstGymSet = gymSets.first;
+    image = widget.exercise.image;
+    cardio = widget.exercise.cardio;
+    category = widget.exercise.category;
 
     if (firstGymSet.restMs != null) {
       final duration = Duration(milliseconds: firstGymSet.restMs!);
@@ -48,7 +50,7 @@ class _EditGraphPageState extends State<EditGraphPage> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: Text("Update all ${widget.name.toLowerCase()}"),
+        title: Text("Update all ${widget.exercise.name.toLowerCase()}"),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -68,12 +70,14 @@ class _EditGraphPageState extends State<EditGraphPage> {
                     child: TextFormField(
                       controller: minutes,
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(labelText: "Rest minutes"),
+                      decoration:
+                          const InputDecoration(labelText: "Rest minutes"),
                       keyboardType: material.TextInputType.number,
                       onTap: () => selectAll(minutes),
                       validator: (value) {
                         if (value == null || value.isEmpty) return null;
-                        if (int.tryParse(value) == null) return 'Invalid number';
+                        if (int.tryParse(value) == null)
+                          return 'Invalid number';
                         return null;
                       },
                     ),
@@ -85,14 +89,16 @@ class _EditGraphPageState extends State<EditGraphPage> {
                     child: TextFormField(
                       controller: seconds,
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(labelText: "Rest seconds"),
+                      decoration:
+                          const InputDecoration(labelText: "Rest seconds"),
                       keyboardType: material.TextInputType.number,
                       onTap: () {
                         selectAll(seconds);
                       },
                       validator: (value) {
                         if (value == null || value.isEmpty) return null;
-                        if (int.tryParse(value) == null) return 'Invalid number';
+                        if (int.tryParse(value) == null)
+                          return 'Invalid number';
                         return null;
                       },
                     ),
@@ -100,14 +106,17 @@ class _EditGraphPageState extends State<EditGraphPage> {
                 ],
               ),
               Selector<SettingsRepository, bool>(
-                selector: (p0, settings) => settings.isEnabled(key: 'showCategories'),
+                selector: (p0, settings) =>
+                    settings.isEnabled(key: 'showCategories'),
                 builder: (context, showCategories, child) {
                   if (!showCategories) return const SizedBox();
                   return FutureBuilder(
-                    future: context.watch<GymSetsRepository>().getCategoriesList(),
+                    future:
+                        context.watch<GymSetsRepository>().getCategoriesList(),
                     builder: (context, snapshot) {
                       return DropdownButtonFormField(
-                        decoration: const InputDecoration(labelText: 'Category'),
+                        decoration:
+                            const InputDecoration(labelText: 'Category'),
                         initialValue: category,
                         items: snapshot.data
                             ?.map(
@@ -160,8 +169,11 @@ class _EditGraphPageState extends State<EditGraphPage> {
               ),
               if (cardio != null)
                 ListTile(
-                  leading: cardio! ? const Icon(Icons.sports_gymnastics) : const Icon(Icons.fitness_center),
-                  title: cardio! ? const Text('Cardio') : const Text('Strength'),
+                  leading: cardio!
+                      ? const Icon(Icons.sports_gymnastics)
+                      : const Icon(Icons.fitness_center),
+                  title:
+                      cardio! ? const Text('Cardio') : const Text('Strength'),
                   onTap: () {
                     setState(() {
                       cardio = !cardio!;
@@ -209,7 +221,8 @@ class _EditGraphPageState extends State<EditGraphPage> {
                           const SizedBox(height: 8),
                           Image.file(
                             File(image!),
-                            errorBuilder: (context, error, stackTrace) => TextButton.icon(
+                            errorBuilder: (context, error, stackTrace) =>
+                                TextButton.icon(
                               label: const Text('Image error'),
                               icon: const Icon(Icons.error),
                               onPressed: () => pick(),
@@ -220,7 +233,8 @@ class _EditGraphPageState extends State<EditGraphPage> {
                     ),
                   );
                 },
-                selector: (context, settings) => settings.isEnabled(key: 'show_images'),
+                selector: (context, settings) =>
+                    settings.isEnabled(key: 'show_images'),
               ),
             ],
           ),
@@ -244,7 +258,7 @@ class _EditGraphPageState extends State<EditGraphPage> {
 
   Future<void> doUpdate() async {
     var repo = context.read<GymSetsRepository>();
-    var peRepo = context.read<PlanExercisesRepository>();
+    var exerciseRepo = context.read<ExercisesRepository>();
     Duration? duration;
     if (int.tryParse(minutes.text) != null && int.tryParse(minutes.text)! > 0 ||
         int.tryParse(seconds.text) != null && int.tryParse(seconds.text)! > 0)
@@ -252,30 +266,29 @@ class _EditGraphPageState extends State<EditGraphPage> {
         minutes: int.tryParse(minutes.text) ?? 0,
         seconds: int.tryParse(seconds.text) ?? 0,
       );
-    var toUpdate = gymSets.where((tbl) => tbl.name == widget.name);
+    var toUpdate = gymSets.where((tbl) => tbl.exerciseId == widget.exercise.id);
     for (final oldGymSet in toUpdate) {
+      if (name.text != widget.exercise.name) {
+        exerciseRepo.updateExercise(
+          widget.exercise.copyWith(
+            name: name.text != widget.exercise.name
+                ? name.text
+                : widget.exercise.name,
+            category: category,
+            image: image,
+            cardio: cardio,
+          ),
+        );
+      }
       var newGymSet = oldGymSet.copyWith(
-        name: name.text.isEmpty ? '' : name.text,
-        cardio: cardio,
         unit: unit,
         restMs: duration?.inMilliseconds,
-        image: image,
-        category: category,
         created: null,
         hidden: null,
         reps: null,
         weight: null,
       );
-      await repo.updateGymSets(newGymSet);
-      if (oldGymSet.planId != null) {
-        var planExercies = peRepo.getPlanExercisesByPlanId(oldGymSet.planId!);
-        for (final pe in planExercies) {
-          var newPe = pe.copyWith(
-            exercise: name.text.isEmpty ? '' : name.text,
-          );
-          await peRepo.updatePlanExercises(newPe);
-        }
-      }
+      await repo.updateGymSet(newGymSet);
     }
 
     if (!mounted) return;
@@ -283,7 +296,11 @@ class _EditGraphPageState extends State<EditGraphPage> {
   }
 
   Future<int> getCount() async {
-    final result = context.watch<GymSetsRepository>().gymsets.where((t) => t.name == name.text).length;
+    final result = context
+        .watch<GymSetsRepository>()
+        .gymsets
+        .where((t) => t.exerciseId == widget.exercise.id)
+        .length;
     return result;
   }
 
@@ -310,7 +327,7 @@ class _EditGraphPageState extends State<EditGraphPage> {
 
     final count = await getCount();
 
-    if (count > 0 && widget.name != name.text && mounted)
+    if (count > 0 && widget.exercise.name != name.text && mounted)
       await showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -377,6 +394,8 @@ class _EditGraphPageState extends State<EditGraphPage> {
   }
 
   Future<void> convertUnits() async {
-    await context.read<GymSetsRepository>().convertUnits(unit ?? '', widget.name);
+    await context
+        .read<GymSetsRepository>()
+        .convertUnits(unit ?? '', widget.exercise.id!);
   }
 }

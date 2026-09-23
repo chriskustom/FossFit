@@ -32,19 +32,37 @@ class SettingsRepository extends ChangeNotifier {
   bool isEnabled({required String key}) => getSetting(key: key) == '1';
 
   String getSetting({required String key}) {
-    return _settingCache.values.map((settings) => settings[key]).whereType<String>().firstOrNull ?? '';
+    return _settingCache.values
+            .map((settings) => settings[key])
+            .whereType<String>()
+            .firstOrNull ??
+        '';
   }
 
-  double getDouble({required String key}) => double.tryParse(getSetting(key: key)) ?? 0.0;
+  double getDouble({required String key}) =>
+      double.tryParse(getSetting(key: key)) ?? 0.0;
 
   int getInt({required String key}) => int.tryParse(getSetting(key: key)) ?? 0;
 
   //ByCategory
-  double getDoubleByCategory({required SettingCategory category, required String key}) =>
-      double.tryParse(getSettingByCategory(category: category.name, key: key)) ?? 0.0;
-  int getInteByCategory({required SettingCategory category, required String key}) =>
-      int.tryParse(getSettingByCategory(category: category.name, key: key)) ?? 0;
-  bool isEnabledByCategory({required SettingCategory category, required String key}) =>
+  double getDoubleByCategory({
+    required SettingCategory category,
+    required String key,
+  }) =>
+      double.tryParse(
+        getSettingByCategory(category: category.name, key: key),
+      ) ??
+      0.0;
+  int getInteByCategory({
+    required SettingCategory category,
+    required String key,
+  }) =>
+      int.tryParse(getSettingByCategory(category: category.name, key: key)) ??
+      0;
+  bool isEnabledByCategory({
+    required SettingCategory category,
+    required String key,
+  }) =>
       getSettingByCategory(category: category.name, key: key) == '1';
   String getSettingByCategory({required String category, required String key}) {
     return _settingCache[category]?[key] ?? '';
@@ -56,13 +74,15 @@ class SettingsRepository extends ChangeNotifier {
 
   List<SettingsCategory> get settingsAsList {
     return _settingCache.entries.map((categoryEntry) {
-      final settings = categoryEntry.value.entries.map((kv) => KeyValue(key: kv.key, value: kv.value)).toList();
+      final settings = categoryEntry.value.entries
+          .map((kv) => KeyValue(key: kv.key, value: kv.value))
+          .toList();
       return SettingsCategory(category: categoryEntry.key, settings: settings);
     }).toList();
   }
 
   Future<void> setSetting({
-    required String category,
+    required SettingCategory category,
     required String key,
     required String value,
   }) async {
@@ -76,14 +96,14 @@ class SettingsRepository extends ChangeNotifier {
 
     if (success != 1) {
       final config = Settings(
-        category: category,
+        category: category.name,
         key: key,
         value: value,
       );
       await db.insert(tableName, config.toMap());
     }
-    _settingCache.putIfAbsent(category, () => {});
-    _settingCache[category]![key] = value;
+    _settingCache.putIfAbsent(category.name, () => {});
+    _settingCache[category.name]![key] = value;
 
     notifyListeners();
   }

@@ -1,10 +1,10 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/plans_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/main.dart';
-import 'package:fossfit/plan/plan_state.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
 import 'package:fossfit/sets/history_page.dart';
 import 'package:fossfit/utils.dart';
@@ -37,8 +37,10 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
   Map<DateTime, List<ExerciseItem>> _grouped = {};
   @override
   Widget build(BuildContext context) {
-    final showImages = context.select<SettingsState, bool>((settings) => settings.value.showImages);
-    final sortedDays = List<ExerciseItem>.from(widget.days)..sort((a, b) => b.date.compareTo(a.date));
+    final showImages =
+        context.watch<SettingsRepository>().isEnabled(key: 'show_images');
+    final sortedDays = List<ExerciseItem>.from(widget.days)
+      ..sort((a, b) => b.date.compareTo(a.date));
     _grouped = _groupByDay(sortedDays);
 
     return ListView.builder(
@@ -79,7 +81,7 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
   }
 
   Widget _buildSectionDivider(DateTime date, List<ExerciseItem> day) {
-    final formats = context.watch<SettingsRepository>();
+    final settings = context.watch<SettingsRepository>();
     return GestureDetector(
       onTap: () {
         showDialog(
@@ -99,7 +101,8 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
         );
       },
       onLongPressStart: (details) {
-        final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+        final overlay =
+            Overlay.of(context).context.findRenderObject() as RenderBox;
         showMenu(
           context: context,
           position: RelativeRect.fromRect(
@@ -156,7 +159,8 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
             const Icon(Icons.today, size: 16),
             const SizedBox(width: 4),
             Text(
-              DateFormat(formats.shortDateFormat).format(date),
+              DateFormat(settings.getSetting(key: 'short_date_format'))
+                  .format(date),
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(width: 4),
@@ -174,7 +178,8 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
   ) {
     return GestureDetector(
       onLongPressStart: (details) {
-        final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+        final overlay =
+            Overlay.of(context).context.findRenderObject() as RenderBox;
         showMenu(
           context: context,
           position: RelativeRect.fromRect(
@@ -228,13 +233,17 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
         shape: const Border.symmetric(),
         children: history.sets.reversed.toList().map(
           (gymSet) {
-            final minutes = gymSet.duration.floor();
-            final seconds = ((gymSet.duration * 60) % 60).floor().toString().padLeft(2, '0');
-            final distance = toString(gymSet.distance);
+            final minutes = (gymSet.duration ?? 0).floor();
+            final seconds = (((gymSet.duration ?? 0) * 60) % 60)
+                .floor()
+                .toString()
+                .padLeft(2, '0');
+            final distance = toString((gymSet.distance ?? 0));
             final reps = toString(gymSet.reps);
             final weight = toString(gymSet.weight);
             String incline = '';
-            if (gymSet.incline != null && gymSet.incline! > 0) incline = '@ ${gymSet.incline}%';
+            if (gymSet.incline != null && gymSet.incline! > 0)
+              incline = '@ ${gymSet.incline}%';
 
             Widget? leading = SizedBox(
               height: 24,
@@ -242,14 +251,16 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
               child: Checkbox(
                 value: widget.selected.contains(gymSet.id),
                 onChanged: (value) {
-                  widget.onSelect(gymSet.id);
+                  widget.onSelect(gymSet.id!);
                 },
               ),
             );
 
-            if (widget.selected.isEmpty && showImages && gymSet.image != null) {
+            if (widget.selected.isEmpty &&
+                showImages &&
+                gymSet.exercise?.image != null) {
               leading = GestureDetector(
-                onTap: () => widget.onSelect(gymSet.id),
+                onTap: () => widget.onSelect(gymSet.id!),
                 child: Container(
                   width: 24,
                   height: 24,
@@ -260,14 +271,15 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
                   child: Image.file(
                     width: 24,
                     height: 24,
-                    File(gymSet.image!),
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
+                    File(gymSet.exercise!.image!),
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.error),
                   ),
                 ),
               );
             } else if (widget.selected.isEmpty) {
               leading = GestureDetector(
-                onTap: () => widget.onSelect(gymSet.id),
+                onTap: () => widget.onSelect(gymSet.id!),
                 child: Container(
                   width: 24,
                   height: 24,
@@ -278,7 +290,9 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
                   ),
                   child: Center(
                     child: Text(
-                      gymSet.name.isNotEmpty ? gymSet.name[0].toUpperCase() : '?',
+                      gymSet.exercise!.name.isNotEmpty
+                          ? gymSet.exercise!.name[0].toUpperCase()
+                          : '?',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -304,13 +318,14 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
               visualDensity: VisualDensity.comfortable,
               leading: leading,
               title: Text(
-                gymSet.cardio
+                gymSet.exercise!.cardio
                     ? "${_getSetNumber(gymSet, history.sets)}: $distance ${gymSet.unit} / $minutes:$seconds $incline"
                     : "${_getSetNumber(gymSet, history.sets)}: $reps REPS @ $weight ${gymSet.unit}",
               ),
               selected: widget.selected.contains(gymSet.id),
               trailing: Selector<SettingsRepository, String>(
-                selector: (context, settings) => settings.value.shortDateFormat,
+                selector: (context, settings) =>
+                    settings.getSetting(key: 'short_date_format'),
                 builder: (context, dateFormat, child) => Text(
                   dateFormat == 'timeago'
                       ? timeago.format(gymSet.created)
@@ -318,11 +333,11 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
                 ),
               ),
               onLongPress: () {
-                widget.onSelect(gymSet.id);
+                widget.onSelect(gymSet.id!);
               },
               onTap: () {
                 if (widget.selected.isNotEmpty)
-                  widget.onSelect(gymSet.id);
+                  widget.onSelect(gymSet.id!);
                 else
                   Navigator.push(
                     context,
@@ -376,12 +391,15 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
 
     var sortedDays = sets;
     sortedDays.sort((a, b) => a.date.compareTo(b.date));
-    var totalWorkout = sortedDays.where((d) => d.date == sortedDays.first.date).toList();
+    var totalWorkout =
+        sortedDays.where((d) => d.date == sortedDays.first.date).toList();
 
-    var cardioUnit =
-        totalWorkout.first.sets.any((n) => n.cardio) ? totalWorkout.first.sets.firstWhere((n) => n.cardio).unit : '';
-    var weightUnit =
-        totalWorkout.first.sets.any((n) => !n.cardio) ? totalWorkout.first.sets.firstWhere((n) => !n.cardio).unit : '';
+    var cardioUnit = totalWorkout.first.sets.any((n) => n.exercise!.cardio)
+        ? totalWorkout.first.sets.firstWhere((n) => n.exercise!.cardio).unit
+        : '';
+    var weightUnit = totalWorkout.first.sets.any((n) => !n.exercise!.cardio)
+        ? totalWorkout.first.sets.firstWhere((n) => !n.exercise!.cardio).unit
+        : '';
     var totalSets = 0;
     var totalReps = 0;
     var totalExercises = totalWorkout.length;
@@ -391,13 +409,13 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
       totalSets += exercise.sets.length;
       for (var set in exercise.sets) {
         totalReps += set.reps.toInt();
-        totalDistance += set.distance;
+        totalDistance += set.distance ?? 0;
         totalWeight += (set.weight * set.reps);
       }
     }
     return Selector<SettingsRepository, String>(
       selector: (context, settings) {
-        final format = settings.value.shortDateFormat;
+        final format = settings.getSetting(key: 'short_date_format');
         return DateFormat(format).format(sortedDays.first.date);
       },
       builder: (context, formattedDate, child) {
@@ -418,7 +436,8 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
                 Text(
                   '${num.parse(totalWeight.toStringAsFixed(3))}$weightUnit total lifted',
                 ),
-              if (totalDistance > 0) Text('$totalDistance$cardioUnit total travelled'),
+              if (totalDistance > 0)
+                Text('$totalDistance$cardioUnit total travelled'),
             ],
           ),
         );
@@ -447,15 +466,17 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
   }
 
   Future<void> deleteWorkout(List<ExerciseItem> sets) async {
+    final repo = context.watch<GymSetsRepository>();
     for (var day in sets) {
-      final ids = day.sets.map((set) => set.id).toList();
-      (oldDb.delete(oldDb.gymSets)..where((tbl) => tbl.id.isIn(ids))).go();
+      final ids = day.sets.map((set) => set.id!).toList();
+      await repo.deleteGymSetsById(ids);
     }
   }
 
   Future<void> copyWorkoutTo(List<ExerciseItem> sets) async {
     final settings = context.watch<SettingsRepository>();
-    final planState = context.read<PlanState>();
+    final planState = context.read<PlansRepository>();
+    final repo = context.watch<GymSetsRepository>();
     var newDate = await selectDate();
 
     if (newDate == null) {
@@ -468,8 +489,7 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
       sortedSets.sort((a, b) => b.created.compareTo(a.created));
       for (var gymSet in sortedSets) {
         newDate = newDate!.add(const Duration(seconds: 90));
-        final set = gymSet.copyWith(
-          name: gymSet.name,
+        final set = GymSet(
           unit: gymSet.unit,
           created: newDate,
           reps: gymSet.reps,
@@ -477,20 +497,18 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
           bodyWeight: gymSet.bodyWeight,
           distance: gymSet.distance,
           duration: gymSet.duration,
-          cardio: gymSet.cardio,
-          restMs: Value(gymSet.restMs),
-          incline: Value(gymSet.incline),
-          image: Value(gymSet.image),
-          notes: Value(gymSet.notes),
-          category: Value(gymSet.category),
+          restMs: gymSet.restMs,
+          incline: gymSet.incline,
+          notes: gymSet.notes,
+          exerciseId: gymSet.exerciseId,
+          hidden: false,
         );
 
-        var insert = set.toCompanion(false).copyWith(id: const Value.absent());
-        await oldDb.into(oldDb.gymSets).insert(insert);
+        await repo.addGymSets(set);
         planState.updateDefaults();
       }
     }
-    if (settings.notifications) {
+    if (settings.isEnabled(key: 'notifications')) {
       if (mounted) toast('Success');
     }
   }
@@ -535,7 +553,9 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
   }
 
   void scrollListener() {
-    if (widget.scroll.position.pixels < widget.scroll.position.maxScrollExtent - 200 || goingNext) return;
+    if (widget.scroll.position.pixels <
+            widget.scroll.position.maxScrollExtent - 200 ||
+        goingNext) return;
     setState(() {
       goingNext = true;
     });

@@ -9,11 +9,10 @@ import 'package:fossfit/day_selector.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
 import 'package:fossfit/db/repositories/plans_repository.dart';
 import 'package:fossfit/graph/add_exercise_page.dart';
-import 'package:fossfit/models/gym_sets_model.dart';
-import 'package:fossfit/models/plan_exercises_model.dart';
-import 'package:fossfit/models/plans_model.dart';
+import 'package:fossfit/models/exercise_model.dart';
+import 'package:fossfit/models/plan_exercise_model.dart';
+import 'package:fossfit/models/plan_model.dart';
 import 'package:fossfit/plan/exercise_tile.dart';
-import 'package:fossfit/plan/plan_state.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
@@ -28,7 +27,7 @@ class EditPlanPage extends StatefulWidget {
 
 class _EditPlanPageState extends State<EditPlanPage> {
   late List<bool> days;
-  List<PlanExercises> exercises = [];
+  List<PlanExercise> exercises = [];
 
   bool showOff = true;
   String search = '';
@@ -40,8 +39,10 @@ class _EditPlanPageState extends State<EditPlanPage> {
   Iterable<Widget> get tiles {
     final match = exercises.where(
       (pe) {
-        if (showOff) return pe.exercise.toLowerCase().contains(search.toLowerCase());
-        if (pe.enabled) return pe.exercise.toLowerCase().contains(search.toLowerCase());
+        if (showOff)
+          return pe.exercise!.name.toLowerCase().contains(search.toLowerCase());
+        if (pe.enabled)
+          return pe.exercise!.name.toLowerCase().contains(search.toLowerCase());
         return false;
       },
     );
@@ -52,17 +53,25 @@ class _EditPlanPageState extends State<EditPlanPage> {
           title: const Text("Nothing found"),
           subtitle: Text("Tap to create $search"),
           onTap: () async {
-            GymSets? gymSet = await Navigator.of(context).push(
+            Exercise? exercise = await Navigator.of(context).push(
               material.MaterialPageRoute(
                 builder: (context) => AddExercisePage(
                   name: search,
                 ),
               ),
             );
-            if (gymSet == null || !mounted) return;
+            if (exercise == null || !mounted) return;
 
-            final state = context.read<PlansRepository>();
-            state.addExercise(gymSet);
+            final repo = context.read<PlanExercisesRepository>();
+
+            await repo.addPlanExercises(
+              PlanExercise(
+                timers: true,
+                enabled: true,
+                maxSets: 3,
+                exerciseId: exercise.id!,
+              ),
+            );
             setState(() {
               exercises = exercises;
               search = '';
@@ -76,7 +85,8 @@ class _EditPlanPageState extends State<EditPlanPage> {
           (pe) => ExerciseTile(
             planExercise: pe,
             onChange: (value) {
-              final id = exercises.indexWhere((exercise) => exercise.exercise == pe.exercise);
+              final id = exercises
+                  .indexWhere((exercise) => exercise.exercise == pe.exercise);
               if (id == -1) return;
               setState(() {
                 exercises[id] = value;
@@ -128,7 +138,9 @@ class _EditPlanPageState extends State<EditPlanPage> {
                 hintText: 'Search exercises...',
                 trailing: [
                   IconButton(
-                    icon: showOff ? const Icon(Icons.visibility) : const Icon(Icons.visibility_off),
+                    icon: showOff
+                        ? const Icon(Icons.visibility)
+                        : const Icon(Icons.visibility_off),
                     onPressed: () {
                       setState(() {
                         showOff = !showOff;
@@ -175,11 +187,13 @@ class _EditPlanPageState extends State<EditPlanPage> {
 
   Future<void> save() async {
     final selected = [];
-    for (int i = 0; i < days.length; i++) if (days[i]) selected.add(weekdays[i]);
+    for (int i = 0; i < days.length; i++)
+      if (days[i]) selected.add(weekdays[i]);
 
     if (selected.isEmpty && titleCtrl.text.isEmpty) return toast('Select days');
 
-    if (exercises.where((exercise) => exercise.enabled).isEmpty) return toast('Select exercises');
+    if (exercises.where((exercise) => exercise.enabled).isEmpty)
+      return toast('Select exercises');
     var planRepo = context.read<PlansRepository>();
     var peRepo = context.read<PlanExercisesRepository>();
 
@@ -194,41 +208,43 @@ class _EditPlanPageState extends State<EditPlanPage> {
       await planRepo.updatePlan(newPlan);
       await peRepo.deleteAllExerciseForPlanById(oldPlan.id!);
       for (final e in exercises) {
-        var newPe = PlanExercises(
+        var newPe = PlanExercise(
           enabled: e.enabled,
           timers: e.timers,
           exercise: e.exercise,
           id: e.id!,
           planId: e.planId!,
           sequence: e.sequence!,
-          maxsets: e.maxsets,
+          maxSets: e.maxSets,
+          exerciseId: e.exerciseId,
         );
         await peRepo.addPlanExercises(newPe);
       }
       //INSERT
     } else {
-      final newPlan = await planRepo.addPlans(
+      final newPlan = await planRepo.addPlan(
         Plan(
           days: selected.join(','),
           title: titleCtrl.text,
         ),
       );
       for (final e in exercises) {
-        var newPe = PlanExercises(
+        var newPe = PlanExercise(
           enabled: e.enabled,
           timers: e.timers,
           exercise: e.exercise,
           id: e.id!,
           planId: newPlan.id!,
           sequence: e.sequence!,
-          maxsets: e.maxsets,
+          maxSets: e.maxSets,
+          exerciseId: e.exerciseId,
         );
         await peRepo.addPlanExercises(newPe);
       }
     }
 
     if (!mounted) return;
-    final state = context.read<PlanState>();
+    final state = context.read<PlansRepository>();
     state.updatePlans(null);
     Navigator.pop(context);
   }

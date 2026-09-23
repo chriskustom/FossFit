@@ -1,5 +1,6 @@
 enum TableName {
   gymsets('gym_sets'),
+  exercises('exercises'),
   plans('plans'),
   planexercises('plan_exercises'),
   settings('settings');

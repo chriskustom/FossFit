@@ -3,7 +3,7 @@ import 'package:fossfit/constants.dart';
 import 'package:fossfit/db/db_constants.dart';
 import 'package:fossfit/graph/cardio_data.dart';
 import 'package:fossfit/graph/strength_data.dart';
-import 'package:fossfit/models/gym_sets_model.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 import 'package:sqflite/sqflite.dart';
 
 typedef Rpm = ({
@@ -15,36 +15,49 @@ typedef Rpm = ({
 class GymSetsRepository extends ChangeNotifier {
   final Database _db;
 
-  List<GymSets> _gymsets = [];
+  List<GymSet> _gymsets = [];
 
   GymSetsRepository(this._db);
 
-  List<GymSets> get gymsets => List.unmodifiable(_gymsets);
+  List<GymSet> get gymsets => List.unmodifiable(_gymsets);
 
   // ---------------------------------------------------------------------------
   // Basic CRUD
   // ---------------------------------------------------------------------------
 
   Future<void> loadAll() async {
-    final rows = await _db.query(
-      TableName.gymsets.name,
-      orderBy: 'created DESC',
-    );
+    final rows = await _db.rawQuery('''
+    SELECT
+      gym_sets.*,
 
-    _gymsets = rows.map((r) => GymSets.fromMap(r)).toList();
+      exercises.id AS exercise_id,
+      exercises.name AS exercise_name
+      exercises.cardio AS exercise_cardio
+      exercises.category AS exercise_category
+      exercises.image AS exercise_image
+
+    FROM gym_sets
+
+    LEFT JOIN exercises
+      ON exercises.id = gym_sets.exercise_id
+
+    ORDER BY gym_sets.created DESC
+  ''');
+
+    _gymsets = rows.map((r) => GymSet.fromJoinedMap(r)).toList();
 
     notifyListeners();
   }
 
-  GymSets? getGymSetById(int id) {
+  GymSet? getGymSetById(int id) {
     return _gymsets.where((n) => n.id == id).firstOrNull;
   }
 
-  List<GymSets> getGymSetsByIds(List<int> ids) {
+  List<GymSet> getGymSetsByIds(List<int> ids) {
     return _gymsets.where((n) => ids.contains(n.id)).toList();
   }
 
-  Future<GymSets> addGymSets(GymSets gymsets) async {
+  Future<GymSet> addGymSets(GymSet gymsets) async {
     gymsets.id = await _db.insert(
       TableName.gymsets.name,
       gymsets.toMap(),
@@ -65,7 +78,7 @@ class GymSetsRepository extends ChangeNotifier {
     return gymsets;
   }
 
-  Future<bool> updateGymSets(GymSets? gymsets) async {
+  Future<bool> updateGymSet(GymSet? gymsets) async {
     if (gymsets == null) {
       return false;
     }
@@ -217,7 +230,7 @@ class GymSetsRepository extends ChangeNotifier {
 
   Future<List<CardioData>> getCardioData({
     Period period = Period.day,
-    String name = "",
+    int exerciseId = 0,
     CardioMetric metric = CardioMetric.pace,
     String target = "km",
     DateTime? start,
@@ -250,7 +263,7 @@ class GymSetsRepository extends ChangeNotifier {
 
       FROM ${TableName.gymsets.name}
 
-      WHERE name = ?
+      WHERE exercise_id = ?
         AND hidden = 0
         AND created >= ?
         AND created < ?
@@ -262,7 +275,7 @@ class GymSetsRepository extends ChangeNotifier {
       LIMIT 11
       """,
       [
-        name,
+        exerciseId,
         startSeconds,
         endSeconds,
       ],
@@ -428,7 +441,7 @@ class GymSetsRepository extends ChangeNotifier {
 
   Future<List<StrengthData>> getStrengthData({
     required String target,
-    required String name,
+    required int exerciseId,
     required StrengthMetric metric,
     required Period period,
     required DateTime? start,
@@ -438,12 +451,12 @@ class GymSetsRepository extends ChangeNotifier {
     final groupBy = getCreatedSql(period);
 
     final where = <String>[
-      'name = ?',
+      'exercise_id = ?',
       'hidden = 0',
     ];
 
     final args = <dynamic>[
-      name,
+      exerciseId,
     ];
 
     if (start != null) {
@@ -456,7 +469,8 @@ class GymSetsRepository extends ChangeNotifier {
       args.add(toUnixSeconds(end));
     }
 
-    final repsExpression = metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
+    final repsExpression =
+        metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
 
     final sql = '''
       SELECT
@@ -558,7 +572,8 @@ class GymSetsRepository extends ChangeNotifier {
       args.add(toUnixSeconds(end));
     }
 
-    final repsExpression = metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
+    final repsExpression =
+        metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
 
     final sql = '''
       SELECT
@@ -673,8 +688,17 @@ class GymSetsRepository extends ChangeNotifier {
   // Is best
   // ---------------------------------------------------------------------------
 
-  Future<bool> isBest(GymSets gymSet) async {
-    if (gymSet.cardio) {
+  Future<bool> isBest(GymSet gymSet) async {
+    final rows = await _db.query(
+      'exercises',
+      columns: ['cardio'],
+      where: 'id = ?',
+      whereArgs: [gymSet.exerciseId],
+      limit: 1,
+    );
+
+    final isCardio = rows.first['cardio'] == 1;
+    if (isCardio) {
       final results = await _db.rawQuery(
         '''
         SELECT
@@ -741,75 +765,75 @@ class GymSetsRepository extends ChangeNotifier {
     return false;
   }
 
-  Future<void> convertUnits(String unit, String exerciseName) async {
+  Future<void> convertUnits(String unit, int exerciseId) async {
     if (unit == 'kg')
       await _db.execute(
         '''
         UPDATE gym_sets SET weight = weight * 0.45359237, 
           unit = 'kg'
-        WHERE name = ? AND unit = 'lb';
+        WHERE exercise_id = ? AND unit = 'lb';
       ''',
-        [exerciseName],
+        [exerciseId],
       );
     else if (unit == 'lb')
       await _db.execute(
         '''
         UPDATE gym_sets SET weight = weight * 2.20462262, 
           unit = 'lb'
-        WHERE name = ? AND unit = 'kg';
+        WHERE exercise_id = ? AND unit = 'kg';
       ''',
-        [exerciseName],
+        [exerciseId],
       );
     else if (unit == 'km') {
       await _db.execute(
         '''
         UPDATE gym_sets SET weight = weight * 1.609, 
           unit = 'km'
-        WHERE name = ? AND unit = 'mi';
+        WHERE exercise_id = ? AND unit = 'mi';
       ''',
-        [exerciseName],
+        [exerciseId],
       );
       await _db.execute(
         '''
         UPDATE gym_sets SET weight = weight / 1000, 
           unit = 'km'
-        WHERE name = ? AND unit = 'm';
+        WHERE exercise_id = ? AND unit = 'm';
       ''',
-        [exerciseName],
+        [exerciseId],
       );
     } else if (unit == 'mi') {
       await _db.execute(
         '''
         UPDATE gym_sets SET weight = weight / 1.609, 
           unit = 'mi'
-        WHERE name = ? AND unit = 'km';
+        WHERE exercise_id = ? AND unit = 'km';
       ''',
-        [exerciseName],
+        [exerciseId],
       );
       await _db.execute(
         '''
         UPDATE gym_sets SET weight = weight / 1609.34, 
           unit = 'mi'
-        WHERE name = ? AND unit = 'm';
+        WHERE exercise_id = ? AND unit = 'm';
       ''',
-        [exerciseName],
+        [exerciseId],
       );
     } else if (unit == 'm') {
       await _db.execute(
         '''
         UPDATE gym_sets SET weight = weight * 1000, 
           unit = 'm'
-        WHERE name = ? AND unit = 'km';
+        WHERE exercise_id = ? AND unit = 'km';
       ''',
-        [exerciseName],
+        [exerciseId],
       );
       await _db.execute(
         '''
         UPDATE gym_sets SET weight = weight * 1609.34, 
           unit = 'm'
-        WHERE name = ? AND unit = 'mi';
+        WHERE exercise_id = ? AND unit = 'mi';
       ''',
-        [exerciseName],
+        [exerciseId],
       );
     }
   }

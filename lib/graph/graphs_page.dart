@@ -15,7 +15,8 @@ import 'package:fossfit/graph/flex_line.dart';
 import 'package:fossfit/graph/global_progress_page.dart';
 import 'package:fossfit/graphs_filters.dart';
 import 'package:fossfit/models/constants.dart';
-import 'package:fossfit/models/gym_sets_model.dart';
+import 'package:fossfit/models/exercise_model.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/utils.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -33,10 +34,11 @@ class GraphsPage extends StatefulWidget {
   createState() => GraphsPageState();
 }
 
-class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMixin {
-  late List<GymSets> sets = [];
+class GraphsPageState extends State<GraphsPage>
+    with AutomaticKeepAliveClientMixin {
+  late List<GymSet> sets = [];
 
-  final Set<String> selected = {};
+  final Set<Exercise> selected = {};
   final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
   String search = '';
   String? category;
@@ -52,12 +54,15 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
   Widget build(BuildContext context) {
     super.build(context);
     sets = context.watch<GymSetsRepository>().gymsets;
+
     return NavigatorPopHandler(
       onPopWithResult: (result) {
         if (navKey.currentState!.canPop() == false) return;
         final settings = context.watch<SettingsRepository>();
-        final graphsIndex = settings.getSetting(key: 'tabs').split(',').indexOf('GraphsPage');
-        if (widget.tabController.index == graphsIndex) Navigator.of(navKey.currentContext!).pop();
+        final graphsIndex =
+            settings.getSetting(key: 'tabs').split(',').indexOf('GraphsPage');
+        if (widget.tabController.index == graphsIndex)
+          Navigator.of(navKey.currentContext!).pop();
       },
       child: Navigator(
         key: navKey,
@@ -78,14 +83,20 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
     setState(() {
       selected.clear();
     });
-    var gymsetIds = sets.where((t) => copy.contains(t.name)).map((t) => t.id!).toList();
+    var gymsetIds = sets
+        .where((t) => copy.contains(t.exerciseId))
+        .map((t) => t.id!)
+        .toList();
     await gymRepo.deleteGymSetsById(gymsetIds);
 
     final plans = plansRepo.plans;
 
     for (final plan in plans) {
       for (final exercise in copy) {
-        await planExerciseRepo.deletePlanExerciseByNameAndPlanId(exercise, plan.id!);
+        await planExerciseRepo.deletePlanExerciseByIdAndPlanId(
+          exercise.id!,
+          plan.id!,
+        );
       }
     }
     await plansRepo.updatePlans(null);
@@ -119,7 +130,7 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
     );
   }
 
-  Widget getPeek(GymSets gymSet, List<dynamic> data, String format) {
+  Widget getPeek(GymSet gymSet, List<dynamic> data, String format) {
     List<FlSpot> spots = [];
     for (var index = 0; index < data.length; index++) {
       spots.add(FlSpot(index.toDouble(), data[index].value));
@@ -128,7 +139,8 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
     return material.SizedBox(
       height: MediaQuery.of(context).size.height * 0.15,
       child: material.Padding(
-        padding: const EdgeInsets.only(right: 48.0, top: 8.0, left: 48, bottom: 8),
+        padding:
+            const EdgeInsets.only(right: 48.0, top: 8.0, left: 48, bottom: 8),
         child: FlexLine(
           data: data,
           spots: spots,
@@ -151,17 +163,18 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
         builder: (context) {
           if (sets.isEmpty) return const SizedBox();
 
-          final terms = search.toLowerCase().split(" ").where((term) => term.isNotEmpty);
+          final terms =
+              search.toLowerCase().split(" ").where((term) => term.isNotEmpty);
           var stream = sets.where((gymSet) {
             if (category != null) {
-              return gymSet.category == category;
+              return gymSet.exercise!.category == category;
             }
             return true;
           });
 
           for (final term in terms) {
             stream = stream.where(
-              (gymSet) => gymSet.name.toLowerCase().contains(term),
+              (gymSet) => gymSet.exercise!.name.toLowerCase().contains(term),
             );
           }
 
@@ -181,8 +194,8 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
 
             case GraphSort.name:
               gymSets.sort(
-                (a, b) => a.name.toLowerCase().compareTo(
-                      b.name.toLowerCase(),
+                (a, b) => a.exercise!.name.toLowerCase().compareTo(
+                      b.exercise!.name.toLowerCase(),
                     ),
               );
               break;
@@ -216,7 +229,7 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
                 onDelete: onDelete,
                 onSelect: () => setState(() {
                   selected.addAll(
-                    gymSets.map((gymSet) => gymSet.name),
+                    gymSets.map((gymSet) => gymSet.exercise!),
                   );
                 }),
                 selected: selected,
@@ -224,13 +237,14 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
                   context,
                   MaterialPageRoute(
                     builder: (context) => EditGraphPage(
-                      name: selected.first,
+                      exercise: selected.first,
                     ),
                   ),
                 ),
                 confirmText: "This will delete $total records. Are you sure?",
               ),
-              if (gymSets.isEmpty && !'global progress'.contains(search.toLowerCase()))
+              if (gymSets.isEmpty &&
+                  !'global progress'.contains(search.toLowerCase()))
                 ListTile(
                   title: const Text("No graphs found"),
                   subtitle: Text(
@@ -247,7 +261,8 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
                   },
                 ),
               Selector<SettingsRepository, bool>(
-                selector: (p0, settingsRepository) => settingsRepository.isEnabled(key: 'show_global_progress'),
+                selector: (p0, settingsRepository) =>
+                    settingsRepository.isEnabled(key: 'show_global_progress'),
                 builder: (context, showGlobal, child) => Expanded(
                   child: (sort == GraphSort.name)
                       ? _sortedGraphList(gymSets, showGlobal)
@@ -278,12 +293,13 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
     });
     final sets = (this.sets)
         .where(
-          (gymSet) => copy.contains(gymSet.name),
+          (gymSet) => copy.contains(gymSet.exercise!),
         )
         .toList();
     final text = sets
         .map(
-          (gymSet) => "${toString(gymSet.reps)}x${toString(gymSet.weight)}${gymSet.unit} ${gymSet.name}",
+          (gymSet) =>
+              "${toString(gymSet.reps)}x${toString(gymSet.weight)}${gymSet.unit} ${gymSet.exercise!.name}",
         )
         .join(', ');
     await SharePlus.instance.share(ShareParams(text: "I just did $text"));
@@ -302,7 +318,7 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
                 title: const Text('Hide global progress'),
                 onTap: () {
                   context.read<SettingsRepository>().setSetting(
-                        category: SettingCategory.appearance.name,
+                        category: SettingCategory.appearance,
                         key: 'show_global_progress',
                         value: '0',
                       );
@@ -324,16 +340,19 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
   }
 
   material.ListView _stickyHeadersGraphList(
-    List<GymSets> gymSets,
+    List<GymSet> gymSets,
     bool showGlobalProgress,
   ) {
     _grouped = _groupByDay(gymSets);
     var itemCount = _grouped.entries.length + 1;
-    final showGlobal = 'global graphs'.contains(search.toLowerCase()) && category == null && showGlobalProgress;
+    final showGlobal = 'global graphs'.contains(search.toLowerCase()) &&
+        category == null &&
+        showGlobalProgress;
     if (showGlobal) itemCount++;
 
     final settings = context.watch<SettingsRepository>();
-    final showPeekGraph = settings.isEnabled(key: 'peek_graph') && _grouped.entries.firstOrNull != null;
+    final showPeekGraph = settings.isEnabled(key: 'peek_graph') &&
+        _grouped.entries.firstOrNull != null;
     if (showPeekGraph) itemCount++;
     var repo = context.watch<GymSetsRepository>();
     return ListView.builder(
@@ -392,16 +411,18 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
                     GraphTile(
                       selected: selected,
                       gymSet: set.value[index],
-                      onSelect: (name) async {
-                        if (selected.contains(name))
+                      onSelect: (exercise) async {
+                        if (selected.contains(exercise))
                           setState(() {
-                            selected.remove(name);
+                            selected.remove(exercise);
                           });
                         else
                           setState(() {
-                            selected.add(name);
+                            selected.add(exercise!);
                           });
-                        final result = sets.where((t) => selected.contains(t.name)).length;
+                        final result = sets
+                            .where((t) => selected.contains(t.exercise))
+                            .length;
                         setState(() {
                           total = result;
                         });
@@ -415,23 +436,31 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
                           SettingsRepository settings,
                           Widget? child,
                         ) {
-                          if (_grouped.entries.firstOrNull == null) return const SizedBox();
+                          if (_grouped.entries.firstOrNull == null)
+                            return const SizedBox();
 
                           return FutureBuilder(
-                            builder: (context, snapshot) => snapshot.data != null
-                                ? getPeek(
-                                    _grouped.entries.first.value.first,
-                                    snapshot.data!,
-                                    settings.getSetting(key: 'short_date_format'),
-                                  )
-                                : const SizedBox(),
-                            future: _grouped.entries.first.value.first.cardio
+                            builder: (context, snapshot) =>
+                                snapshot.data != null
+                                    ? getPeek(
+                                        _grouped.entries.first.value.first,
+                                        snapshot.data!,
+                                        settings.getSetting(
+                                          key: 'short_date_format',
+                                        ),
+                                      )
+                                    : const SizedBox(),
+                            future: _grouped
+                                    .entries.first.value.first.exercise!.cardio
                                 ? repo.getCardioData(
-                                    name: _grouped.entries.first.value.first.name,
+                                    exerciseId: _grouped.entries.first.value
+                                        .first.exercise!.id!,
                                   )
                                 : repo.getStrengthData(
-                                    target: _grouped.entries.first.value.first.unit,
-                                    name: _grouped.entries.first.value.first.name,
+                                    target:
+                                        _grouped.entries.first.value.first.unit,
+                                    exerciseId: _grouped.entries.first.value
+                                        .first.exercise!.id!,
                                     metric: StrengthMetric.bestWeight,
                                     period: Period.day,
                                     start: null,
@@ -453,15 +482,18 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
   }
 
   material.ListView _sortedGraphList(
-    List<GymSets> gymSets,
+    List<GymSet> gymSets,
     bool showGlobalProgress,
   ) {
     var itemCount = gymSets.length + 1;
-    final showGlobal = 'global graphs'.contains(search.toLowerCase()) && category == null && showGlobalProgress;
+    final showGlobal = 'global graphs'.contains(search.toLowerCase()) &&
+        category == null &&
+        showGlobalProgress;
     if (showGlobal) itemCount++;
 
     final settings = context.watch<SettingsRepository>();
-    final showPeekGraph = settings.isEnabled(key: 'peek_graph') && gymSets.firstOrNull != null;
+    final showPeekGraph =
+        settings.isEnabled(key: 'peek_graph') && gymSets.firstOrNull != null;
     if (showPeekGraph) itemCount++;
 
     var repo = context.watch<GymSetsRepository>();
@@ -510,11 +542,13 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
                         settings.getSetting(key: 'short_date_format'),
                       )
                     : const SizedBox(),
-                future: gymSets.first.cardio
-                    ? repo.getCardioData(name: gymSets.first.name)
+                future: gymSets.first.exercise!.cardio
+                    ? repo.getCardioData(
+                        exerciseId: gymSets.first.exercise!.id!,
+                      )
                     : repo.getStrengthData(
                         target: gymSets.first.unit,
-                        name: gymSets.first.name,
+                        exerciseId: gymSets.first.exercise!.id!,
                         metric: StrengthMetric.bestWeight,
                         period: Period.day,
                         start: null,
@@ -553,7 +587,8 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
                   const Icon(Icons.today),
                   const SizedBox(width: 4),
                   Selector<SettingsRepository, String>(
-                    selector: (p0, p1) => p1.getSetting(key: 'short_date_format'),
+                    selector: (p0, p1) =>
+                        p1.getSetting(key: 'short_date_format'),
                     builder: (context, format, child) => Text(
                       DateFormat(format).format(set.created.toLocal()),
                     ),
@@ -565,16 +600,17 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
             GraphTile(
               selected: selected,
               gymSet: set,
-              onSelect: (name) async {
-                if (selected.contains(name))
+              onSelect: (exercise) async {
+                if (selected.contains(exercise))
                   setState(() {
-                    selected.remove(name);
+                    selected.remove(exercise);
                   });
                 else
                   setState(() {
-                    selected.add(name);
+                    selected.add(exercise!);
                   });
-                final result = sets.where((t) => selected.contains(t.name)).length;
+                final result =
+                    sets.where((t) => selected.contains(t.exercise)).length;
                 setState(() {
                   total = result;
                 });
@@ -588,7 +624,8 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
   }
 
   Widget _buildSectionDivider(DateTime date) {
-    final format = context.read<SettingsRepository>().getSetting(key: 'short_date_format');
+    final format =
+        context.read<SettingsRepository>().getSetting(key: 'short_date_format');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -608,11 +645,11 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
     );
   }
 
-  Map<DateTime, List<GymSets>> _grouped = {};
-  Map<DateTime, List<GymSets>> _groupByDay(
-    List<GymSets> sets,
+  Map<DateTime, List<GymSet>> _grouped = {};
+  Map<DateTime, List<GymSet>> _groupByDay(
+    List<GymSet> sets,
   ) {
-    final map = <DateTime, List<GymSets>>{};
+    final map = <DateTime, List<GymSet>>{};
 
     for (final set in sets) {
       final day = DateTime(
@@ -628,7 +665,9 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
     // Optional: sort newest first
     final sortedKeys = map.keys.toList()
       ..sort(
-        sort == GraphSort.dateDesc ? (a, b) => b.compareTo(a) : (a, b) => a.compareTo(b),
+        sort == GraphSort.dateDesc
+            ? (a, b) => b.compareTo(a)
+            : (a, b) => a.compareTo(b),
       );
 
     return {

@@ -1,10 +1,9 @@
-import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:fossfit/constants.dart';
+import 'package:fossfit/db/repositories/plans_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/main.dart';
+import 'package:fossfit/models/plan_model.dart';
 import 'package:fossfit/plan/edit_plan_page.dart';
-import 'package:fossfit/plan/plan_state.dart';
 import 'package:fossfit/plan/plan_tile.dart';
 import 'package:provider/provider.dart';
 
@@ -33,17 +32,14 @@ class PlansList extends StatefulWidget {
 class _PlansListState extends State<PlansList> {
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<PlanState>();
-
     final noneFound = ListTile(
       title: const Text("No plans found"),
       subtitle: Text("Tap to create ${widget.search}"),
       onTap: () async {
-        final plan = PlansCompanion(
-          days: const drift.Value(''),
-          title: drift.Value(widget.search),
+        final plan = Plan(
+          days: '',
+          title: widget.search,
         );
-        await state.setExercises(plan);
         if (context.mounted)
           await Navigator.push(
             context,
@@ -62,14 +58,20 @@ class _PlansListState extends State<PlansList> {
 
     final filteredPlans = widget.plans!.where((plan) {
       final term = widget.search.toLowerCase();
-      return plan.title?.toLowerCase().contains(term) == true || plan.days.toLowerCase().contains(term);
+      return plan.title?.toLowerCase().contains(term) == true ||
+          plan.days.toLowerCase().contains(term);
     }).toList();
 
     if (widget.plans!.isEmpty || filteredPlans.isEmpty) return noneFound;
 
-    final settings = context.read<SettingsState>();
+    final settings = context.read<SettingsRepository>();
 
-    if (settings.value.planTrailing == PlanTrailing.reorder.toString())
+    if (PlanTrailing.values.byName(
+          settings
+              .getSetting(key: 'plan_trailing')
+              .replaceFirst('PlanTrailing.', ''),
+        ) ==
+        PlanTrailing.reorder)
       return ReorderableListView.builder(
         scrollController: widget.scroll,
         itemCount: filteredPlans.length,
@@ -96,15 +98,12 @@ class _PlansListState extends State<PlansList> {
           filteredPlans.removeAt(old);
           filteredPlans.insert(idx, temp);
 
-          final state = context.read<PlanState>();
-          state.updatePlans(filteredPlans);
-          await oldDb.transaction(() async {
-            for (int i = 0; i < filteredPlans.length; i++) {
-              final plan = filteredPlans[i];
-              final updated = plan.toCompanion(false).copyWith(sequence: drift.Value(i));
-              await oldDb.update(oldDb.plans).replace(updated);
-            }
-          });
+          final repo = context.read<PlansRepository>();
+          for (int i = 0; i < filteredPlans.length; i++) {
+            final plan = filteredPlans[i];
+            final updated = plan.copyWith(sequence: i);
+            await repo.updatePlan(updated);
+          }
         },
       );
 

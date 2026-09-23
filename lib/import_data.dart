@@ -8,7 +8,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
-import 'package:fossfit/plan/plan_state.dart';
 import 'package:fossfit/utils.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
@@ -138,7 +137,7 @@ $version
     await (oldDb.settings.update()).write(const SettingsCompanion(alarmSound: Value('')));
 
     if (!ctx.mounted) return;
-    final settingsState = ctx.read<SettingsState>();
+    final settingsState = ctx.read<SettingsRepository>();
     await settingsState.init();
 
     if (!ctx.mounted) return;
@@ -351,7 +350,7 @@ $version
       await oldDb.planExercises.insertAll(planExercisesToInsert);
 
       if (!ctx.mounted) return;
-      ctx.read<PlanState>().updatePlans(null);
+      ctx.read<PlansRepository>().updatePlans(null);
       Navigator.pop(ctx);
 
       toast('Plans imported successfully');

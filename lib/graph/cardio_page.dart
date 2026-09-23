@@ -9,20 +9,21 @@ import 'package:fossfit/graph/cardio_data.dart';
 import 'package:fossfit/graph/edit_graph_page.dart';
 import 'package:fossfit/graph/flex_line.dart';
 import 'package:fossfit/graph/graph_history_page.dart';
-import 'package:fossfit/models/gym_sets_model.dart';
+import 'package:fossfit/models/exercise_model.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class CardioPage extends StatefulWidget {
-  final String name;
+  final Exercise exercise;
   final String unit;
   final List<CardioData> data;
   final TabController tabCtrl;
 
   const CardioPage({
     super.key,
-    required this.name,
+    required this.exercise,
     required this.unit,
     required this.data,
     required this.tabCtrl,
@@ -57,7 +58,8 @@ class _CardioPageState extends State<CardioPage> {
 
   void _onTabChanged() {
     final settings = context.watch<SettingsRepository>();
-    if (widget.tabCtrl.index == settings.getSetting(key: 'tabs').indexOf('GraphsPage')) {
+    if (widget.tabCtrl.index ==
+        settings.getSetting(key: 'tabs').indexOf('GraphsPage')) {
       setData();
     }
   }
@@ -79,7 +81,8 @@ class _CardioPageState extends State<CardioPage> {
                 break;
               case CardioMetric.duration:
                 final minutes = row.value.floor();
-                final seconds = ((row.value * 60) % 60).floor().toString().padLeft(2, '0');
+                final seconds =
+                    ((row.value * 60) % 60).floor().toString().padLeft(2, '0');
                 text = "$minutes:$seconds";
                 break;
               case CardioMetric.distance:
@@ -116,11 +119,13 @@ class _CardioPageState extends State<CardioPage> {
     if (index == null) return;
     final row = data[index];
     if (!context.mounted) return;
-    GymSets? gymSet = context
+    GymSet? gymSet = context
         .watch<GymSetsRepository>()
         .gymsets
         .where(
-          (tbl) => tbl.created == row.created && tbl.name == widget.name,
+          (tbl) =>
+              tbl.created == row.created &&
+              tbl.exerciseId == widget.exercise.id,
         )
         .first;
 
@@ -141,7 +146,7 @@ class _CardioPageState extends State<CardioPage> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: Text(widget.name),
+        title: Text(widget.exercise.name),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -155,7 +160,8 @@ class _CardioPageState extends State<CardioPage> {
                   .watch<GymSetsRepository>()
                   .gymsets
                   .where(
-                    (tbl) => tbl.name == widget.name && !tbl.hidden,
+                    (tbl) =>
+                        tbl.exerciseId == widget.exercise.id && !tbl.hidden,
                   )
                   .toList();
 
@@ -164,7 +170,7 @@ class _CardioPageState extends State<CardioPage> {
               await Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => GraphHistoryPage(
-                    name: widget.name,
+                    exercise: widget.exercise,
                     gymSets: gymSets,
                   ),
                 ),
@@ -180,7 +186,7 @@ class _CardioPageState extends State<CardioPage> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => EditGraphPage(
-                    name: widget.name,
+                    exercise: widget.exercise,
                   ),
                 ),
               );
@@ -280,7 +286,8 @@ class _CardioPageState extends State<CardioPage> {
                 SizedBox(height: 8),
                 if (metric == CardioMetric.distance)
                   Selector<SettingsRepository, bool>(
-                    selector: (_, config) => config.isEnabled(key: 'show_units'),
+                    selector: (_, config) =>
+                        config.isEnabled(key: 'show_units'),
                     builder: (context, value, child) => Visibility(
                       visible: value,
                       child: Padding(
@@ -318,7 +325,8 @@ class _CardioPageState extends State<CardioPage> {
                       child: ListTile(
                         title: const Text('Start date'),
                         subtitle: Selector<SettingsRepository, String>(
-                          selector: (_, config) => config.getSetting(key: 'short_date_format'),
+                          selector: (_, config) =>
+                              config.getSetting(key: 'short_date_format'),
                           builder: (context, value, child) {
                             if (start == null) return Text(value);
 
@@ -338,7 +346,8 @@ class _CardioPageState extends State<CardioPage> {
                       child: ListTile(
                         title: const Text('Stop date'),
                         subtitle: Selector<SettingsRepository, String>(
-                          selector: (_, config) => config.getSetting(key: 'short_date_format'),
+                          selector: (_, config) =>
+                              config.getSetting(key: 'short_date_format'),
                           builder: (context, value, child) {
                             if (end == null) return Text(value);
 
@@ -366,8 +375,9 @@ class _CardioPageState extends State<CardioPage> {
                 ),
                 if (rows.isEmpty)
                   ListTile(
-                    title: Text("No data yet for ${widget.name}"),
-                    subtitle: const Text("Complete some plans to view graphs here"),
+                    title: Text("No data yet for ${widget.exercise.name}"),
+                    subtitle:
+                        const Text("Complete some plans to view graphs here"),
                     contentPadding: EdgeInsets.zero,
                   ),
                 if (rows.isNotEmpty)
@@ -377,7 +387,9 @@ class _CardioPageState extends State<CardioPage> {
                       padding: const EdgeInsets.only(right: 32.0, top: 16.0),
                       child: FlexLine(
                         spots: spots,
-                        tooltipData: () => tooltipData(settings.getSetting(key: 'shortDateFormat')),
+                        tooltipData: () => tooltipData(
+                          settings.getSetting(key: 'shortDateFormat'),
+                        ),
                         touchLine: touchLine,
                         data: data,
                         timeBasedXAxis: useTimeBasedXAxis,
@@ -398,7 +410,7 @@ class _CardioPageState extends State<CardioPage> {
           end: end,
           period: period,
           metric: metric,
-          name: widget.name,
+          exerciseId: widget.exercise.id!,
           start: start,
           target: target,
         );

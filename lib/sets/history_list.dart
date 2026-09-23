@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/models/gym_sets_model.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
 import 'package:fossfit/utils.dart';
 import 'package:intl/intl.dart';
@@ -11,7 +11,7 @@ import 'package:sticky_headers/sticky_headers.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class HistoryList extends StatefulWidget {
-  final List<GymSets> sets;
+  final List<GymSet> sets;
   final ScrollController scroll;
   final Function(int) onSelect;
   final Set<int> selected;
@@ -66,7 +66,7 @@ class _HistoryListState extends State<HistoryList> {
             removedSet,
             animation,
             index,
-            context.read<SettingsState>().value.showImages,
+            context.read<SettingsRepository>().isEnabled(key: 'show_images'),
           ),
           duration: const Duration(milliseconds: 300),
         );
@@ -121,9 +121,10 @@ class _HistoryListState extends State<HistoryList> {
     int index,
     bool showImages,
   ) {
-    final minutes = gymSet.duration.floor();
-    final seconds = ((gymSet.duration * 60) % 60).floor().toString().padLeft(2, '0');
-    final distance = toString(gymSet.distance);
+    final minutes = (gymSet.duration ?? 0).floor();
+    final seconds =
+        (((gymSet.duration ?? 0) * 60) % 60).floor().toString().padLeft(2, '0');
+    final distance = toString((gymSet.distance ?? 0));
     final reps = toString(gymSet.reps);
     final weight = toString(gymSet.weight);
     String incline = '';
@@ -136,11 +137,13 @@ class _HistoryListState extends State<HistoryList> {
       width: 24,
       child: Checkbox(
         value: widget.selected.contains(gymSet.id),
-        onChanged: (_) => widget.onSelect(gymSet.id),
+        onChanged: (_) => widget.onSelect(gymSet.id!),
       ),
     );
 
-    if (widget.selected.isEmpty && showImages && gymSet.image != null) {
+    if (widget.selected.isEmpty &&
+        showImages &&
+        gymSet.exercise?.image != null) {
       leading = Container(
         width: 24,
         height: 24,
@@ -149,18 +152,19 @@ class _HistoryListState extends State<HistoryList> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: GestureDetector(
-          onTap: () => widget.onSelect(gymSet.id),
+          onTap: () => widget.onSelect(gymSet.id!),
           child: Image.file(
             width: 24,
             height: 24,
-            File(gymSet.image!),
-            errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
+            File(gymSet.exercise!.image!),
+            errorBuilder: (context, error, stackTrace) =>
+                const Icon(Icons.error),
           ),
         ),
       );
     } else if (widget.selected.isEmpty) {
       leading = GestureDetector(
-        onTap: () => widget.onSelect(gymSet.id),
+        onTap: () => widget.onSelect(gymSet.id!),
         child: Container(
           width: 24,
           height: 24,
@@ -171,7 +175,9 @@ class _HistoryListState extends State<HistoryList> {
           ),
           child: Center(
             child: Text(
-              gymSet.name.isNotEmpty ? gymSet.name[0].toUpperCase() : '?',
+              gymSet.exercise!.name.isNotEmpty
+                  ? gymSet.exercise!.name[0].toUpperCase()
+                  : '?',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -186,14 +192,19 @@ class _HistoryListState extends State<HistoryList> {
 
     leading = AnimatedSwitcher(
       duration: const Duration(milliseconds: 150),
-      transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+      transitionBuilder: (child, animation) =>
+          ScaleTransition(scale: animation, child: child),
       child: leading,
     );
 
     String trailing = "$reps REPS @ $weight ${gymSet.unit}";
-    if (gymSet.cardio && (gymSet.unit == 'kg' || gymSet.unit == 'lb' || gymSet.unit == 'stone')) {
+    if (gymSet.exercise!.cardio &&
+        (gymSet.unit == 'kg' ||
+            gymSet.unit == 'lb' ||
+            gymSet.unit == 'stone')) {
       trailing = "$weight ${gymSet.unit} / $minutes:$seconds $incline";
-    } else if (gymSet.cardio && (gymSet.unit == 'km' || gymSet.unit == 'mi' || gymSet.unit == 'kcal')) {
+    } else if (gymSet.exercise!.cardio &&
+        (gymSet.unit == 'km' || gymSet.unit == 'mi' || gymSet.unit == 'kcal')) {
       trailing = "$distance ${gymSet.unit} / $minutes:$seconds $incline";
     }
 
@@ -220,10 +231,13 @@ class _HistoryListState extends State<HistoryList> {
   }
 
   Widget _getListItem(Widget leading, GymSet gymSet, String trailing) {
-    final title = Text(_peek ? "${_getSetNumber(gymSet)}: $trailing" : gymSet.name);
-    final dateFormat = context.watch<SettingsState>().value.longDateFormat;
+    final title = Text(
+        _peek ? "${_getSetNumber(gymSet)}: $trailing" : gymSet.exercise!.name);
+    final dateFormat =
+        context.watch<SettingsRepository>().getSetting(key: 'long_date_format');
 
-    final subtitle = dateFormat == 'timeago' ? Text(timeago.format(gymSet.created)) : null;
+    final subtitle =
+        dateFormat == 'timeago' ? Text(timeago.format(gymSet.created)) : null;
 
     return ListTile(
       dense: true,
@@ -232,15 +246,18 @@ class _HistoryListState extends State<HistoryList> {
       title: title,
       subtitle: subtitle,
       trailing: Selector<SettingsRepository, String>(
-        selector: (context, settings) => settings.value.shortDateFormat,
+        selector: (context, settings) =>
+            settings.getSetting(key: 'short_date_format'),
         builder: (context, dateFormat, child) => Text(
-          dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
+          dateFormat == 'timeago'
+              ? timeago.format(gymSet.created)
+              : DateFormat("HH:mm a").format(gymSet.created),
         ),
       ),
-      onLongPress: () => widget.onSelect(gymSet.id),
+      onLongPress: () => widget.onSelect(gymSet.id!),
       onTap: () {
         if (widget.selected.isNotEmpty) {
-          widget.onSelect(gymSet.id);
+          widget.onSelect(gymSet.id!);
         } else {
           Navigator.push(
             context,
@@ -271,7 +288,8 @@ class _HistoryListState extends State<HistoryList> {
 
   @override
   Widget build(BuildContext context) {
-    final showImages = context.select<SettingsState, bool>((settings) => settings.value.showImages);
+    final showImages =
+        context.watch<SettingsRepository>().isEnabled(key: 'show_images');
     _grouped = _groupByDay(_current);
 
     return ListView.builder(
@@ -303,7 +321,9 @@ class _HistoryListState extends State<HistoryList> {
   }
 
   void scrollListener() {
-    if (widget.scroll.position.pixels < widget.scroll.position.maxScrollExtent - 200 || goingNext) return;
+    if (widget.scroll.position.pixels <
+            widget.scroll.position.maxScrollExtent - 200 ||
+        goingNext) return;
     setState(() {
       goingNext = true;
     });
@@ -323,7 +343,8 @@ class _HistoryListState extends State<HistoryList> {
   }
 
   Widget _buildSectionDivider(DateTime date) {
-    final format = context.read<SettingsState>().value.shortDateFormat;
+    final format =
+        context.read<SettingsRepository>().getSetting(key: 'short_date_format');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -379,7 +400,7 @@ class DateHeaderDelegate extends SliverPersistentHeaderDelegate {
   ) {
     return Selector<SettingsRepository, String>(
       selector: (context, settings) {
-        final format = settings.value.shortDateFormat;
+        final format = settings.getSetting(key: 'short_date_format');
         return format;
       },
       builder: (context, format, child) {
@@ -403,5 +424,6 @@ class DateHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get minExtent => 44;
 
   @override
-  bool shouldRebuild(DateHeaderDelegate oldDelegate) => oldDelegate.date != date;
+  bool shouldRebuild(DateHeaderDelegate oldDelegate) =>
+      oldDelegate.date != date;
 }

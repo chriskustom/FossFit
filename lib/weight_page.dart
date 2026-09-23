@@ -58,7 +58,8 @@ class _WeightPageState extends State<WeightPage> {
               const SizedBox(height: 8),
               Selector<SettingsRepository, String>(
                 selector: (context, settings) => settings.value.strengthUnit,
-                builder: (context, value, child) => DropdownButtonFormField<String>(
+                builder: (context, value, child) =>
+                    DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Unit'),
                   initialValue: unit ?? value,
                   items: const [
@@ -112,7 +113,8 @@ class _WeightPageState extends State<WeightPage> {
                               }),
                               child: Image.file(
                                 File(image!),
-                                errorBuilder: (context, error, stackTrace) => TextButton.icon(
+                                errorBuilder: (context, error, stackTrace) =>
+                                    TextButton.icon(
                                   label: const Text('Image error'),
                                   icon: const Icon(Icons.error),
                                   onPressed: () => pick(),
@@ -125,7 +127,8 @@ class _WeightPageState extends State<WeightPage> {
                     ),
                   );
                 },
-                selector: (context, settings) => settings.value.showImages,
+                selector: (context, settings) =>
+                    settings.isEnabled(key: 'show_images'),
               ),
             ],
           ),
@@ -138,7 +141,8 @@ class _WeightPageState extends State<WeightPage> {
           final settings = context.watch<SettingsRepository>();
           Navigator.pop(context);
 
-          if (settings.strengthUnit != 'last-entry') unit = settings.strengthUnit;
+          if (settings.strengthUnit != 'last-entry')
+            unit = settings.strengthUnit;
 
           oldDb.gymSets.insertOne(
             GymSetsCompanion.insert(
@@ -150,7 +154,8 @@ class _WeightPageState extends State<WeightPage> {
               image: drift.Value(image),
             ),
           );
-          (oldDb.gymSets.update()..where((tbl) => tbl.bodyWeight.equals(0))).write(
+          (oldDb.gymSets.update()..where((tbl) => tbl.bodyWeight.equals(0)))
+              .write(
             GymSetsCompanion(
               bodyWeight: drift.Value(double.parse(ctrl.text)),
             ),

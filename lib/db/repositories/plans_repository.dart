@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:fossfit/db/db_constants.dart';
-import 'package:fossfit/models/gym_sets_model.dart';
-import 'package:fossfit/models/plan_exercises_model.dart';
-import 'package:fossfit/models/plans_model.dart';
+import 'package:fossfit/models/gym_set_model.dart';
+import 'package:fossfit/models/plan_exercise_model.dart';
+import 'package:fossfit/models/plan_model.dart';
 import 'package:sqflite/sqflite.dart';
 
 class PlanCount {
@@ -30,10 +30,9 @@ class PlansRepository extends ChangeNotifier {
   final Database _db;
 
   List<Plan> _plans = [];
-  List<GymSets> _lastSets = [];
+  List<GymSet> _lastSets = [];
   List<PlanCount> _planCounts = [];
   List<GymCount> _gymCounts = [];
-  List<PlanExercises> _exercises = [];
 
   PlansRepository(this._db);
 
@@ -43,13 +42,11 @@ class PlansRepository extends ChangeNotifier {
 
   List<Plan> get plans => List.unmodifiable(_plans);
 
-  List<GymSets> get lastSets => List.unmodifiable(_lastSets);
+  List<GymSet> get lastSets => List.unmodifiable(_lastSets);
 
   List<PlanCount> get planCounts => List.unmodifiable(_planCounts);
 
   List<GymCount> get gymCounts => List.unmodifiable(_gymCounts);
-
-  List<PlanExercises> get exercises => List.unmodifiable(_exercises);
 
   // ---------------------------------------------------------------------------
   // Initial loading
@@ -59,102 +56,6 @@ class PlansRepository extends ChangeNotifier {
     await updatePlans(null);
     await updatePlanCounts();
     await updateDefaults();
-  }
-
-  // ---------------------------------------------------------------------------
-  // Exercises
-  // ---------------------------------------------------------------------------
-
-  /// Adds an exercise to the current exercise list.
-  ///
-  /// Equivalent to the old Drift PlanState.addExercise().
-  void addExercise(GymSets gymSet) {
-    _exercises.add(
-      PlanExercises(
-        exercise: gymSet.name,
-        enabled: true,
-        timers: true,
-        maxsets: 0,
-      ),
-    );
-
-    _exercises.sort((a, b) {
-      if (a.enabled != b.enabled) {
-        return b.enabled ? 1 : -1;
-      }
-
-      return a.exercise.compareTo(b.exercise);
-    });
-
-    notifyListeners();
-  }
-
-  /// Loads all exercises that exist in gym_sets and combines them with
-  /// the exercises configured for the supplied plan.
-  ///
-  /// This is the sqflite equivalent of the old Drift setExercises().
-  Future<void> setExercises(Plan plan) async {
-    final planId = plan.id ?? 0;
-
-    final results = await _db.rawQuery(
-      '''
-      SELECT
-        gym_sets.name,
-
-        plan_exercises.id,
-        plan_exercises.plan_id,
-        plan_exercises.exercise,
-        plan_exercises.enabled,
-        plan_exercises.max_sets,
-        plan_exercises.warmup_sets,
-        plan_exercises.timers,
-        plan_exercises.sequence
-
-      FROM gym_sets
-
-      LEFT JOIN plan_exercises
-        ON plan_exercises.plan_id = ?
-        AND plan_exercises.exercise = gym_sets.name
-
-      GROUP BY gym_sets.name
-      ''',
-      [planId],
-    );
-
-    final enabled = <PlanExercises>[];
-    final disabled = <PlanExercises>[];
-
-    for (final row in results) {
-      final exercise = PlanExercises(
-        id: row['id'] as int?,
-        planId: planId,
-        exercise: row['name'] as String,
-        enabled: row['enabled'] == 1,
-        maxsets: (row['max_sets'] as num?)?.toInt() ?? 0,
-        warmupSets: (row['warmup_sets'] as num?)?.toInt(),
-        timers: row['timers'] == 1,
-        sequence: (row['sequence'] as num?)?.toInt() ?? 0,
-      );
-
-      if (exercise.enabled) {
-        enabled.add(exercise);
-      } else {
-        disabled.add(exercise);
-      }
-    }
-
-    enabled.sort(
-      (a, b) => (a.sequence ?? 0).compareTo(
-        b.sequence ?? 0,
-      ),
-    );
-
-    _exercises = [
-      ...enabled,
-      ...disabled,
-    ];
-
-    notifyListeners();
   }
 
   // ---------------------------------------------------------------------------
@@ -185,7 +86,7 @@ class PlansRepository extends ChangeNotifier {
       ''',
     );
 
-    _lastSets = results.map((row) => GymSets.fromMap(row)).toList();
+    _lastSets = results.map((row) => GymSet.fromMap(row)).toList();
 
     notifyListeners();
   }
@@ -331,12 +232,83 @@ class PlansRepository extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   Future<List<Plan>> getPlans() async {
-    final rows = await _db.query(
-      TableName.plans.name,
-      orderBy: 'sequence ASC',
-    );
+    final rows = await _db.rawQuery('''
+    SELECT
+      plans.id,
+      plans.days,
+      plans.sequence,
+      plans.title,
 
-    return rows.map((row) => Plan.fromMap(row)).toList();
+      plan_exercises.id AS plan_exercise_id,
+      plan_exercises.timers,
+      plan_exercises.enabled,
+      plan_exercises.max_sets,
+      plan_exercises.exercise_id,
+      plan_exercises.warmup_sets,
+      plan_exercises.plan_id,
+      plan_exercises.sequence AS plan_exercise_sequence,
+
+      exercises.id AS exercise_joined_id,
+      exercises.name AS exercise_name,
+      exercises.cardio AS exercise_cardio,
+      exercises.category AS exercise_category,
+      exercises.image AS exercise_image
+
+    FROM plans
+
+    LEFT JOIN plan_exercises
+      ON plan_exercises.plan_id = plans.id
+
+    LEFT JOIN exercises
+      ON exercises.id = plan_exercises.exercise_id
+
+    ORDER BY
+      plans.sequence ASC,
+      plan_exercises.sequence ASC
+  ''');
+
+    final Map<int, Plan> plans = {};
+
+    for (final row in rows) {
+      final planId = (row['id'] as num).toInt();
+
+      final existingPlan = plans[planId];
+
+      if (existingPlan == null) {
+        plans[planId] = Plan.fromMap(row);
+      }
+
+      if (row['plan_exercise_id'] != null) {
+        final planExercise = PlanExercise.fromJoinedMap({
+          'id': row['plan_exercise_id'],
+          'timers': row['timers'],
+          'enabled': row['enabled'],
+          'max_sets': row['max_sets'],
+          'exercise_id': row['exercise_id'],
+          'warmup_sets': row['warmup_sets'],
+          'plan_id': row['plan_id'],
+          'sequence': row['plan_exercise_sequence'],
+          'exercise_joined_id': row['exercise_joined_id'],
+          'exercise_name': row['exercise_name'],
+          'exercise_cardio': row['exercise_cardio'],
+          'exercise_category': row['exercise_category'],
+          'exercise_image': row['exercise_image'],
+        });
+
+        final plan = plans[planId]!;
+
+        final exercises = [
+          ...?plan.exercises,
+          planExercise,
+        ];
+
+        plans[planId] = plan.copyWith(
+          exercises: exercises,
+        );
+      }
+    }
+
+    return plans.values.toList();
   }
 
   Future<void> updatePlans(List<Plan>? newPlans) async {
@@ -361,7 +333,7 @@ class PlansRepository extends ChangeNotifier {
     return _plans.where((n) => ids.contains(n.id)).toList();
   }
 
-  Future<Plan> addPlans(Plan plans) async {
+  Future<Plan> addPlan(Plan plans) async {
     plans.id = await _db.insert(
       TableName.plans.name,
       plans.toMap(),
@@ -413,7 +385,15 @@ class PlansRepository extends ChangeNotifier {
     return true;
   }
 
-  Future<bool> deletePlansById(int id) async {
+  Future<bool> deletePlansByIds(List<int> ids) async {
+    if (ids.isEmpty) return false;
+    for (var id in ids) {
+      await deletePlanById(id);
+    }
+    return true;
+  }
+
+  Future<bool> deletePlanById(int id) async {
     final plans = getPlanById(id);
 
     if (plans == null) {

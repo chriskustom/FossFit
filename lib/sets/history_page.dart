@@ -1,12 +1,11 @@
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
 import 'package:fossfit/app_search.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/filters.dart';
-import 'package:fossfit/main.dart';
-import 'package:fossfit/models/gym_sets_model.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
 import 'package:fossfit/sets/edit_sets_page.dart';
 import 'package:fossfit/sets/history_collapsed.dart';
@@ -17,11 +16,17 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ExerciseItem {
+  final int exerciseId;
   final String name;
-  final List<GymSets> sets;
+  final List<GymSet> sets;
   final DateTime date;
 
-  ExerciseItem({required this.name, required this.sets, required this.date});
+  ExerciseItem({
+    required this.exerciseId,
+    required this.name,
+    required this.sets,
+    required this.date,
+  });
 }
 
 class HistoryPage extends StatefulWidget {
@@ -33,7 +38,8 @@ class HistoryPage extends StatefulWidget {
   createState() => HistoryPageState();
 }
 
-class HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClientMixin {
+class HistoryPageState extends State<HistoryPage>
+    with AutomaticKeepAliveClientMixin {
   final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
 
   @override
@@ -46,8 +52,10 @@ class HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClientM
       onPopWithResult: (result) {
         if (navKey.currentState!.canPop() == false) return;
         final settings = context.watch<SettingsRepository>();
-        final historyIndex = settings.tabs.split(',').indexOf('HistoryPage');
-        if (widget.tabController.index == historyIndex) navKey.currentState!.pop();
+        final historyIndex =
+            settings.getSetting(key: 'tabs').split(',').indexOf('HistoryPage');
+        if (widget.tabController.index == historyIndex)
+          navKey.currentState!.pop();
       },
       child: Navigator(
         key: navKey,
@@ -72,7 +80,7 @@ class _HistoryPageWidget extends StatefulWidget {
 }
 
 class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
-  late Stream<List<GymSet>> stream;
+  late List<GymSet> gymSets = [];
 
   final repsGt = TextEditingController();
   final repsLt = TextEditingController();
@@ -92,15 +100,16 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
 
   @override
   Widget build(BuildContext context) {
+    var setsRepo = context.watch<GymSetsRepository>();
+    var settingsRepo = context.watch<SettingsRepository>();
+    gymSets = setsRepo.gymsets;
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      body: StreamBuilder(
-        stream: stream,
-        builder: (context, snapshot) {
-          final showStats = context.select<SettingsState, bool>(
-            (settings) => settings.value.statsPanel,
-          );
-          if (showStats) getStats(stream.first);
+      body: Builder(
+        builder: (context) {
+          final showStats = settingsRepo.isEnabled(key: 'stats_panel');
+          if (showStats) getStats();
           return material.Column(
             children: [
               AppSearch(
@@ -141,17 +150,20 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
                   },
                 ),
                 onShare: () async {
-                  final gymSets = snapshot.data!
+                  final gymSets = this
+                      .gymSets
                       .where(
                         (gymSet) => selected.contains(gymSet.id),
                       )
                       .toList();
                   final summaries = gymSets
                       .map(
-                        (gymSet) => "${toString(gymSet.reps)}x${toString(gymSet.weight)}${gymSet.unit} ${gymSet.name}",
+                        (gymSet) =>
+                            "${toString(gymSet.reps)}x${toString(gymSet.weight)}${gymSet.unit} ${gymSet.exercise!.name}",
                       )
                       .join(', ');
-                  await SharePlus.instance.share(ShareParams(text: "I just did $summaries"));
+                  await SharePlus.instance
+                      .share(ShareParams(text: "I just did $summaries"));
                   setState(() {
                     selected.clear();
                   });
@@ -166,15 +178,15 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
                 onClear: () => setState(() {
                   selected.clear();
                 }),
-                onDelete: () {
-                  (oldDb.delete(oldDb.gymSets)..where((tbl) => tbl.id.isIn(selected))).go();
+                onDelete: () async {
+                  await setsRepo.deleteGymSetsById(selected.toList());
                   setState(() {
                     selected.clear();
                   });
                 },
                 onSelect: () => setState(() {
-                  if (snapshot.data == null) return;
-                  selected.addAll(snapshot.data!.map((gymSet) => gymSet.id));
+                  if (gymSets.isEmpty) return;
+                  selected.addAll(gymSets.map((gymSet) => gymSet.id!));
                 }),
                 selected: selected,
                 onEdit: () => Navigator.push(
@@ -186,24 +198,26 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
                   ),
                 ),
               ),
-              if (snapshot.data?.isEmpty == true)
+              if (gymSets.isEmpty == true)
                 const ListTile(
                   title: Text("No entries yet"),
                   subtitle: Text(
                     "Complete some sets to see them here",
                   ),
                 ),
-              if (snapshot.hasError) Expanded(child: ErrorWidget(snapshot.error.toString())),
-              if (snapshot.hasData && snapshot.data?.isNotEmpty == true && showStats) ...[
+              if (gymSets.isNotEmpty == true && showStats) ...[
                 Theme(
-                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  data: Theme.of(context)
+                      .copyWith(dividerColor: Colors.transparent),
                   child: Padding(
                     padding: EdgeInsets.only(top: 8),
                     child: ExpansionTile(
                       childrenPadding: EdgeInsets.all(0),
                       iconColor: Theme.of(context).colorScheme.onSurface,
                       leading: Icon(
-                        expand.isExpanded ? Icons.analytics_outlined : Icons.history_outlined,
+                        expand.isExpanded
+                            ? Icons.analytics_outlined
+                            : Icons.history_outlined,
                         color: Theme.of(context).colorScheme.primary,
                       ),
                       title: Text(expand.isExpanded ? 'Stats' : 'History'),
@@ -217,14 +231,11 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
               Expanded(
                 child: Builder(
                   builder: (context) {
-                    final groupHistory = context.select<SettingsState, bool>(
-                      (settings) => settings.value.groupHistory,
-                    );
+                    final groupHistory =
+                        settingsRepo.isEnabled(key: 'group_history');
 
                     if (groupHistory) {
-                      final exerciseItems = _getExerciseItems(
-                        snapshot.hasData ? snapshot.data! : [],
-                      );
+                      final exerciseItems = _getExerciseItems(gymSets);
                       return HistoryCollapsed(
                         scroll: scroll,
                         days: exerciseItems.reversed.toList(),
@@ -249,7 +260,7 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
                     } else
                       return HistoryList(
                         scroll: scroll,
-                        sets: snapshot.hasData ? snapshot.data! : [],
+                        sets: gymSets,
                         onSelect: (id) {
                           if (selected.contains(id))
                             setState(() {
@@ -286,38 +297,39 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
 
   void onAdd() async {
     final settings = context.watch<SettingsRepository>();
-    final gymSets = await stream.first;
+    final gymSets = this.gymSets;
     var bodyWeight = 0.0;
-    if (settings.showBodyWeight) bodyWeight = (await getBodyWeight())?.weight ?? 0.0;
+    if (settings.isEnabled(key: 'show_body_weight'))
+      bodyWeight = (await getBodyWeight())?.weight ?? 0.0;
 
     GymSet gymSet = gymSets.firstOrNull ??
         GymSet(
           id: 0,
           bodyWeight: bodyWeight,
           restMs: const Duration(minutes: 3, seconds: 30).inMilliseconds,
-          name: '',
           reps: 0,
           created: DateTime.now().toLocal(),
           unit: 'kg',
           weight: 0,
-          cardio: false,
           duration: 0,
           distance: 0,
           hidden: false,
+          exerciseId: 1,
         );
     gymSet = gymSet.copyWith(
-      id: 0,
       bodyWeight: bodyWeight,
       created: DateTime.now().toLocal(),
     );
 
-    if (settings.strengthUnit != 'last-entry' && !gymSet.cardio)
+    var su = settings.getSetting(key: 'strength_unit');
+    var cu = settings.getSetting(key: 'cardio_unit');
+    if (su != 'last-entry' && !gymSet.exercise!.cardio)
       gymSet = gymSet.copyWith(
-        unit: settings.strengthUnit,
+        unit: su,
       );
-    else if (settings.cardioUnit != 'last-entry' && gymSet.cardio)
+    else if (cu != 'last-entry' && gymSet.exercise!.cardio)
       gymSet = gymSet.copyWith(
-        unit: settings.cardioUnit,
+        unit: cu,
       );
 
     if (!mounted) return;
@@ -336,11 +348,16 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
     for (final gymSet in gymSets) {
       final day = DateUtils.dateOnly(gymSet.created);
       final index = exerciseItems.indexWhere(
-        (hd) => isSameDay(hd.date, day) && hd.name == gymSet.name,
+        (hd) => isSameDay(hd.date, day) && hd.name == gymSet.exercise?.name,
       );
       if (index == -1)
         exerciseItems.add(
-          ExerciseItem(name: gymSet.name, sets: [gymSet], date: day),
+          ExerciseItem(
+            name: gymSet.exercise!.name,
+            sets: [gymSet],
+            date: day,
+            exerciseId: gymSet.exercise!.id!,
+          ),
         );
       else
         exerciseItems[index].sets.add(gymSet);
@@ -348,10 +365,9 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
     return exerciseItems;
   }
 
-  void getStats(Future<List<GymSet>> sets) async {
+  void getStats() async {
     try {
-      final s = await sets;
-      final lw = await getLastWorkout(s);
+      final lw = await getLastWorkout(gymSets);
       setState(() {
         lastWorkout = lw;
       });
@@ -363,18 +379,24 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
     String plural(int s) => s > 1 ? 's' : '';
     final today = dayOnly(DateTime.now());
     if (sets.isEmpty) return SizedBox.shrink();
-    final mostRecentDay =
-        sets.map((s) => dayOnly(s.created)).where((d) => !d.isAfter(today)).reduce((a, b) => a.isAfter(b) ? a : b);
+    final mostRecentDay = sets
+        .map((s) => dayOnly(s.created))
+        .where((d) => !d.isAfter(today))
+        .reduce((a, b) => a.isAfter(b) ? a : b);
 
-    final result = sets.where((s) => dayOnly(s.created) == mostRecentDay).toList();
+    final result =
+        sets.where((s) => dayOnly(s.created) == mostRecentDay).toList();
     var sortedDays = _getExerciseItems(result);
     sortedDays.sort((a, b) => a.date.compareTo(b.date));
-    var totalWorkout = sortedDays.where((d) => d.date == sortedDays.first.date).toList();
+    var totalWorkout =
+        sortedDays.where((d) => d.date == sortedDays.first.date).toList();
 
-    var cardioUnit =
-        totalWorkout.first.sets.any((n) => n.cardio) ? totalWorkout.first.sets.firstWhere((n) => n.cardio).unit : '';
-    var weightUnit =
-        totalWorkout.first.sets.any((n) => !n.cardio) ? totalWorkout.first.sets.firstWhere((n) => !n.cardio).unit : '';
+    var cardioUnit = totalWorkout.first.sets.any((n) => n.exercise!.cardio)
+        ? totalWorkout.first.sets.firstWhere((n) => n.exercise!.cardio).unit
+        : '';
+    var weightUnit = totalWorkout.first.sets.any((n) => !n.exercise!.cardio)
+        ? totalWorkout.first.sets.firstWhere((n) => !n.exercise!.cardio).unit
+        : '';
     var totalSets = 0;
     var totalReps = 0;
     var totalExercises = totalWorkout.length;
@@ -384,13 +406,13 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
       totalSets += exercise.sets.length;
       for (var set in exercise.sets) {
         totalReps += set.reps.toInt();
-        totalDistance += set.distance;
+        totalDistance += (set.distance ?? 0);
         totalWeight += (set.weight * set.reps);
       }
     }
     return Selector<SettingsRepository, String>(
       selector: (context, settings) {
-        final format = settings.value.shortDateFormat;
+        final format = settings.getSetting(key: 'short_date_format');
         return DateFormat(format).format(sortedDays.first.date);
       },
       builder: (context, formattedDate, child) {
@@ -452,66 +474,62 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
   }
 
   void setStream() {
-    final terms = search.toLowerCase().split(" ").where((term) => term.isNotEmpty);
+    final terms =
+        search.toLowerCase().split(" ").where((term) => term.isNotEmpty);
 
-    var query = (oldDb.gymSets.select()
-      ..orderBy(
-        [
-          (u) => OrderingTerm(
-                expression: u.created,
-                mode: OrderingMode.desc,
-              ),
-        ],
-      )
-      ..where((tbl) => tbl.hidden.equals(false))
-      ..limit(limit));
+    var query = gymSets.where((tbl) => !tbl.hidden).take(limit);
 
     for (final term in terms) {
-      query = query..where((tbl) => tbl.name.contains(term));
+      query = query..where((tbl) => tbl.exercise!.name.contains(term));
     }
 
-    if (category != null) query = query..where((tbl) => tbl.category.equals(category!));
-    if (startDate != null) query = query..where((tbl) => tbl.created.isBiggerOrEqualValue(startDate!));
-    if (endDate != null) query = query..where((tbl) => tbl.created.isSmallerOrEqualValue(endDate!));
+    if (category != null)
+      query = query..where((tbl) => tbl.exercise!.category == category!);
+    if (startDate != null)
+      query = query
+        ..where(
+          (tbl) =>
+              tbl.created.isAfter(startDate!) ||
+              tbl.created.isAtSameMomentAs(startDate!),
+        );
+    if (endDate != null)
+      query = query
+        ..where(
+          (tbl) =>
+              tbl.created.isBefore(endDate!) ||
+              tbl.created.isAtSameMomentAs(endDate!),
+        );
     if (repsGt.text.isNotEmpty)
       query = query
         ..where(
           (tbl) =>
-              tbl.reps.isBiggerThanValue(
-                double.tryParse(repsGt.text) ?? 0,
-              ) &
-              tbl.cardio.equals(false),
+              tbl.reps > (double.tryParse(repsGt.text) ?? 0) &&
+              !tbl.exercise!.cardio,
         );
     if (repsLt.text.isNotEmpty)
       query = query
         ..where(
           (tbl) =>
-              tbl.reps.isSmallerThanValue(
-                double.tryParse(repsLt.text) ?? 0,
-              ) &
-              tbl.cardio.equals(false),
+              tbl.reps < (double.tryParse(repsLt.text) ?? 0) &&
+              !tbl.exercise!.cardio,
         );
     if (weightGt.text.isNotEmpty)
       query = query
         ..where(
           (tbl) =>
-              tbl.weight.isBiggerThanValue(
-                double.tryParse(weightGt.text) ?? 0,
-              ) &
-              tbl.cardio.equals(false),
+              tbl.weight > (double.tryParse(weightGt.text) ?? 0) &&
+              !tbl.exercise!.cardio,
         );
     if (weightLt.text.isNotEmpty)
       query = query
         ..where(
           (tbl) =>
-              tbl.weight.isSmallerThanValue(
-                double.tryParse(weightLt.text) ?? 0,
-              ) &
-              tbl.cardio.equals(false),
+              tbl.weight < (double.tryParse(weightLt.text) ?? 0) &&
+              !tbl.exercise!.cardio,
         );
 
     setState(() {
-      stream = query.watch();
+      gymSets = query.toList();
     });
   }
 }

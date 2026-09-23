@@ -20,7 +20,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsState>();
+    final settings = context.watch<SettingsRepository>();
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -76,10 +76,12 @@ class _PermissionsPageState extends State<PermissionsPage> {
                 subtitle: const Text(
                   'Alarms cannot be accurate if this is disabled.',
                 ),
-                onTap: () async => await requestPermission(Permission.scheduleExactAlarm),
+                onTap: () async =>
+                    await requestPermission(Permission.scheduleExactAlarm),
                 trailing: Switch(
                   value: schedule,
-                  onChanged: (_) async => await requestPermission(Permission.scheduleExactAlarm),
+                  onChanged: (_) async =>
+                      await requestPermission(Permission.scheduleExactAlarm),
                 ),
               ),
               ListTile(
@@ -87,10 +89,12 @@ class _PermissionsPageState extends State<PermissionsPage> {
                 subtitle: const Text(
                   'Timer progress is sent to the notification bar',
                 ),
-                onTap: () async => await requestPermission(Permission.notification),
+                onTap: () async =>
+                    await requestPermission(Permission.notification),
                 trailing: Switch(
                   value: notify,
-                  onChanged: (_) async => await requestPermission(Permission.notification),
+                  onChanged: (_) async =>
+                      await requestPermission(Permission.notification),
                 ),
               ),
             ],

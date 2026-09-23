@@ -1,14 +1,13 @@
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/models/plan_exercises_model.dart';
+import 'package:fossfit/models/plan_exercise_model.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
 class ExerciseTile extends StatefulWidget {
-  final PlanExercises planExercise;
-  final Function(PlanExercises) onChange;
+  final PlanExercise planExercise;
+  final Function(PlanExercise) onChange;
 
   const ExerciseTile({
     super.key,
@@ -22,10 +21,10 @@ class ExerciseTile extends StatefulWidget {
 
 class _ExerciseTileState extends State<ExerciseTile> {
   late final max = TextEditingController(
-    text: widget.planExercise.maxSets.value?.toString(),
+    text: widget.planExercise.maxSets.toString(),
   );
   late final warmup = TextEditingController(
-    text: widget.planExercise.warmupSets.value?.toString(),
+    text: widget.planExercise.warmupSets.toString(),
   );
 
   @override
@@ -37,15 +36,16 @@ class _ExerciseTileState extends State<ExerciseTile> {
           showDialog(
             context: context,
             builder: (context) {
-              bool timers = widget.planExercise.timers.present ? widget.planExercise.timers.value : true;
+              bool timers = widget.planExercise.timers ?? true;
 
               return AlertDialog.adaptive(
-                title: Text(widget.planExercise.exercise.value),
+                title: Text(widget.planExercise.exercise!.name),
                 content: SingleChildScrollView(
                   child: material.Column(
                     children: [
                       Selector<SettingsRepository, int?>(
-                        selector: (context, settings) => settings.value.warmupSets,
+                        selector: (context, settings) =>
+                            settings.getInt(key: 'warmup_sets'),
                         builder: (context, value, child) => TextField(
                           controller: warmup,
                           keyboardType: const TextInputType.numberWithOptions(
@@ -54,8 +54,8 @@ class _ExerciseTileState extends State<ExerciseTile> {
                           onTap: () => selectAll(warmup),
                           onChanged: (value) {
                             final pe = widget.planExercise.copyWith(
-                              enabled: const Value(true),
-                              warmupSets: Value(int.tryParse(warmup.text)),
+                              enabled: true,
+                              warmupSets: int.tryParse(warmup.text),
                             );
                             widget.onChange(pe);
                           },
@@ -68,7 +68,8 @@ class _ExerciseTileState extends State<ExerciseTile> {
                       ),
                       const SizedBox(height: 16),
                       Selector<SettingsRepository, int>(
-                        selector: (context, settings) => settings.value.maxSets,
+                        selector: (context, settings) =>
+                            settings.getInt(key: 'max_sets'),
                         builder: (context, value, child) => TextField(
                           controller: max,
                           keyboardType: const TextInputType.numberWithOptions(
@@ -76,10 +77,11 @@ class _ExerciseTileState extends State<ExerciseTile> {
                           ),
                           onTap: () => selectAll(max),
                           onChanged: (value) {
-                            if (int.parse(max.text) > 0 && int.parse(max.text) <= 20) {
+                            if (int.parse(max.text) > 0 &&
+                                int.parse(max.text) <= 20) {
                               final pe = widget.planExercise.copyWith(
-                                enabled: const Value(true),
-                                maxSets: Value(int.parse(max.text)),
+                                enabled: true,
+                                maxSets: int.parse(max.text),
                               );
                               widget.onChange(pe);
                             }
@@ -102,7 +104,7 @@ class _ExerciseTileState extends State<ExerciseTile> {
                               });
                               widget.onChange(
                                 widget.planExercise.copyWith(
-                                  timers: Value(value),
+                                  timers: value,
                                 ),
                               );
                             },
@@ -126,13 +128,13 @@ class _ExerciseTileState extends State<ExerciseTile> {
           );
         },
       ),
-      title: Text(widget.planExercise.exercise.value),
+      title: Text(widget.planExercise.exercise!.name),
       trailing: Switch(
-        value: widget.planExercise.enabled.value,
+        value: widget.planExercise.enabled,
         onChanged: (value) {
           widget.onChange(
             widget.planExercise.copyWith(
-              enabled: Value(value),
+              enabled: value,
             ),
           );
         },
@@ -140,7 +142,7 @@ class _ExerciseTileState extends State<ExerciseTile> {
       onTap: () {
         widget.onChange(
           widget.planExercise.copyWith(
-            enabled: Value(!widget.planExercise.enabled.value),
+            enabled: widget.planExercise.enabled,
           ),
         );
       },

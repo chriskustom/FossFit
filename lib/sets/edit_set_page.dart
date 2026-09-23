@@ -1,15 +1,16 @@
 import 'dart:io';
 import 'dart:math';
 
-import 'package:drift/drift.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
 import 'package:fossfit/constants.dart';
+import 'package:fossfit/db/repositories/exercise_repository.dart';
+import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/plans_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/main.dart';
-import 'package:fossfit/models/gym_sets_model.dart';
-import 'package:fossfit/plan/plan_state.dart';
+import 'package:fossfit/models/exercise_model.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/sets/history_list.dart';
 import 'package:fossfit/timer/timer_state.dart';
 import 'package:fossfit/utils.dart';
@@ -18,7 +19,7 @@ import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class EditSetPage extends StatefulWidget {
-  final GymSets gymSet;
+  final GymSet gymSet;
 
   const EditSetPage({super.key, required this.gymSet});
 
@@ -52,20 +53,13 @@ class _EditSetPageState extends State<EditSetPage> {
   late bool cardio;
   late String name;
   late bool dateSet = false;
+  late Exercise exercise;
 
   void onSelected(String option, bool showBodyWeight) async {
-    final last = await (oldDb.gymSets.select()
-          ..where((tbl) => tbl.name.equals(option) & tbl.hidden.equals(false))
-          ..orderBy(
-            [
-              (u) => OrderingTerm(
-                    expression: u.created,
-                    mode: OrderingMode.desc,
-                  ),
-            ],
-          )
-          ..limit(1))
-        .getSingleOrNull();
+    final setRepo = context.read<GymSetsRepository>();
+    final last = setRepo.gymsets
+        .where((t) => t.exercise!.name == option && !t.hidden)
+        .firstOrNull;
     if (last == null)
       return setState(() {
         name = option;
@@ -93,9 +87,13 @@ class _EditSetPageState extends State<EditSetPage> {
 
   @override
   Widget build(BuildContext context) {
-    final showBodyWeight = context.select<SettingsState, bool>(
-      (settings) => settings.value.showBodyWeight,
-    );
+    final settings = context.watch<SettingsRepository>();
+    final showBodyWeight = settings.isEnabled(key: 'show_body_weight');
+    final exRepo = context.watch<ExercisesRepository>();
+    final names = exRepo.exercises.map((result) => result.name);
+    setState(() {
+      options = names.toList();
+    });
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -108,10 +106,10 @@ class _EditSetPageState extends State<EditSetPage> {
   AppBar buildAppBar() {
     return AppBar(
       title: Text(
-        widget.gymSet.id > 0 ? widget.gymSet.name : 'Add set',
+        widget.gymSet.id! > 0 ? widget.gymSet.exercise!.name : 'Add set',
       ),
       actions: [
-        if (widget.gymSet.id > 0) buildDeleteButton(),
+        if (widget.gymSet.id! > 0) buildDeleteButton(),
       ],
     );
   }
@@ -124,13 +122,14 @@ class _EditSetPageState extends State<EditSetPage> {
   }
 
   Future<void> showDeleteDialog() async {
+    final repo = context.watch<GymSetsRepository>();
     await showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: const Text('Confirm Delete'),
           content: Text(
-            'Are you sure you want to delete ${widget.gymSet.name}?',
+            'Are you sure you want to delete ${widget.gymSet.exercise!.name}?',
           ),
           actions: [
             TextButton.icon(
@@ -143,7 +142,7 @@ class _EditSetPageState extends State<EditSetPage> {
               icon: const Icon(Icons.delete),
               onPressed: () async {
                 Navigator.pop(dialogContext);
-                await oldDb.delete(oldDb.gymSets).delete(widget.gymSet);
+                await repo.deleteGymSetById(widget.gymSet.id!);
                 if (mounted) Navigator.pop(context);
               },
             ),
@@ -154,17 +153,17 @@ class _EditSetPageState extends State<EditSetPage> {
   }
 
   Widget buildBody(bool showBodyWeight) {
+    final settings = context.watch<SettingsRepository>();
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Form(
         key: key,
-        child: Consumer<SettingsState>(
-          builder: (context, settingsState, child) {
-            final settings = settingsState.value;
-            final showUnits = settings.showUnits;
-            final showCategories = settings.showCategories;
-            final showNotes = settings.showNotes;
-            final showImages = settings.showImages;
+        child: Builder(
+          builder: (context) {
+            final showUnits = settings.isEnabled(key: 'show_units');
+            final showCategories = settings.isEnabled(key: 'show_categories');
+            final showNotes = settings.isEnabled(key: 'show_notes');
+            final showImages = settings.isEnabled(key: 'show_images');
 
             return ListView(
               children: [
@@ -188,30 +187,22 @@ class _EditSetPageState extends State<EditSetPage> {
                   notesField(),
                   const SizedBox(height: 8.0),
                 ],
-                dateSelector(name),
+                dateSelector(),
                 if (showImages) ...[
                   const SizedBox(height: 8.0),
                   imageField(),
                 ],
                 if (name != '' && name != 'Weight') ...[
-                  FutureBuilder<List<GymSet>>(
-                    future: getHistory(name),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const SizedBox(
-                          height: 200,
-                          child: Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      }
+                  Builder(
+                    builder: (context) {
+                      var history = getHistory();
 
-                      if (snapshot.hasError) {
+                      if (history.isEmpty) {
                         return SizedBox(
                           height: 200,
                           child: Center(
                             child: Text(
-                              'Error loading history: ${snapshot.error}',
+                              'No entries...',
                             ),
                           ),
                         );
@@ -221,7 +212,7 @@ class _EditSetPageState extends State<EditSetPage> {
                         height: 300,
                         child: HistoryList(
                           scroll: ScrollController(),
-                          sets: snapshot.data ?? [],
+                          sets: history,
                           peek: true,
                           onSelect: (_) {},
                           selected: const {},
@@ -325,7 +316,8 @@ class _EditSetPageState extends State<EditSetPage> {
   }
 
   Widget buildDistanceField() {
-    if (unit == 'kg' || unit == 'lb' || unit == 'stone') return buildWeightField();
+    if (unit == 'kg' || unit == 'lb' || unit == 'stone')
+      return buildWeightField();
     return TextFormField(
       controller: distance,
       focusNode: distNode,
@@ -370,7 +362,8 @@ class _EditSetPageState extends State<EditSetPage> {
         onTap: () => selectAll(body),
         validator: (value) {
           if (value == null) return null;
-          if (value.isNotEmpty && double.tryParse(value) == null) return 'Invalid number';
+          if (value.isNotEmpty && double.tryParse(value) == null)
+            return 'Invalid number';
           return null;
         },
       ),
@@ -392,24 +385,26 @@ class _EditSetPageState extends State<EditSetPage> {
           },
         ),
       ),
-      selector: (context, settings) => settings.value.showUnits,
+      selector: (context, settings) => settings.isEnabled(key: 'show_units'),
     );
   }
 
   Widget categorySelector() {
+    final repo = context.watch<ExercisesRepository>();
     return Selector<SettingsRepository, bool>(
-      selector: (context, settings) => settings.value.showCategories,
+      selector: (context, settings) =>
+          settings.isEnabled(key: 'show_categories'),
       builder: (context, showCategories, child) {
         if (!showCategories || name == 'Weight') {
           return const SizedBox();
         }
 
-        return StreamBuilder(
-          stream: getCategoriesStream(),
+        return FutureBuilder(
+          future: repo.getDistinctCategories(),
           builder: (context, snapshot) {
             return Autocomplete<String>(
               initialValue: TextEditingValue(
-                text: widget.gymSet.category ?? "",
+                text: widget.gymSet.exercise!.category ?? "",
               ),
               optionsBuilder: (TextEditingValue textEditingValue) {
                 if (snapshot.data == null) return [];
@@ -464,56 +459,49 @@ class _EditSetPageState extends State<EditSetPage> {
           controller: notes,
         ),
       ),
-      selector: (context, settingsState) => settingsState.value.showNotes,
+      selector: (context, settingsState) =>
+          settingsState.isEnabled(key: 'show_notes'),
     );
   }
 
-  Widget dateSelector(String currentExercise) {
-    final lastSet = oldDb.gymSets.select()
-      ..orderBy([
-        (u) => OrderingTerm(
-              expression: u.created,
-              mode: OrderingMode.desc,
-            ),
-      ])
-      ..where((tbl) => tbl.name.equals(currentExercise))
-      ..where((tbl) => tbl.hidden.equals(false))
-      ..limit(1);
+  Widget dateSelector() {
+    final repo = context.watch<GymSetsRepository>();
+    final lastSet = repo.gymsets
+        .where((tbl) => tbl.exercise!.id == exercise.id && !tbl.hidden)
+        .take(1)
+        .firstOrNull;
+    if (lastSet == null) {
+      return const ListTile(
+        title: Text('Created date'),
+        subtitle: Text('No date available'),
+        trailing: Icon(Icons.calendar_today),
+      );
+    }
 
-    return FutureBuilder<List<GymSet>>(
-      future: lastSet.get(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const ListTile(
-            title: Text('Created date'),
-            subtitle: Text('No date available'),
-            trailing: Icon(Icons.calendar_today),
-          );
-        }
+    final lastDate = lastSet.created;
+    final now = DateTime.now();
 
-        final lastDate = snapshot.data!.first.created;
-        final now = DateTime.now();
+    final displayDate = lastDate.add(const Duration(minutes: 3)).isAfter(now)
+        ? now
+        : widget.gymSet.id! > 0
+            ? widget.gymSet.created
+            : lastDate.add(const Duration(minutes: 3));
 
-        final displayDate = lastDate.add(const Duration(minutes: 3)).isAfter(now)
-            ? now
-            : widget.gymSet.id > 0
-                ? widget.gymSet.created
-                : lastDate.add(const Duration(minutes: 3));
+    created = dateSet ? created : displayDate;
 
-        created = dateSet ? created : displayDate;
-
-        return Selector<SettingsRepository, String>(
-          selector: (context, settings) => settings.value.longDateFormat,
-          builder: (context, longDateFormat, child) => ListTile(
-            title: const Text('Created date'),
-            subtitle: Text(
-              longDateFormat == 'timeago' ? timeago.format(created) : DateFormat(longDateFormat).format(created),
-            ),
-            trailing: const Icon(Icons.calendar_today),
-            onTap: () => selectDate(),
-          ),
-        );
-      },
+    return Selector<SettingsRepository, String>(
+      selector: (context, settings) =>
+          settings.getSetting(key: 'long_date_format'),
+      builder: (context, longDateFormat, child) => ListTile(
+        title: const Text('Created date'),
+        subtitle: Text(
+          longDateFormat == 'timeago'
+              ? timeago.format(created)
+              : DateFormat(longDateFormat).format(created),
+        ),
+        trailing: const Icon(Icons.calendar_today),
+        onTap: () => selectDate(),
+      ),
     );
   }
 
@@ -549,7 +537,8 @@ class _EditSetPageState extends State<EditSetPage> {
                     }),
                     child: Image.file(
                       File(image!),
-                      errorBuilder: (context, error, stackTrace) => TextButton.icon(
+                      errorBuilder: (context, error, stackTrace) =>
+                          TextButton.icon(
                         label: const Text('Image error'),
                         icon: const Icon(Icons.error),
                         onPressed: () => pick(),
@@ -562,22 +551,16 @@ class _EditSetPageState extends State<EditSetPage> {
           ),
         );
       },
-      selector: (context, settings) => settings.value.showImages,
+      selector: (context, settings) => settings.isEnabled(key: 'show_images'),
     );
   }
 
-  Future<List<GymSet>> getHistory(String currentExercise) {
-    return (oldDb.gymSets.select()
-          ..orderBy([
-            (u) => OrderingTerm(
-                  expression: u.created,
-                  mode: OrderingMode.desc,
-                ),
-          ])
-          ..where((tbl) => tbl.name.equals(currentExercise))
-          ..where((tbl) => tbl.hidden.equals(false))
-          ..limit(20))
-        .get();
+  List<GymSet> getHistory() {
+    final repo = context.watch<GymSetsRepository>();
+    return repo.gymsets
+        .where((tbl) => tbl.exercise!.id == exercise.id && !tbl.hidden)
+        .take(20)
+        .toList();
   }
 
   material.Row duration() {
@@ -625,7 +608,10 @@ class _EditSetPageState extends State<EditSetPage> {
   material.Autocomplete<String> autocomplete(bool showBodyWeight) {
     return Autocomplete<String>(
       optionsBuilder: (textEditingValue) {
-        final searchTerms = textEditingValue.text.toLowerCase().split(" ").where((term) => term.isNotEmpty);
+        final searchTerms = textEditingValue.text
+            .toLowerCase()
+            .split(" ")
+            .where((term) => term.isNotEmpty);
         Iterable<String> opts = options;
 
         for (final term in searchTerms) {
@@ -686,13 +672,6 @@ class _EditSetPageState extends State<EditSetPage> {
     setState(() {
       created = widget.gymSet.created;
     });
-
-    (oldDb.gymSets.selectOnly(distinct: true)..addColumns([oldDb.gymSets.name])).get().then((results) {
-      final names = results.map((result) => result.read(oldDb.gymSets.name)!);
-      setState(() {
-        options = names.toList();
-      });
-    });
   }
 
   void pick() async {
@@ -708,63 +687,63 @@ class _EditSetPageState extends State<EditSetPage> {
     if (!key.currentState!.validate()) return;
 
     final gymSet = widget.gymSet.copyWith(
-      name: name,
       unit: unit,
       created: created,
       reps: double.tryParse(reps.text),
       weight: double.tryParse(weight.text),
       bodyWeight: double.tryParse(body.text),
       distance: double.tryParse(distance.text),
-      duration: (int.tryParse(seconds.text) ?? 0) / 60 + (int.tryParse(minutes.text) ?? 0),
-      cardio: cardio,
-      restMs: Value(restMs),
-      incline: Value(int.tryParse(incline.text)),
-      image: Value(image),
-      notes: Value(notes.text),
-      category: Value(category),
+      duration: (int.tryParse(seconds.text) ?? 0) / 60 +
+          (int.tryParse(minutes.text) ?? 0),
+      restMs: restMs,
+      incline: int.tryParse(incline.text),
+      notes: notes.text,
     );
 
     final settings = context.watch<SettingsRepository>();
-    final planState = context.read<PlanState>();
+    final planRepo = context.read<PlansRepository>();
+    final setRepo = context.read<GymSetsRepository>();
+    final exRepo = context.read<ExercisesRepository>();
 
-    if (widget.gymSet.id > 0) {
-      await oldDb.update(oldDb.gymSets).replace(gymSet);
+    if (widget.gymSet.id != null) {
+      await setRepo.updateGymSet(gymSet);
       if (image != null)
-        (oldDb.update(oldDb.gymSets)..where((u) => u.name.equals(name))).write(GymSetsCompanion(image: Value(image)));
+        await exRepo.updateExercise(gymSet.exercise!.copyWith(image: image));
       if (!mounted) return;
-      planState.updateDefaults();
+      planRepo.updateDefaults();
       return Navigator.of(context).pop();
     } else {
-      var insert = gymSet.toCompanion(false).copyWith(id: const Value.absent());
-      await oldDb.into(oldDb.gymSets).insert(insert);
-      planState.updateDefaults();
+      await setRepo.addGymSets(gymSet.copyWith(id: null));
+      planRepo.updateDefaults();
     }
 
-    if (settings.notifications) {
-      final best = await isBest(gymSet);
+    if (settings.isEnabled(key: 'notifications')) {
+      final best = await setRepo.isBest(gymSet);
       if (best) {
         final random = Random();
-        final randomMessage = positiveReinforcement[random.nextInt(positiveReinforcement.length)];
+        final randomMessage =
+            positiveReinforcement[random.nextInt(positiveReinforcement.length)];
         if (mounted) toast(randomMessage);
       }
     }
 
-    if (!settings.restTimers && mounted) return Navigator.of(context).pop();
+    if (!settings.isEnabled(key: 'rest_timers') && mounted)
+      return Navigator.of(context).pop();
     if (!mounted) return;
     final timer = context.read<TimerState>();
     if (restMs != null)
       timer.startTimer(
         name,
         Duration(milliseconds: restMs!),
-        settings.alarmSound,
-        settings.vibrate,
+        settings.getSetting(key: 'alarm_sound'),
+        settings.isEnabled(key: 'vibrate'),
       );
     else
       timer.startTimer(
         name,
-        Duration(milliseconds: settings.timerDuration),
-        settings.alarmSound,
-        settings.vibrate,
+        Duration(milliseconds: settings.getInt(key: 'timer_duration')),
+        settings.getSetting(key: 'alarm_sound'),
+        settings.isEnabled(key: 'vibrate'),
       );
     if (!mounted) return;
     return Navigator.of(context).pop();
@@ -816,28 +795,33 @@ class _EditSetPageState extends State<EditSetPage> {
   }
 
   void updateFields(GymSet gymSet) {
-    nameCtrl?.text = gymSet.name;
+    nameCtrl?.text = gymSet.exercise!.name;
+    exercise = gymSet.exercise!;
     setState(() {
-      category = gymSet.category;
-      image = gymSet.image;
-      name = gymSet.name;
+      category = gymSet.exercise!.category;
+      image = gymSet.exercise!.image;
+      name = gymSet.exercise!.name;
       unit = gymSet.unit;
-      cardio = gymSet.cardio;
+      cardio = gymSet.exercise!.cardio;
       restMs = gymSet.restMs;
     });
 
     if (gymSet.reps != 0) reps.text = toString(gymSet.reps);
     weight.text = toString(gymSet.weight);
     setORM();
-    if (gymSet.bodyWeight != 0) body.text = toString(gymSet.bodyWeight);
+    if (gymSet.bodyWeight != 0) body.text = toString(gymSet.bodyWeight ?? 0);
     if (gymSet.duration != 0) {
-      minutes.text = gymSet.duration.floor().toString();
-      seconds.text = ((gymSet.duration * 60) % 60).floor().toString();
+      minutes.text = (gymSet.duration ?? 0).floor().toString();
+      seconds.text = ((gymSet.duration ?? 0 * 60) % 60).floor().toString();
     }
-    if (gymSet.distance != 0) distance.text = toString(gymSet.distance);
-    if (gymSet.incline != null && gymSet.incline != 0) incline.text = gymSet.incline.toString();
-    if (gymSet.category != null && gymSet.category!.isNotEmpty) categoryCtrl.text = gymSet.category!;
-    if (gymSet.notes != null && gymSet.notes!.isNotEmpty) notes.text = gymSet.notes!;
+    if (gymSet.distance != 0) distance.text = toString(gymSet.distance ?? 0);
+    if (gymSet.incline != null && gymSet.incline != 0)
+      incline.text = gymSet.incline.toString();
+    if (gymSet.exercise!.category != null &&
+        gymSet.exercise!.category!.isNotEmpty)
+      categoryCtrl.text = gymSet.exercise!.category!;
+    if (gymSet.notes != null && gymSet.notes!.isNotEmpty)
+      notes.text = gymSet.notes!;
   }
 
   Future<void> selectDate() async {

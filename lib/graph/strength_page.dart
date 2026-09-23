@@ -10,20 +10,21 @@ import 'package:fossfit/graph/edit_graph_page.dart';
 import 'package:fossfit/graph/flex_line.dart';
 import 'package:fossfit/graph/graph_history_page.dart';
 import 'package:fossfit/graph/strength_data.dart';
-import 'package:fossfit/models/gym_sets_model.dart';
+import 'package:fossfit/models/exercise_model.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class StrengthPage extends StatefulWidget {
-  final String name;
+  final Exercise exercise;
   final String unit;
   final List<StrengthData> data;
   final TabController tabCtrl;
 
   const StrengthPage({
     super.key,
-    required this.name,
+    required this.exercise,
     required this.unit,
     required this.data,
     required this.tabCtrl,
@@ -36,7 +37,7 @@ class StrengthPage extends StatefulWidget {
 class _StrengthPageState extends State<StrengthPage> {
   late List<StrengthData> data = widget.data;
   late String target = widget.unit;
-  late String name = widget.name;
+  late String name = widget.exercise.name;
   bool useTimeBasedXAxis = false;
 
   int limit = 20;
@@ -45,7 +46,7 @@ class _StrengthPageState extends State<StrengthPage> {
   DateTime? start;
   DateTime? end;
   DateTime lastTap = DateTime.fromMicrosecondsSinceEpoch(0);
-  List<GymSets> gymSets = [];
+  List<GymSet> gymSets = [];
   @override
   void initState() {
     super.initState();
@@ -60,7 +61,8 @@ class _StrengthPageState extends State<StrengthPage> {
 
   void _onTabChanged() {
     final settings = context.watch<SettingsRepository>();
-    if (widget.tabCtrl.index == settings.getSetting(key: 'tabs').indexOf('GraphsPage')) {
+    if (widget.tabCtrl.index ==
+        settings.getSetting(key: 'tabs').indexOf('GraphsPage')) {
       setData();
     }
   }
@@ -69,7 +71,9 @@ class _StrengthPageState extends State<StrengthPage> {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsRepository>();
     final setsRepo = context.watch<GymSetsRepository>();
-    gymSets = setsRepo.gymsets.where((t) => t.name == name).toList();
+    gymSets = setsRepo.gymsets
+        .where((t) => t.exerciseId == widget.exercise.id!)
+        .toList();
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
@@ -88,8 +92,12 @@ class _StrengthPageState extends State<StrengthPage> {
               await Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => GraphHistoryPage(
-                    name: name,
-                    gymSets: gymSets.where((t) => t.name == name && !t.hidden).take(20).toList(),
+                    exercise: widget.exercise,
+                    gymSets: gymSets
+                        .where((t) =>
+                            t.exerciseId == widget.exercise.id && !t.hidden,)
+                        .take(20)
+                        .toList(),
                   ),
                 ),
               );
@@ -104,7 +112,7 @@ class _StrengthPageState extends State<StrengthPage> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => EditGraphPage(
-                    name: name,
+                    exercise: widget.exercise,
                   ),
                 ),
               );
@@ -237,9 +245,15 @@ class _StrengthPageState extends State<StrengthPage> {
                         child: ListTile(
                           title: const Text('Start date'),
                           subtitle: start == null
-                              ? Text(settings.getSetting(key: 'short_date_format'))
+                              ? Text(
+                                  settings.getSetting(key: 'short_date_format'),
+                                )
                               : Text(
-                                  DateFormat(settings.getSetting(key: 'short_date_format')).format(start!),
+                                  DateFormat(
+                                    settings.getSetting(
+                                      key: 'short_date_format',
+                                    ),
+                                  ).format(start!),
                                 ),
                           onLongPress: () {
                             setState(() {
@@ -255,7 +269,8 @@ class _StrengthPageState extends State<StrengthPage> {
                         child: ListTile(
                           title: const Text('Stop date'),
                           subtitle: Selector<SettingsRepository, String>(
-                            selector: (p0, settings) => settings.getSetting(key: 'short_date_format'),
+                            selector: (p0, settings) =>
+                                settings.getSetting(key: 'short_date_format'),
                             builder: (context, value, child) {
                               if (end == null) return Text(value);
 
@@ -295,7 +310,10 @@ class _StrengthPageState extends State<StrengthPage> {
                     ),
                     Slider(
                       value: limit.toDouble(),
-                      inactiveColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
+                      inactiveColor: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.24),
                       min: 10,
                       max: 100,
                       onChanged: (value) {
@@ -312,11 +330,14 @@ class _StrengthPageState extends State<StrengthPage> {
                   child: data.isEmpty
                       ? const ListTile(title: Text("No data yet."))
                       : Padding(
-                          padding: const EdgeInsets.only(right: 32.0, top: 16.0),
+                          padding:
+                              const EdgeInsets.only(right: 32.0, top: 16.0),
                           child: FlexLine(
                             data: data,
                             spots: spots,
-                            tooltipData: () => tooltipData(settings.getSetting(key: 'short_date_format')),
+                            tooltipData: () => tooltipData(
+                              settings.getSetting(key: 'short_date_format'),
+                            ),
                             touchLine: touchLine,
                             timeBasedXAxis: useTimeBasedXAxis,
                           ),
@@ -333,15 +354,16 @@ class _StrengthPageState extends State<StrengthPage> {
 
   Future<void> setData() async {
     if (!mounted) return;
-    final strengthData = await context.watch<GymSetsRepository>().getStrengthData(
-          target: target,
-          name: widget.name,
-          metric: metric,
-          period: period,
-          start: start,
-          end: end,
-          limit: limit,
-        );
+    final strengthData =
+        await context.watch<GymSetsRepository>().getStrengthData(
+              target: target,
+              exerciseId: widget.exercise.id!,
+              metric: metric,
+              period: period,
+              start: start,
+              end: end,
+              limit: limit,
+            );
     setState(() {
       data = strengthData;
     });
@@ -396,7 +418,7 @@ class _StrengthPageState extends State<StrengthPage> {
     final index = touchResponse?.lineBarSpots?[0].spotIndex;
     if (index == null) return;
     final row = data[index];
-    GymSets? gymSet;
+    GymSet? gymSet;
     var theseSets = gymSets.where((t) => t.created == row.created).toList();
     switch (metric) {
       case StrengthMetric.oneRepMax:
