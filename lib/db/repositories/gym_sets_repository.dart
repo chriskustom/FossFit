@@ -57,7 +57,14 @@ class GymSetsRepository extends ChangeNotifier {
     return _gymsets.where((n) => ids.contains(n.id)).toList();
   }
 
-  Future<GymSet> addGymSets(GymSet gymsets) async {
+  Future<void> insertGymSets(List<GymSet> gymSets) async {
+    for (final gymSet in gymSets) {
+      await insertGymSet(gymSet);
+    }
+    await loadAll();
+  }
+
+  Future<GymSet> insertGymSet(GymSet gymsets) async {
     gymsets.id = await _db.insert(
       TableName.gymsets.name,
       gymsets.toMap(),
@@ -143,6 +150,11 @@ class GymSetsRepository extends ChangeNotifier {
     notifyListeners();
 
     return true;
+  }
+
+  Future<void> truncateTable() async {
+    await _db.execute('DELETE FROM gym_sets;');
+    await loadAll();
   }
 
   // ---------------------------------------------------------------------------
@@ -469,8 +481,7 @@ class GymSetsRepository extends ChangeNotifier {
       args.add(toUnixSeconds(end));
     }
 
-    final repsExpression =
-        metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
+    final repsExpression = metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
 
     final sql = '''
       SELECT
@@ -572,8 +583,7 @@ class GymSetsRepository extends ChangeNotifier {
       args.add(toUnixSeconds(end));
     }
 
-    final repsExpression =
-        metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
+    final repsExpression = metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
 
     final sql = '''
       SELECT

@@ -118,7 +118,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
                         settings.setSetting(
                             category: SettingCategory.timers,
                             key: 'explained_permissions',
-                            value: '1');
+                            value: '1',);
                       },
                     ),
                   ],
@@ -131,7 +131,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
             settings.setSetting(
                 category: SettingCategory.timers,
                 key: 'explained_permissions',
-                value: '1');
+                value: '1',);
           }
         },
         label: const Text("Confirm"),

@@ -34,8 +34,7 @@ class GraphsPage extends StatefulWidget {
   createState() => GraphsPageState();
 }
 
-class GraphsPageState extends State<GraphsPage>
-    with AutomaticKeepAliveClientMixin {
+class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMixin {
   late List<GymSet> sets = [];
 
   final Set<Exercise> selected = {};
@@ -59,10 +58,8 @@ class GraphsPageState extends State<GraphsPage>
       onPopWithResult: (result) {
         if (navKey.currentState!.canPop() == false) return;
         final settings = context.watch<SettingsRepository>();
-        final graphsIndex =
-            settings.getSetting(key: 'tabs').split(',').indexOf('GraphsPage');
-        if (widget.tabController.index == graphsIndex)
-          Navigator.of(navKey.currentContext!).pop();
+        final graphsIndex = settings.getSetting(key: 'tabs').split(',').indexOf('GraphsPage');
+        if (widget.tabController.index == graphsIndex) Navigator.of(navKey.currentContext!).pop();
       },
       child: Navigator(
         key: navKey,
@@ -76,17 +73,14 @@ class GraphsPageState extends State<GraphsPage>
 
   void onDelete() async {
     final plansRepo = context.read<PlansRepository>();
-    final copy = selected.toList();
+    final copy = selected.map((e) => e.id).toList();
     var gymRepo = context.read<GymSetsRepository>();
     var planExerciseRepo = context.read<PlanExercisesRepository>();
 
     setState(() {
       selected.clear();
     });
-    var gymsetIds = sets
-        .where((t) => copy.contains(t.exerciseId))
-        .map((t) => t.id!)
-        .toList();
+    var gymsetIds = sets.where((t) => copy.contains(t.exerciseId)).map((t) => t.id!).toList();
     await gymRepo.deleteGymSetsById(gymsetIds);
 
     final plans = plansRepo.plans;
@@ -94,7 +88,7 @@ class GraphsPageState extends State<GraphsPage>
     for (final plan in plans) {
       for (final exercise in copy) {
         await planExerciseRepo.deletePlanExerciseByIdAndPlanId(
-          exercise.id!,
+          exercise!,
           plan.id!,
         );
       }
@@ -139,8 +133,7 @@ class GraphsPageState extends State<GraphsPage>
     return material.SizedBox(
       height: MediaQuery.of(context).size.height * 0.15,
       child: material.Padding(
-        padding:
-            const EdgeInsets.only(right: 48.0, top: 8.0, left: 48, bottom: 8),
+        padding: const EdgeInsets.only(right: 48.0, top: 8.0, left: 48, bottom: 8),
         child: FlexLine(
           data: data,
           spots: spots,
@@ -163,8 +156,7 @@ class GraphsPageState extends State<GraphsPage>
         builder: (context) {
           if (sets.isEmpty) return const SizedBox();
 
-          final terms =
-              search.toLowerCase().split(" ").where((term) => term.isNotEmpty);
+          final terms = search.toLowerCase().split(" ").where((term) => term.isNotEmpty);
           var stream = sets.where((gymSet) {
             if (category != null) {
               return gymSet.exercise!.category == category;
@@ -243,8 +235,7 @@ class GraphsPageState extends State<GraphsPage>
                 ),
                 confirmText: "This will delete $total records. Are you sure?",
               ),
-              if (gymSets.isEmpty &&
-                  !'global progress'.contains(search.toLowerCase()))
+              if (gymSets.isEmpty && !'global progress'.contains(search.toLowerCase()))
                 ListTile(
                   title: const Text("No graphs found"),
                   subtitle: Text(
@@ -261,8 +252,7 @@ class GraphsPageState extends State<GraphsPage>
                   },
                 ),
               Selector<SettingsRepository, bool>(
-                selector: (p0, settingsRepository) =>
-                    settingsRepository.isEnabled(key: 'show_global_progress'),
+                selector: (p0, settingsRepository) => settingsRepository.isEnabled(key: 'show_global_progress'),
                 builder: (context, showGlobal, child) => Expanded(
                   child: (sort == GraphSort.name)
                       ? _sortedGraphList(gymSets, showGlobal)
@@ -298,8 +288,7 @@ class GraphsPageState extends State<GraphsPage>
         .toList();
     final text = sets
         .map(
-          (gymSet) =>
-              "${toString(gymSet.reps)}x${toString(gymSet.weight)}${gymSet.unit} ${gymSet.exercise!.name}",
+          (gymSet) => "${toString(gymSet.reps)}x${toString(gymSet.weight)}${gymSet.unit} ${gymSet.exercise!.name}",
         )
         .join(', ');
     await SharePlus.instance.share(ShareParams(text: "I just did $text"));
@@ -345,14 +334,11 @@ class GraphsPageState extends State<GraphsPage>
   ) {
     _grouped = _groupByDay(gymSets);
     var itemCount = _grouped.entries.length + 1;
-    final showGlobal = 'global graphs'.contains(search.toLowerCase()) &&
-        category == null &&
-        showGlobalProgress;
+    final showGlobal = 'global graphs'.contains(search.toLowerCase()) && category == null && showGlobalProgress;
     if (showGlobal) itemCount++;
 
     final settings = context.watch<SettingsRepository>();
-    final showPeekGraph = settings.isEnabled(key: 'peek_graph') &&
-        _grouped.entries.firstOrNull != null;
+    final showPeekGraph = settings.isEnabled(key: 'peek_graph') && _grouped.entries.firstOrNull != null;
     if (showPeekGraph) itemCount++;
     var repo = context.watch<GymSetsRepository>();
     return ListView.builder(
@@ -420,9 +406,7 @@ class GraphsPageState extends State<GraphsPage>
                           setState(() {
                             selected.add(exercise!);
                           });
-                        final result = sets
-                            .where((t) => selected.contains(t.exercise))
-                            .length;
+                        final result = sets.where((t) => selected.contains(t.exercise)).length;
                         setState(() {
                           total = result;
                         });
@@ -436,31 +420,25 @@ class GraphsPageState extends State<GraphsPage>
                           SettingsRepository settings,
                           Widget? child,
                         ) {
-                          if (_grouped.entries.firstOrNull == null)
-                            return const SizedBox();
+                          if (_grouped.entries.firstOrNull == null) return const SizedBox();
 
                           return FutureBuilder(
-                            builder: (context, snapshot) =>
-                                snapshot.data != null
-                                    ? getPeek(
-                                        _grouped.entries.first.value.first,
-                                        snapshot.data!,
-                                        settings.getSetting(
-                                          key: 'short_date_format',
-                                        ),
-                                      )
-                                    : const SizedBox(),
-                            future: _grouped
-                                    .entries.first.value.first.exercise!.cardio
+                            builder: (context, snapshot) => snapshot.data != null
+                                ? getPeek(
+                                    _grouped.entries.first.value.first,
+                                    snapshot.data!,
+                                    settings.getSetting(
+                                      key: 'short_date_format',
+                                    ),
+                                  )
+                                : const SizedBox(),
+                            future: _grouped.entries.first.value.first.exercise!.cardio
                                 ? repo.getCardioData(
-                                    exerciseId: _grouped.entries.first.value
-                                        .first.exercise!.id!,
+                                    exerciseId: _grouped.entries.first.value.first.exercise!.id!,
                                   )
                                 : repo.getStrengthData(
-                                    target:
-                                        _grouped.entries.first.value.first.unit,
-                                    exerciseId: _grouped.entries.first.value
-                                        .first.exercise!.id!,
+                                    target: _grouped.entries.first.value.first.unit,
+                                    exerciseId: _grouped.entries.first.value.first.exercise!.id!,
                                     metric: StrengthMetric.bestWeight,
                                     period: Period.day,
                                     start: null,
@@ -486,14 +464,11 @@ class GraphsPageState extends State<GraphsPage>
     bool showGlobalProgress,
   ) {
     var itemCount = gymSets.length + 1;
-    final showGlobal = 'global graphs'.contains(search.toLowerCase()) &&
-        category == null &&
-        showGlobalProgress;
+    final showGlobal = 'global graphs'.contains(search.toLowerCase()) && category == null && showGlobalProgress;
     if (showGlobal) itemCount++;
 
     final settings = context.watch<SettingsRepository>();
-    final showPeekGraph =
-        settings.isEnabled(key: 'peek_graph') && gymSets.firstOrNull != null;
+    final showPeekGraph = settings.isEnabled(key: 'peek_graph') && gymSets.firstOrNull != null;
     if (showPeekGraph) itemCount++;
 
     var repo = context.watch<GymSetsRepository>();
@@ -587,8 +562,7 @@ class GraphsPageState extends State<GraphsPage>
                   const Icon(Icons.today),
                   const SizedBox(width: 4),
                   Selector<SettingsRepository, String>(
-                    selector: (p0, p1) =>
-                        p1.getSetting(key: 'short_date_format'),
+                    selector: (p0, p1) => p1.getSetting(key: 'short_date_format'),
                     builder: (context, format, child) => Text(
                       DateFormat(format).format(set.created.toLocal()),
                     ),
@@ -609,8 +583,7 @@ class GraphsPageState extends State<GraphsPage>
                   setState(() {
                     selected.add(exercise!);
                   });
-                final result =
-                    sets.where((t) => selected.contains(t.exercise)).length;
+                final result = sets.where((t) => selected.contains(t.exercise)).length;
                 setState(() {
                   total = result;
                 });
@@ -624,8 +597,7 @@ class GraphsPageState extends State<GraphsPage>
   }
 
   Widget _buildSectionDivider(DateTime date) {
-    final format =
-        context.read<SettingsRepository>().getSetting(key: 'short_date_format');
+    final format = context.read<SettingsRepository>().getSetting(key: 'short_date_format');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -665,9 +637,7 @@ class GraphsPageState extends State<GraphsPage>
     // Optional: sort newest first
     final sortedKeys = map.keys.toList()
       ..sort(
-        sort == GraphSort.dateDesc
-            ? (a, b) => b.compareTo(a)
-            : (a, b) => a.compareTo(b),
+        sort == GraphSort.dateDesc ? (a, b) => b.compareTo(a) : (a, b) => a.compareTo(b),
       );
 
     return {

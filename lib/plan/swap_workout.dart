@@ -87,7 +87,7 @@ class _SwapWorkoutState extends State<SwapWorkout> {
                             .where((t) => t.exercise!.id == exercise.id!)
                             .first;
                         await peRepo.updatePlanExercise(
-                            old.copyWith(exerciseId: exercise.id));
+                            old.copyWith(exerciseId: exercise.id),);
 
                         if (!context.mounted) return;
 

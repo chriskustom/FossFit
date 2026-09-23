@@ -57,9 +57,7 @@ class _EditSetPageState extends State<EditSetPage> {
 
   void onSelected(String option, bool showBodyWeight) async {
     final setRepo = context.read<GymSetsRepository>();
-    final last = setRepo.gymsets
-        .where((t) => t.exercise!.name == option && !t.hidden)
-        .firstOrNull;
+    final last = setRepo.gymsets.where((t) => t.exercise!.name == option && !t.hidden).firstOrNull;
     if (last == null)
       return setState(() {
         name = option;
@@ -316,8 +314,7 @@ class _EditSetPageState extends State<EditSetPage> {
   }
 
   Widget buildDistanceField() {
-    if (unit == 'kg' || unit == 'lb' || unit == 'stone')
-      return buildWeightField();
+    if (unit == 'kg' || unit == 'lb' || unit == 'stone') return buildWeightField();
     return TextFormField(
       controller: distance,
       focusNode: distNode,
@@ -362,8 +359,7 @@ class _EditSetPageState extends State<EditSetPage> {
         onTap: () => selectAll(body),
         validator: (value) {
           if (value == null) return null;
-          if (value.isNotEmpty && double.tryParse(value) == null)
-            return 'Invalid number';
+          if (value.isNotEmpty && double.tryParse(value) == null) return 'Invalid number';
           return null;
         },
       ),
@@ -392,8 +388,7 @@ class _EditSetPageState extends State<EditSetPage> {
   Widget categorySelector() {
     final repo = context.watch<ExercisesRepository>();
     return Selector<SettingsRepository, bool>(
-      selector: (context, settings) =>
-          settings.isEnabled(key: 'show_categories'),
+      selector: (context, settings) => settings.isEnabled(key: 'show_categories'),
       builder: (context, showCategories, child) {
         if (!showCategories || name == 'Weight') {
           return const SizedBox();
@@ -459,17 +454,13 @@ class _EditSetPageState extends State<EditSetPage> {
           controller: notes,
         ),
       ),
-      selector: (context, settingsState) =>
-          settingsState.isEnabled(key: 'show_notes'),
+      selector: (context, settingsState) => settingsState.isEnabled(key: 'show_notes'),
     );
   }
 
   Widget dateSelector() {
     final repo = context.watch<GymSetsRepository>();
-    final lastSet = repo.gymsets
-        .where((tbl) => tbl.exercise!.id == exercise.id && !tbl.hidden)
-        .take(1)
-        .firstOrNull;
+    final lastSet = repo.gymsets.where((tbl) => tbl.exercise!.id == exercise.id && !tbl.hidden).take(1).firstOrNull;
     if (lastSet == null) {
       return const ListTile(
         title: Text('Created date'),
@@ -490,14 +481,11 @@ class _EditSetPageState extends State<EditSetPage> {
     created = dateSet ? created : displayDate;
 
     return Selector<SettingsRepository, String>(
-      selector: (context, settings) =>
-          settings.getSetting(key: 'long_date_format'),
+      selector: (context, settings) => settings.getSetting(key: 'long_date_format'),
       builder: (context, longDateFormat, child) => ListTile(
         title: const Text('Created date'),
         subtitle: Text(
-          longDateFormat == 'timeago'
-              ? timeago.format(created)
-              : DateFormat(longDateFormat).format(created),
+          longDateFormat == 'timeago' ? timeago.format(created) : DateFormat(longDateFormat).format(created),
         ),
         trailing: const Icon(Icons.calendar_today),
         onTap: () => selectDate(),
@@ -537,8 +525,7 @@ class _EditSetPageState extends State<EditSetPage> {
                     }),
                     child: Image.file(
                       File(image!),
-                      errorBuilder: (context, error, stackTrace) =>
-                          TextButton.icon(
+                      errorBuilder: (context, error, stackTrace) => TextButton.icon(
                         label: const Text('Image error'),
                         icon: const Icon(Icons.error),
                         onPressed: () => pick(),
@@ -557,10 +544,7 @@ class _EditSetPageState extends State<EditSetPage> {
 
   List<GymSet> getHistory() {
     final repo = context.watch<GymSetsRepository>();
-    return repo.gymsets
-        .where((tbl) => tbl.exercise!.id == exercise.id && !tbl.hidden)
-        .take(20)
-        .toList();
+    return repo.gymsets.where((tbl) => tbl.exercise!.id == exercise.id && !tbl.hidden).take(20).toList();
   }
 
   material.Row duration() {
@@ -608,10 +592,7 @@ class _EditSetPageState extends State<EditSetPage> {
   material.Autocomplete<String> autocomplete(bool showBodyWeight) {
     return Autocomplete<String>(
       optionsBuilder: (textEditingValue) {
-        final searchTerms = textEditingValue.text
-            .toLowerCase()
-            .split(" ")
-            .where((term) => term.isNotEmpty);
+        final searchTerms = textEditingValue.text.toLowerCase().split(" ").where((term) => term.isNotEmpty);
         Iterable<String> opts = options;
 
         for (final term in searchTerms) {
@@ -693,8 +674,7 @@ class _EditSetPageState extends State<EditSetPage> {
       weight: double.tryParse(weight.text),
       bodyWeight: double.tryParse(body.text),
       distance: double.tryParse(distance.text),
-      duration: (int.tryParse(seconds.text) ?? 0) / 60 +
-          (int.tryParse(minutes.text) ?? 0),
+      duration: (int.tryParse(seconds.text) ?? 0) / 60 + (int.tryParse(minutes.text) ?? 0),
       restMs: restMs,
       incline: int.tryParse(incline.text),
       notes: notes.text,
@@ -707,13 +687,12 @@ class _EditSetPageState extends State<EditSetPage> {
 
     if (widget.gymSet.id != null) {
       await setRepo.updateGymSet(gymSet);
-      if (image != null)
-        await exRepo.updateExercise(gymSet.exercise!.copyWith(image: image));
+      if (image != null) await exRepo.updateExercise(gymSet.exercise!.copyWith(image: image));
       if (!mounted) return;
       planRepo.updateDefaults();
       return Navigator.of(context).pop();
     } else {
-      await setRepo.addGymSets(gymSet.copyWith(id: null));
+      await setRepo.insertGymSet(gymSet.copyWith(id: null));
       planRepo.updateDefaults();
     }
 
@@ -721,14 +700,12 @@ class _EditSetPageState extends State<EditSetPage> {
       final best = await setRepo.isBest(gymSet);
       if (best) {
         final random = Random();
-        final randomMessage =
-            positiveReinforcement[random.nextInt(positiveReinforcement.length)];
+        final randomMessage = positiveReinforcement[random.nextInt(positiveReinforcement.length)];
         if (mounted) toast(randomMessage);
       }
     }
 
-    if (!settings.isEnabled(key: 'rest_timers') && mounted)
-      return Navigator.of(context).pop();
+    if (!settings.isEnabled(key: 'rest_timers') && mounted) return Navigator.of(context).pop();
     if (!mounted) return;
     final timer = context.read<TimerState>();
     if (restMs != null)
@@ -815,13 +792,10 @@ class _EditSetPageState extends State<EditSetPage> {
       seconds.text = ((gymSet.duration ?? 0 * 60) % 60).floor().toString();
     }
     if (gymSet.distance != 0) distance.text = toString(gymSet.distance ?? 0);
-    if (gymSet.incline != null && gymSet.incline != 0)
-      incline.text = gymSet.incline.toString();
-    if (gymSet.exercise!.category != null &&
-        gymSet.exercise!.category!.isNotEmpty)
+    if (gymSet.incline != null && gymSet.incline != 0) incline.text = gymSet.incline.toString();
+    if (gymSet.exercise!.category != null && gymSet.exercise!.category!.isNotEmpty)
       categoryCtrl.text = gymSet.exercise!.category!;
-    if (gymSet.notes != null && gymSet.notes!.isNotEmpty)
-      notes.text = gymSet.notes!;
+    if (gymSet.notes != null && gymSet.notes!.isNotEmpty) notes.text = gymSet.notes!;
   }
 
   Future<void> selectDate() async {

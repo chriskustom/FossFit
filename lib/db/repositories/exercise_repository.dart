@@ -139,4 +139,9 @@ class ExercisesRepository extends ChangeNotifier {
 
     return true;
   }
+
+  Future<void> truncateTable() async {
+    await _db.execute('DELETE FROM exercises;');
+    await loadAll();
+  }
 }

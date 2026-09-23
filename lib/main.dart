@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:fossfit/db/database_helper.dart';
 import 'package:fossfit/db/failed_migrations_page.dart';
+import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
 import 'package:fossfit/db/repositories/plans_repository.dart';
@@ -55,12 +56,14 @@ MethodChannel androidChannel =
 
 Widget appProviders(Database db, SettingsRepository repo) => MultiProvider(
       providers: [
+        ChangeNotifierProvider<ExercisesRepository>(
+            create: (_) => ExercisesRepository(db)..loadAll(),),
         ChangeNotifierProvider<GymSetsRepository>(
-            create: (_) => GymSetsRepository(db)..loadAll()),
+            create: (_) => GymSetsRepository(db)..loadAll(),),
         ChangeNotifierProvider<PlansRepository>(
-            create: (_) => PlansRepository(db)..loadAll()),
+            create: (_) => PlansRepository(db)..loadAll(),),
         ChangeNotifierProvider<PlanExercisesRepository>(
-            create: (_) => PlanExercisesRepository(db)..loadAll()),
+            create: (_) => PlanExercisesRepository(db)..loadAll(),),
         ChangeNotifierProvider<SettingsRepository>.value(value: repo),
         ChangeNotifierProvider(create: (context) => TimerState()),
       ],

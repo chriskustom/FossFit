@@ -59,9 +59,10 @@ List<Widget> getFormatSettings(String term, SettingsRepository settings) {
             ),
           ],
           onChanged: (value) => settings.setSetting(
-              category: SettingCategory.formats,
-              key: 'strength_unit',
-              value: value ?? 'last-entry'),
+            category: SettingCategory.formats,
+            key: 'strength_unit',
+            value: value ?? 'last-entry',
+          ),
         ),
       ),
     if ('cardio unit'.contains(term.toLowerCase()))
@@ -93,9 +94,10 @@ List<Widget> getFormatSettings(String term, SettingsRepository settings) {
             ),
           ],
           onChanged: (value) => settings.setSetting(
-              category: SettingCategory.formats,
-              key: 'cardio_unit',
-              value: value ?? 'last-entry'),
+            category: SettingCategory.formats,
+            key: 'cardio_unit',
+            value: value ?? 'last-entry',
+          ),
         ),
       ),
     if ('long date format'.contains(term.toLowerCase()))
@@ -108,9 +110,7 @@ List<Widget> getFormatSettings(String term, SettingsRepository settings) {
               var format = timeago.format(DateTime.now());
 
               if (settings.getSetting(key: 'long_date_format') != 'timeago')
-                format =
-                    DateFormat(settings.getSetting(key: 'long_date_format'))
-                        .format(DateTime.now());
+                format = DateFormat(settings.getSetting(key: 'long_date_format')).format(DateTime.now());
 
               return DropdownButtonFormField<String>(
                 initialValue: settings.getSetting(key: 'long_date_format'),
@@ -121,9 +121,10 @@ List<Widget> getFormatSettings(String term, SettingsRepository settings) {
                   );
                 }).toList(),
                 onChanged: (value) => settings.setSetting(
-                    category: SettingCategory.formats,
-                    key: 'long_date_format',
-                    value: value ?? 'timeago'),
+                  category: SettingCategory.formats,
+                  key: 'long_date_format',
+                  value: value ?? 'timeago',
+                ),
                 decoration: InputDecoration(
                   labelText: 'Long date format ($format)',
                 ),
@@ -146,9 +147,10 @@ List<Widget> getFormatSettings(String term, SettingsRepository settings) {
               );
             }).toList(),
             onChanged: (value) => settings.setSetting(
-                category: SettingCategory.formats,
-                key: 'short_date_format',
-                value: value ?? 'd/m/y'),
+              category: SettingCategory.formats,
+              key: 'short_date_format',
+              value: value ?? 'd/m/y',
+            ),
             decoration: InputDecoration(
               labelText:
                   'Short date format (${DateFormat(settings.getSetting(key: 'short_date_format')).format(DateTime.now())})',

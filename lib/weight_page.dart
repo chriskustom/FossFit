@@ -57,10 +57,8 @@ class _WeightPageState extends State<WeightPage> {
               ),
               const SizedBox(height: 8),
               Selector<SettingsRepository, String>(
-                selector: (context, settings) =>
-                    settings.getSetting(key: 'strength_unit'),
-                builder: (context, value, child) =>
-                    DropdownButtonFormField<String>(
+                selector: (context, settings) => settings.getSetting(key: 'strength_unit'),
+                builder: (context, value, child) => DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Unit'),
                   initialValue: unit ?? value,
                   items: const [
@@ -114,8 +112,7 @@ class _WeightPageState extends State<WeightPage> {
                               }),
                               child: Image.file(
                                 File(image!),
-                                errorBuilder: (context, error, stackTrace) =>
-                                    TextButton.icon(
+                                errorBuilder: (context, error, stackTrace) => TextButton.icon(
                                   label: const Text('Image error'),
                                   icon: const Icon(Icons.error),
                                   onPressed: () => pick(),
@@ -128,8 +125,7 @@ class _WeightPageState extends State<WeightPage> {
                     ),
                   );
                 },
-                selector: (context, settings) =>
-                    settings.isEnabled(key: 'show_images'),
+                selector: (context, settings) => settings.isEnabled(key: 'show_images'),
               ),
             ],
           ),
@@ -146,7 +142,7 @@ class _WeightPageState extends State<WeightPage> {
 
           if (su != 'last-entry') unit = su;
 
-          await gymSetsRepo.addGymSets(
+          await gymSetsRepo.insertGymSet(
             GymSet(
               created: DateTime.now().toLocal(),
               reps: 1,
@@ -156,8 +152,7 @@ class _WeightPageState extends State<WeightPage> {
               hidden: false,
             ),
           );
-          for (var gymSet
-              in gymSetsRepo.gymsets.where((t) => t.bodyWeight?.toInt() == 0)) {
+          for (var gymSet in gymSetsRepo.gymsets.where((t) => t.bodyWeight?.toInt() == 0)) {
             await gymSetsRepo.updateGymSet(
               gymSet.copyWith(bodyWeight: double.parse(ctrl.text)),
             );
@@ -182,8 +177,7 @@ class _WeightPageState extends State<WeightPage> {
 
     getBodyWeight(context).then(
       (value) => setState(() {
-        prev =
-            "${value?.weight ?? 0} ${value?.unit ?? settings.getSetting(key: 'strength_unit')}";
+        prev = "${value?.weight ?? 0} ${value?.unit ?? settings.getSetting(key: 'strength_unit')}";
         unit = value?.unit;
       }),
     );

@@ -40,6 +40,10 @@ dependencies:
   flutter_timezone: ^5.1.0
   platform_detail: ^5.5.0
   collection: ^1.19.1
+  file_selector_android: ^0.5.2+4
+  file_selector_linux: ^0.9.4
+  file_selector_windows: ^0.9.3+5
+  file_selector: ^1.1.0
 
 dev_dependencies:
   flutter_test:

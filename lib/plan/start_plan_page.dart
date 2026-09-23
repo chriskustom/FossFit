@@ -41,8 +41,7 @@ typedef Tapped = ({
   DateTime dateTime,
 });
 
-class _StartPlanPageState extends State<StartPlanPage>
-    with WidgetsBindingObserver {
+class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserver {
   final reps = TextEditingController(text: '0.0');
   final weight = TextEditingController(text: '0.0');
   final notes = TextEditingController();
@@ -92,10 +91,7 @@ class _StartPlanPageState extends State<StartPlanPage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
-    if (state != AppLifecycleState.resumed ||
-        rpms == null ||
-        !mounted ||
-        lastSaved == null) {
+    if (state != AppLifecycleState.resumed || rpms == null || !mounted || lastSaved == null) {
       return;
     }
 
@@ -160,16 +156,12 @@ class _StartPlanPageState extends State<StartPlanPage>
 
     final exercise = planExercises[selected].exercise;
 
-    final matchingRpms =
-        rpms!.where((rpm) => rpm.name == exercise!.name).toList();
+    final matchingRpms = rpms!.where((rpm) => rpm.name == exercise!.name).toList();
 
     if (matchingRpms.isEmpty) return;
 
     final closestRpm = matchingRpms.reduce(
-      (rpm1, rpm2) => (rpm1.weight - parsedWeight).abs() <
-              (rpm2.weight - parsedWeight).abs()
-          ? rpm1
-          : rpm2,
+      (rpm1, rpm2) => (rpm1.weight - parsedWeight).abs() < (rpm2.weight - parsedWeight).abs() ? rpm1 : rpm2,
     );
 
     final estimatedReps = (difference.inMinutes * closestRpm.rpm).clamp(1, 50);
@@ -244,10 +236,8 @@ class _StartPlanPageState extends State<StartPlanPage>
     final exercise = currentExercise;
     if (exercise == null) return;
     var setRepo = context.watch<GymSetsRepository>();
-    final gymSets = setRepo.gymsets
-        .where((tbl) => tbl.exercise!.name == exercise.name && !tbl.hidden)
-        .take(10)
-        .toList();
+    final gymSets =
+        setRepo.gymsets.where((tbl) => tbl.exercise!.name == exercise.name && !tbl.hidden).take(10).toList();
     gymSets.sort((a, b) => b.created.compareTo(a.created));
 
     if (!mounted) return;
@@ -422,8 +412,7 @@ class _StartPlanPageState extends State<StartPlanPage>
       decoration: InputDecoration(
         labelText: 'Weight ($unit)',
         suffixIcon: Selector<SettingsRepository, bool>(
-          selector: (context, settings) =>
-              settings.isEnabled(key: 'show_body_weight'),
+          selector: (context, settings) => settings.isEnabled(key: 'show_body_weight'),
           builder: (context, showBodyWeight, child) {
             if (!showBodyWeight) {
               return const SizedBox.shrink();
@@ -533,8 +522,7 @@ class _StartPlanPageState extends State<StartPlanPage>
     var su = settings.getSetting(key: 'strength_unit');
     var cu = settings.getSetting(key: 'cardio_unit');
 
-    if ((!gymSet.exercise!.cardio && su == 'last-entry') ||
-        (gymSet.exercise!.cardio && cu == 'last-entry')) {
+    if ((!gymSet.exercise!.cardio && su == 'last-entry') || (gymSet.exercise!.cardio && cu == 'last-entry')) {
       unit = gymSet.unit;
     } else if (gymSet.exercise!.cardio) {
       unit = su;
@@ -589,9 +577,7 @@ class _StartPlanPageState extends State<StartPlanPage>
 
     if (!mounted) return;
 
-    if (!settings.isEnabled(key: 'explained_permissions') &&
-        settings.isEnabled(key: 'rest_timers') &&
-        !kIsWeb) {
+    if (!settings.isEnabled(key: 'explained_permissions') && settings.isEnabled(key: 'rest_timers') && !kIsWeb) {
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -640,21 +626,15 @@ class _StartPlanPageState extends State<StartPlanPage>
       hidden: false,
     );
 
-    final finishedSetCount =
-        count == (maxSets ?? settings.getInt(key: 'max_sets'));
+    final finishedSetCount = count == (maxSets ?? settings.getInt(key: 'max_sets'));
 
-    final finishedPlan =
-        finishedSetCount && selected == planExercises.length - 1;
+    final finishedPlan = finishedSetCount && selected == planExercises.length - 1;
 
-    final isWarmup =
-        count <= (warmupSets ?? settings.getInt(key: 'warmup_sets'));
+    final isWarmup = count <= (warmupSets ?? settings.getInt(key: 'warmup_sets'));
 
     restMs ??= settings.getInt(key: 'timer_duration').toDouble();
 
-    if (!finishedPlan &&
-        !isWarmup &&
-        settings.isEnabled(key: 'rest_timers') &&
-        peTimers) {
+    if (!finishedPlan && !isWarmup && settings.isEnabled(key: 'rest_timers') && peTimers) {
       context.read<TimerState>().startTimer(
             '$exercise ($count)',
             Duration(milliseconds: restMs.toInt()),
@@ -663,10 +643,9 @@ class _StartPlanPageState extends State<StartPlanPage>
           );
     }
 
-    final finishedExercise =
-        finishedSetCount && selected < planExercises.length - 1;
+    final finishedExercise = finishedSetCount && selected < planExercises.length - 1;
 
-    final gymSet = await setRepo.addGymSets(gymSetInsert);
+    final gymSet = await setRepo.insertGymSet(gymSetInsert);
 
     await planRepo.updateGymCounts(widget.plan.id!);
     await planRepo.updateDefaults();
@@ -705,8 +684,7 @@ class _StartPlanPageState extends State<StartPlanPage>
   }
 
   double _durationInMinutes() {
-    return (int.tryParse(seconds.text) ?? 0) / 60 +
-        (int.tryParse(minutes.text) ?? 0);
+    return (int.tryParse(seconds.text) ?? 0) / 60 + (int.tryParse(minutes.text) ?? 0);
   }
 
   Future<double?> _getBodyWeight(
@@ -767,8 +745,7 @@ class _StartPlanPageState extends State<StartPlanPage>
 
     final now = DateTime.now();
 
-    if (now.difference(lastTap.dateTime) >= const Duration(milliseconds: 300) ||
-        index != lastTap.index) {
+    if (now.difference(lastTap.dateTime) >= const Duration(milliseconds: 300) || index != lastTap.index) {
       setState(() {
         lastTap = (
           index: index,
@@ -827,15 +804,13 @@ class _StartPlanPageState extends State<StartPlanPage>
           }
 
           final selectedId = planExercises[selected].id;
-          final expandedId =
-              expandedIndex != null ? planExercises[expandedIndex!].id : null;
+          final expandedId = expandedIndex != null ? planExercises[expandedIndex!].id : null;
 
           final item = planExercises.removeAt(oldIndex);
           planExercises.insert(newIndex, item);
 
           for (var i = 0; i < planExercises.length; i++) {
-            await planExerciseRepo
-                .updatePlanExercise(planExercises[i].copyWith(sequence: i));
+            await planExerciseRepo.updatePlanExercise(planExercises[i].copyWith(sequence: i));
           }
 
           if (!context.mounted) return;
@@ -899,9 +874,8 @@ class _StartPlanPageState extends State<StartPlanPage>
       count = gymCount.count;
       max = gymCount.maxSets ?? maxSets;
     }
-    final iconColor = index == expandedIndex
-        ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).colorScheme.onSurface;
+    final iconColor =
+        index == expandedIndex ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface;
     return GestureDetector(
       key: ValueKey(planItem.id),
       onLongPressStart: (_) => _showExerciseModal(
@@ -997,8 +971,7 @@ class _StartPlanPageState extends State<StartPlanPage>
                       width: 24,
                       height: 24,
                       File(planItem.exercise!.image!),
-                      opacity:
-                          count == max ? AlwaysStoppedAnimation(0.75) : null,
+                      opacity: count == max ? AlwaysStoppedAnimation(0.75) : null,
                     ),
                     count == max
                         ? Icon(
@@ -1036,8 +1009,7 @@ class _StartPlanPageState extends State<StartPlanPage>
           ),
         ),
         const SizedBox(width: 8),
-        if (controllers[planItem.id]?.isExpanded == false)
-          ..._buildBlips(max, count),
+        if (controllers[planItem.id]?.isExpanded == false) ..._buildBlips(max, count),
       ],
     );
   }

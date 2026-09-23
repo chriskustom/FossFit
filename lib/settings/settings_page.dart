@@ -21,8 +21,7 @@ class SettingsPage extends StatefulWidget {
   createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage>
-    with AutomaticKeepAliveClientMixin {
+class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClientMixin {
   final searchCtrl = TextEditingController();
 
   late final SettingsRepository settings;
@@ -239,19 +238,16 @@ class _SettingsPageState extends State<SettingsPage>
 
     settings = context.watch<SettingsRepository>();
     maxSets = TextEditingController(
-        text: settings.getInt(key: 'max_sets').toString());
+      text: settings.getInt(key: 'max_sets').toString(),
+    );
     warmupSets = TextEditingController(
-        text: settings.getInt(key: 'warmup_sets').toString());
+      text: settings.getInt(key: 'warmup_sets').toString(),
+    );
     minutes = TextEditingController(
-      text: Duration(milliseconds: settings.getInt(key: 'timer_duration'))
-          .inMinutes
-          .toString(),
+      text: Duration(milliseconds: settings.getInt(key: 'timer_duration')).inMinutes.toString(),
     );
     seconds = TextEditingController(
-      text: (Duration(milliseconds: settings.getInt(key: 'timer_duration'))
-                  .inSeconds %
-              60)
-          .toString(),
+      text: (Duration(milliseconds: settings.getInt(key: 'timer_duration')).inSeconds % 60).toString(),
     );
 
     if (!kIsWeb) {

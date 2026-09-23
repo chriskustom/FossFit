@@ -1,12 +1,7 @@
-import 'dart:io';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fossfit/main.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:fossfit/db/database_helper.dart';
+import 'package:fossfit/widgets/confirmation_dialog.dart';
 
 class DeleteRecordsButton extends StatelessWidget {
   final BuildContext ctx;
@@ -28,125 +23,10 @@ class DeleteRecordsButton extends StatelessWidget {
               child: Wrap(
                 children: <Widget>[
                   ListTile(
-                    leading: const Icon(Icons.insights),
-                    title: const Text('Graphs'),
-                    onTap: () async {
-                      Navigator.pop(context);
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: const Text('Confirm Delete'),
-                            content: const Text(
-                              'Are you sure you want to delete all graphs? This action is not reversible.',
-                            ),
-                            actions: <Widget>[
-                              TextButton.icon(
-                                label: const Text('Cancel'),
-                                icon: const Icon(Icons.close),
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                              ),
-                              TextButton.icon(
-                                label: const Text('Delete'),
-                                icon: const Icon(Icons.delete),
-                                onPressed: () async {
-                                  Navigator.pop(context);
-                                  await (oldDb.delete(oldDb.gymSets)..where((u) => u.hidden.equals(false))).go();
-                                  if (!ctx.mounted) return;
-                                  Navigator.pop(ctx);
-                                },
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.event),
-                    title: const Text('Plans'),
-                    onTap: () async {
-                      Navigator.pop(context);
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: const Text('Confirm Delete'),
-                            content: const Text(
-                              'Are you sure you want to delete all plans? This action is not reversible.',
-                            ),
-                            actions: <Widget>[
-                              TextButton.icon(
-                                label: const Text('Cancel'),
-                                icon: const Icon(Icons.close),
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                              ),
-                              TextButton.icon(
-                                label: const Text('Delete'),
-                                icon: const Icon(Icons.delete),
-                                onPressed: () async {
-                                  final planState = ctx.read<PlansRepository>();
-                                  Navigator.pop(context);
-                                  await oldDb.delete(oldDb.plans).go();
-                                  planState.updatePlans(null);
-                                  if (!ctx.mounted) return;
-                                  Navigator.pop(ctx);
-                                },
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.storage),
-                    title: const Text('Database'),
-                    onTap: () async {
-                      Navigator.pop(context);
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: const Text('Confirm Delete'),
-                            content: const Text(
-                              'Are you sure you want to delete your database? This action is not reversible and will destroy all your data.',
-                            ),
-                            actions: <Widget>[
-                              TextButton.icon(
-                                label: const Text('Cancel'),
-                                icon: const Icon(Icons.close),
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                              ),
-                              TextButton.icon(
-                                label: const Text('Delete'),
-                                icon: const Icon(Icons.delete),
-                                onPressed: () async {
-                                  final dbFolder = await getApplicationDocumentsDirectory();
-                                  final file = File(
-                                    p.join(dbFolder.path, 'FossFit.sqlite'),
-                                  );
-                                  await oldDb.close();
-                                  await oldDb.executor.close();
-                                  await file.delete();
-                                  if (defaultTargetPlatform == TargetPlatform.iOS ||
-                                      defaultTargetPlatform == TargetPlatform.android)
-                                    SystemNavigator.pop();
-                                  else
-                                    exit(0);
-                                },
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
+                    leading: Icon(Icons.warning, color: Colors.redAccent),
+                    title: Text('Reset'),
+                    subtitle: Text('Delete everything. Requires restart'),
+                    onTap: () => _resetApp(),
                   ),
                 ],
               ),
@@ -157,5 +37,27 @@ class DeleteRecordsButton extends StatelessWidget {
       icon: const Icon(Icons.delete),
       label: const Text('Delete records'),
     );
+  }
+
+  void _resetApp() async {
+    final proceed = await showConfirmationDialog(
+      context: ctx,
+      title: '⚠️!WARNING!⚠️',
+      content:
+          'This will delete all content; notes, notebooks, lists and goals.\nAll settings will be reset to default.\n\nDo you wish to continue?',
+      confirmStyle: TextButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+      cancelStyle: TextButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+      cancelLabel: 'No, take me home',
+      confirmLabel: 'Yes, delete everything',
+      barrierDismissible: true,
+    );
+
+    if (proceed == null || !proceed || !ctx.mounted) return;
+
+    await DatabaseHelper().resetApp();
+
+    await Future.delayed(const Duration(milliseconds: 2000));
+
+    SystemNavigator.pop(animated: true);
   }
 }

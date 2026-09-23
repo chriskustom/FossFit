@@ -34,16 +34,13 @@ class PlanExercisesRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  PlanExercise? getPlanExercisesById(int id, int planId) => _planexercises
-      .where((n) => n.exerciseId == id && n.planId == planId)
-      .firstOrNull;
+  PlanExercise? getPlanExercisesById(int id, int planId) =>
+      _planexercises.where((n) => n.exerciseId == id && n.planId == planId).firstOrNull;
 
-  List<PlanExercise> getPlanExercisesByPlanId(int planId) =>
-      _planexercises.where((n) => n.planId == planId).toList();
+  List<PlanExercise> getPlanExercisesByPlanId(int planId) => _planexercises.where((n) => n.planId == planId).toList();
 
   Future<PlanExercise> addPlanExercises(PlanExercise planexercises) async {
-    planexercises.id =
-        await _db.insert(TableName.planexercises.name, planexercises.toMap());
+    planexercises.id = await _db.insert(TableName.planexercises.name, planexercises.toMap());
 
     // Update the cached list
     final index = _planexercises.indexWhere((e) => e.id == planexercises.id);
@@ -67,9 +64,7 @@ class PlanExercisesRepository extends ChangeNotifier {
         ) <=
         0) return false;
     final index = _planexercises.indexWhere(
-      (e) =>
-          e.id == planexercises.planId &&
-          e.exerciseId == planexercises.exerciseId,
+      (e) => e.id == planexercises.planId && e.exerciseId == planexercises.exerciseId,
     );
     if (index >= 0) {
       _planexercises[index] = planexercises;
@@ -90,9 +85,7 @@ class PlanExercisesRepository extends ChangeNotifier {
         ) <=
         0) return false;
     final index = _planexercises.indexWhere(
-      (e) =>
-          e.exerciseId == planexercises.exerciseId &&
-          e.planId == planexercises.planId,
+      (e) => e.exerciseId == planexercises.exerciseId && e.planId == planexercises.planId,
     );
     if (index >= 0) {
       _planexercises.remove(planexercises);
@@ -118,5 +111,10 @@ class PlanExercisesRepository extends ChangeNotifier {
       await deleteAllExerciseForPlanById(id);
     }
     return true;
+  }
+
+  Future<void> truncateTable() async {
+    await _db.execute('DELETE FROM plan_exercises;');
+    await loadAll();
   }
 }
