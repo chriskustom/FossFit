@@ -69,7 +69,7 @@ class PlanExercisesRepository extends ChangeNotifier {
     return result;
   }
 
-  Future<PlanExercise> addPlanExercises(
+  Future<PlanExercise> insertPlanExercise(
     PlanExercise planExercise,
   ) async {
     final id = await _db.insert(

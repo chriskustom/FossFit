@@ -205,7 +205,7 @@ Future<void> migrateToV2(Database db) async {
         SELECT
           gs.id,
           gs.body_weight,
-          gs.created,
+          gs.created * 1000,
           gs.distance,
           gs.duration,
           gs.hidden,

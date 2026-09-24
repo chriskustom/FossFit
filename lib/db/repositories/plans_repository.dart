@@ -51,21 +51,18 @@ class PlansRepository extends ChangeNotifier {
         id,
         SUM(max_sets) AS max_sets,
         SUM(todays_count) AS todays_count
-
       FROM (
         SELECT
           p.id,
-
           COALESCE(
             pe.max_sets,
             CAST(settings.value AS INTEGER)
           ) AS max_sets,
-
           COUNT(
             CASE
               WHEN gs.id IS NOT NULL
                 AND DATE(
-                  gs.created,
+                  gs.created / 1000,
                   'unixepoch',
                   'localtime'
                 ) = DATE(
@@ -76,27 +73,21 @@ class PlansRepository extends ChangeNotifier {
               THEN 1
             END
           ) AS todays_count
-
         FROM plans p
-
         LEFT JOIN plan_exercises pe
           ON p.id = pe.plan_id
           AND pe.enabled = 1
-
         LEFT JOIN settings
           ON settings.category = 'plans'
           AND settings.key = 'max_sets'
-
         LEFT JOIN gym_sets gs
           ON pe.exercise_id =
               gs.exercise_id
           AND gs.plan_id = p.id
-
         GROUP BY
           pe.exercise_id,
           p.id
       )
-
       GROUP BY id
     ''');
 
@@ -308,7 +299,7 @@ class PlansRepository extends ChangeNotifier {
         .toList();
   }
 
-  Future<Plan> addPlan(
+  Future<Plan> insertPlan(
     Plan plan,
   ) async {
     plan.id = await _db.insert(

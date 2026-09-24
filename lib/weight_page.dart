@@ -150,9 +150,10 @@ class _WeightPageState extends State<WeightPage> {
               weight: double.parse(ctrl.text),
               exerciseId: 1,
               hidden: false,
+              bodyWeight: double.parse(ctrl.text),
             ),
           );
-          for (var gymSet in gymSetsRepo.gymsets.where((t) => t.bodyWeight?.toInt() == 0)) {
+          for (var gymSet in gymSetsRepo.gymsets.where((t) => t.bodyWeight.toInt() == 0)) {
             await gymSetsRepo.updateGymSet(
               gymSet.copyWith(bodyWeight: double.parse(ctrl.text)),
             );

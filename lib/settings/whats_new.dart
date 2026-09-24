@@ -61,7 +61,7 @@ class _WhatsNewState extends State<WhatsNew> {
           Changelog(
             name: filename,
             created: DateFormat.yMMMd().format(
-              DateTime.fromMillisecondsSinceEpoch(timestamp * 1000),
+              DateTime.fromMillisecondsSinceEpoch(timestamp),
             ),
             content: content,
           ),

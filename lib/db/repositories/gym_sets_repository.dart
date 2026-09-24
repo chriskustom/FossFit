@@ -22,74 +22,209 @@ class GymSetsRepository extends ChangeNotifier {
   List<GymSet> get gymsets => List.unmodifiable(_gymsets);
 
   // ---------------------------------------------------------------------------
-  // Basic CRUD
+  // Loading
   // ---------------------------------------------------------------------------
 
   Future<void> loadAll() async {
     final rows = await _db.rawQuery('''
-    SELECT gym_sets.*,
-          exercises.id AS exercise_id,
-          exercises.name AS exercise_name,
-          exercises.cardio AS exercise_cardio,
-          exercises.category AS exercise_category,
-          exercises.image AS exercise_image
-        FROM gym_sets
-        LEFT JOIN exercises
-          ON exercises.id = gym_sets.exercise_id
-        ORDER BY gym_sets.created DESC;
-  ''');
+      SELECT
+        gym_sets.*,
 
-    _gymsets = rows.map((r) => GymSet.fromJoinedMap(r)).toList();
+        exercises.id AS exercise_joined_id,
+        exercises.name AS exercise_name,
+        exercises.cardio AS exercise_cardio,
+        exercises.category AS exercise_category,
+        exercises.image AS exercise_image
+
+      FROM gym_sets
+
+      LEFT JOIN exercises
+        ON exercises.id = gym_sets.exercise_id
+
+      ORDER BY gym_sets.created DESC
+    ''');
+
+    _gymsets = rows.map(GymSet.fromJoinedMap).toList();
 
     notifyListeners();
   }
+
+  Future<GymSet?> _loadById(int id) async {
+    final rows = await _db.rawQuery(
+      '''
+      SELECT
+        gym_sets.*,
+
+        exercises.id AS exercise_joined_id,
+        exercises.name AS exercise_name,
+        exercises.cardio AS exercise_cardio,
+        exercises.category AS exercise_category,
+        exercises.image AS exercise_image
+
+      FROM gym_sets
+
+      LEFT JOIN exercises
+        ON exercises.id = gym_sets.exercise_id
+
+      WHERE gym_sets.id = ?
+
+      LIMIT 1
+      ''',
+      [id],
+    );
+
+    if (rows.isEmpty) {
+      return null;
+    }
+
+    return GymSet.fromJoinedMap(rows.first);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Getters
+  // ---------------------------------------------------------------------------
 
   GymSet? getGymSetById(int id) {
-    return _gymsets.where((n) => n.id == id).firstOrNull;
+    return _gymsets.where((set) => set.id == id).firstOrNull;
   }
 
-  List<GymSet> getGymSetsByIds(List<int> ids) {
-    return _gymsets.where((n) => ids.contains(n.id)).toList();
-  }
+  // ---------------------------------------------------------------------------
+  // CRUD
+  // ---------------------------------------------------------------------------
 
-  Future<void> insertGymSets(List<GymSet> gymSets) async {
-    for (final gymSet in gymSets) {
-      await insertGymSet(gymSet);
-    }
-    await loadAll();
-  }
-
-  Future<GymSet> insertGymSet(GymSet gymsets) async {
-    gymsets.id = await _db.insert(
+  Future<GymSet> insertGymSet(GymSet gymSet) async {
+    final id = await _db.insert(
       TableName.gymsets.name,
-      gymsets.toMap(),
+      gymSet.toMap(),
     );
 
-    final index = _gymsets.indexWhere(
-      (e) => e.id == gymsets.id,
-    );
+    final loadedSet = await _loadById(id);
 
-    if (index >= 0) {
-      _gymsets[index] = gymsets;
+    if (loadedSet == null) {
+      // This should never happen, but keep the repository consistent if it
+      // somehow does.
+      gymSet.id = id;
+
+      _gymsets.insert(0, gymSet);
     } else {
-      _gymsets.add(gymsets);
+      final index = _gymsets.indexWhere(
+        (set) => set.id == id,
+      );
+
+      if (index >= 0) {
+        _gymsets[index] = loadedSet;
+      } else {
+        _gymsets.insert(0, loadedSet);
+      }
     }
+
+    _sortByCreated();
 
     notifyListeners();
 
-    return gymsets;
+    return loadedSet ?? gymSet;
   }
 
-  Future<bool> updateGymSet(GymSet? gymsets) async {
-    if (gymsets == null) {
+  Future<bool> updateGymSet(GymSet? gymSet) async {
+    if (gymSet == null || gymSet.id == null) {
       return false;
     }
 
     final count = await _db.update(
       TableName.gymsets.name,
-      gymsets.toMap(),
+      gymSet.toMap(),
       where: 'id = ?',
-      whereArgs: [gymsets.id],
+      whereArgs: [gymSet.id],
+    );
+
+    if (count <= 0) {
+      return false;
+    }
+
+    // Reload the joined object so the cached model has the same shape as
+    // objects returned by loadAll().
+    final loadedSet = await _loadById(gymSet.id!);
+
+    final index = _gymsets.indexWhere(
+      (set) => set.id == gymSet.id,
+    );
+
+    if (loadedSet != null) {
+      if (index >= 0) {
+        _gymsets[index] = loadedSet;
+      } else {
+        _gymsets.insert(0, loadedSet);
+      }
+    } else if (index >= 0) {
+      _gymsets[index] = gymSet;
+    } else {
+      _gymsets.insert(0, gymSet);
+    }
+
+    _sortByCreated();
+
+    notifyListeners();
+
+    return true;
+  }
+
+  Future<bool> deleteGymSetsById(List<int> ids) async {
+    if (ids.isEmpty) {
+      return false;
+    }
+
+    final placeholders = List.filled(
+      ids.length,
+      '?',
+    ).join(',');
+
+    final count = await _db.delete(
+      TableName.gymsets.name,
+      where: 'id IN ($placeholders)',
+      whereArgs: ids,
+    );
+
+    if (count <= 0) {
+      return false;
+    }
+
+    _gymsets.removeWhere(
+      (set) => set.id != null && ids.contains(set.id),
+    );
+
+    notifyListeners();
+
+    return true;
+  }
+
+  Future<bool> deleteGymSetById(int id) async {
+    final count = await _db.delete(
+      TableName.gymsets.name,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+
+    if (count <= 0) {
+      return false;
+    }
+
+    _gymsets.removeWhere(
+      (set) => set.id == id,
+    );
+
+    notifyListeners();
+
+    return true;
+  }
+
+  Future<bool> hideGymSet(int id) async {
+    final count = await _db.update(
+      TableName.gymsets.name,
+      {
+        'hidden': 1,
+      },
+      where: 'id = ?',
+      whereArgs: [id],
     );
 
     if (count <= 0) {
@@ -97,13 +232,16 @@ class GymSetsRepository extends ChangeNotifier {
     }
 
     final index = _gymsets.indexWhere(
-      (e) => e.id == gymsets.id,
+      (set) => set.id == id,
     );
 
     if (index >= 0) {
-      _gymsets[index] = gymsets;
-    } else {
-      _gymsets.add(gymsets);
+      final loadedSet = await _loadById(id);
+
+      _gymsets[index] = loadedSet ??
+          _gymsets[index].copyWith(
+            hidden: true,
+          );
     }
 
     notifyListeners();
@@ -111,23 +249,14 @@ class GymSetsRepository extends ChangeNotifier {
     return true;
   }
 
-  Future<void> deleteGymSetsById(List<int> ids) async {
-    for (var id in ids) {
-      await deleteGymSetById(id);
-    }
-  }
-
-  Future<bool> deleteGymSetById(int id) async {
-    final gymsets = getGymSetById(id);
-
-    if (gymsets == null) {
-      return false;
-    }
-
-    final count = await _db.delete(
+  Future<bool> unhideGymSet(int id) async {
+    final count = await _db.update(
       TableName.gymsets.name,
+      {
+        'hidden': 0,
+      },
       where: 'id = ?',
-      whereArgs: [gymsets.id],
+      whereArgs: [id],
     );
 
     if (count <= 0) {
@@ -135,11 +264,16 @@ class GymSetsRepository extends ChangeNotifier {
     }
 
     final index = _gymsets.indexWhere(
-      (e) => e.id == gymsets.id,
+      (set) => set.id == id,
     );
 
     if (index >= 0) {
-      _gymsets.remove(gymsets);
+      final loadedSet = await _loadById(id);
+
+      _gymsets[index] = loadedSet ??
+          _gymsets[index].copyWith(
+            hidden: false,
+          );
     }
 
     notifyListeners();
@@ -148,8 +282,17 @@ class GymSetsRepository extends ChangeNotifier {
   }
 
   Future<void> truncateTable() async {
-    await _db.execute('DELETE FROM gym_sets;');
+    await _db.execute(
+      'DELETE FROM ${TableName.gymsets.name};',
+    );
+
     await loadAll();
+  }
+
+  void _sortByCreated() {
+    _gymsets.sort(
+      (a, b) => b.created.compareTo(a.created),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -193,14 +336,14 @@ class GymSetsRepository extends ChangeNotifier {
   }
 
   int toUnixSeconds(DateTime dateTime) {
-    return dateTime.toUtc().millisecondsSinceEpoch ~/ 1000;
+    return dateTime.toUtc().millisecondsSinceEpoch;
   }
 
   DateTime fromUnixSeconds(dynamic value) {
-    final seconds = value is int ? value : (value as num).toInt();
+    final milliseconds = value is int ? value : (value as num).toInt();
 
     return DateTime.fromMillisecondsSinceEpoch(
-      seconds * 1000,
+      milliseconds,
       isUtc: true,
     ).toLocal();
   }
@@ -216,7 +359,6 @@ class GymSetsRepository extends ChangeNotifier {
     switch (metric) {
       case CardioMetric.pace:
         final distance = (row['distance_sum'] as num?)?.toDouble() ?? 0;
-
         final duration = (row['duration_sum'] as num?)?.toDouble() ?? 0;
 
         return duration == 0 ? 0 : distance / duration;
@@ -250,7 +392,10 @@ class GymSetsRepository extends ChangeNotifier {
     );
 
     final endSeconds = toUnixSeconds(
-      end ?? DateTime.now().toLocal().add(const Duration(days: 1)),
+      end ??
+          DateTime.now().toLocal().add(
+                const Duration(days: 1),
+              ),
     );
 
     final results = await _db.rawQuery(
@@ -433,6 +578,7 @@ class GymSetsRepository extends ChangeNotifier {
     GROUP BY name, weight
     ''',
     );
+
     return results
         .map(
           (result) => (
@@ -705,6 +851,7 @@ class GymSetsRepository extends ChangeNotifier {
     );
 
     final isCardio = rows.first['cardio'] == 1;
+
     if (isCardio) {
       final results = await _db.rawQuery(
         '''
@@ -758,7 +905,6 @@ class GymSetsRepository extends ChangeNotifier {
     }
 
     final weight = (results.first['weight'] as num).toDouble();
-
     final reps = (results.first['reps'] as num).toDouble();
 
     if (gymSet.weight > weight) {
@@ -772,76 +918,113 @@ class GymSetsRepository extends ChangeNotifier {
     return false;
   }
 
-  Future<void> convertUnits(String unit, int exerciseId) async {
-    if (unit == 'kg')
+  // ---------------------------------------------------------------------------
+  // Unit conversion
+  // ---------------------------------------------------------------------------
+
+  Future<void> convertUnits(
+    String unit,
+    int exerciseId,
+  ) async {
+    if (unit == 'kg') {
       await _db.execute(
         '''
-        UPDATE gym_sets SET weight = weight * 0.45359237, 
+        UPDATE gym_sets
+        SET
+          weight = weight * 0.45359237,
           unit = 'kg'
-        WHERE exercise_id = ? AND unit = 'lb';
-      ''',
+        WHERE exercise_id = ?
+          AND unit = 'lb';
+        ''',
         [exerciseId],
       );
-    else if (unit == 'lb')
+    } else if (unit == 'lb') {
       await _db.execute(
         '''
-        UPDATE gym_sets SET weight = weight * 2.20462262, 
+        UPDATE gym_sets
+        SET
+          weight = weight * 2.20462262,
           unit = 'lb'
-        WHERE exercise_id = ? AND unit = 'kg';
-      ''',
+        WHERE exercise_id = ?
+          AND unit = 'kg';
+        ''',
         [exerciseId],
       );
-    else if (unit == 'km') {
+    } else if (unit == 'km') {
       await _db.execute(
         '''
-        UPDATE gym_sets SET weight = weight * 1.609, 
+        UPDATE gym_sets
+        SET
+          weight = weight * 1.609,
           unit = 'km'
-        WHERE exercise_id = ? AND unit = 'mi';
-      ''',
+        WHERE exercise_id = ?
+          AND unit = 'mi';
+        ''',
         [exerciseId],
       );
+
       await _db.execute(
         '''
-        UPDATE gym_sets SET weight = weight / 1000, 
+        UPDATE gym_sets
+        SET
+          weight = weight / 1000,
           unit = 'km'
-        WHERE exercise_id = ? AND unit = 'm';
-      ''',
+        WHERE exercise_id = ?
+          AND unit = 'm';
+        ''',
         [exerciseId],
       );
     } else if (unit == 'mi') {
       await _db.execute(
         '''
-        UPDATE gym_sets SET weight = weight / 1.609, 
+        UPDATE gym_sets
+        SET
+          weight = weight / 1.609,
           unit = 'mi'
-        WHERE exercise_id = ? AND unit = 'km';
-      ''',
+        WHERE exercise_id = ?
+          AND unit = 'km';
+        ''',
         [exerciseId],
       );
+
       await _db.execute(
         '''
-        UPDATE gym_sets SET weight = weight / 1609.34, 
+        UPDATE gym_sets
+        SET
+          weight = weight / 1609.34,
           unit = 'mi'
-        WHERE exercise_id = ? AND unit = 'm';
-      ''',
+        WHERE exercise_id = ?
+          AND unit = 'm';
+        ''',
         [exerciseId],
       );
     } else if (unit == 'm') {
       await _db.execute(
         '''
-        UPDATE gym_sets SET weight = weight * 1000, 
+        UPDATE gym_sets
+        SET
+          weight = weight * 1000,
           unit = 'm'
-        WHERE exercise_id = ? AND unit = 'km';
-      ''',
+        WHERE exercise_id = ?
+          AND unit = 'km';
+        ''',
         [exerciseId],
       );
+
       await _db.execute(
         '''
-        UPDATE gym_sets SET weight = weight * 1609.34, 
+        UPDATE gym_sets
+        SET
+          weight = weight * 1609.34,
           unit = 'm'
-        WHERE exercise_id = ? AND unit = 'mi';
-      ''',
+        WHERE exercise_id = ?
+          AND unit = 'mi';
+        ''',
         [exerciseId],
       );
     }
+
+    // Keep the in-memory cache consistent after conversions.
+    await loadAll();
   }
 }

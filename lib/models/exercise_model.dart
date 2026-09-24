@@ -14,6 +14,8 @@ class Exercise {
     this.image,
   });
 
+  bool hasImage() => image != null && image != '';
+
   Exercise copyWith({
     int? id,
     bool? cardio,

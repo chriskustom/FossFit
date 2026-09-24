@@ -2,7 +2,7 @@ import 'package:fossfit/models/exercise_model.dart';
 
 class GymSet {
   int? id;
-  final double? bodyWeight;
+  final double bodyWeight;
   final DateTime created;
   final double? distance;
   final double? duration;
@@ -18,7 +18,7 @@ class GymSet {
   final Exercise? exercise;
   GymSet({
     this.id,
-    this.bodyWeight,
+    required this.bodyWeight,
     required this.exerciseId,
     required this.created,
     this.distance,
@@ -91,8 +91,7 @@ class GymSet {
     return GymSet(
       id: map['id'] as int?,
       bodyWeight: (map['body_weight'] as num).toDouble(),
-      created:
-          DateTime.fromMillisecondsSinceEpoch((map['created'] as num).toInt()),
+      created: DateTime.fromMillisecondsSinceEpoch((map['created'] as num).toInt()),
       distance: (map['distance'] as num).toDouble(),
       duration: (map['duration'] as num).toDouble(),
       hidden: map['hidden'] == 1,
@@ -116,7 +115,7 @@ class GymSet {
             name: map['exercise_name'] as String,
             cardio: map['exercise_cardio'] == 1,
             category: map['exercise_category'] as String,
-            image: map['exercise_image'] as String,
+            image: map['exercise_image'] as String?,
           );
 
     return gymSet.copyWith(

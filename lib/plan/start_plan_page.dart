@@ -288,7 +288,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
         title = widget.plan.title!;
       }
     }
-
+    select(0);
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: _buildAppBar(context),
@@ -419,17 +419,13 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
       onFieldSubmitted: (_) => save(),
     );
 
-    final unitField = unitSelector();
-
-    if (screenWidth <= 520) {
+    if (screenWidth <= 450) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           repsField,
           const SizedBox(height: 8),
           weightField,
-          const SizedBox(height: 8),
-          unitField,
         ],
       );
     }
@@ -439,8 +435,6 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
         Expanded(child: repsField),
         const SizedBox(width: 8),
         Expanded(child: weightField),
-        const SizedBox(width: 8),
-        Expanded(child: unitField),
       ],
     );
   }
@@ -636,18 +630,32 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
   GymSet? getLast(Exercise exercise) {
     final sets = context.read<GymSetsRepository>().gymsets;
 
-    return sets.where((t) => t.id == exercise.id).firstOrNull;
+    final matching = sets
+        .where(
+          (set) => set.exerciseId == exercise.id && !set.hidden,
+        )
+        .toList();
+
+    if (matching.isEmpty) {
+      return null;
+    }
+
+    matching.sort(
+      (a, b) => b.created.compareTo(a.created),
+    );
+
+    return matching.first;
   }
 
-  void _updateGymSetTextFields(GymSet gymSet) {
+  void _updateGymSetTextFields(GymSet gymSet, Exercise exercise) {
     final settings = context.read<SettingsRepository>();
 
     final su = settings.getSetting(key: 'strength_unit');
     final cu = settings.getSetting(key: 'cardio_unit');
 
-    if ((!gymSet.exercise!.cardio && su == 'last-entry') || (gymSet.exercise!.cardio && cu == 'last-entry')) {
+    if ((!exercise.cardio && su == 'last-entry') || (exercise.cardio && cu == 'last-entry')) {
       unit = gymSet.unit;
-    } else if (gymSet.exercise!.cardio) {
+    } else if (exercise.cardio) {
       unit = cu;
     } else {
       unit = su;
@@ -659,11 +667,11 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     minutes.text = (gymSet.duration ?? 0).floor().toString();
     seconds.text = (((gymSet.duration ?? 0) * 60) % 60).floor().toString();
     incline.text = gymSet.incline?.toString() ?? '';
-    cardio = gymSet.exercise!.cardio;
-    category = gymSet.exercise!.category;
-    image = gymSet.exercise!.image;
+    cardio = exercise.cardio;
+    category = exercise.category;
+    image = exercise.image;
     notes.text = gymSet.notes ?? '';
-    currentExercise = gymSet.exercise!;
+    currentExercise = exercise;
   }
 
   List<GymSet> _todaySetsStream(Exercise exercise) {
@@ -677,7 +685,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
         .where(
           (set) =>
               set.planId == widget.plan.id &&
-              set.exercise!.id! == exercise.id &&
+              set.exerciseId == exercise.id &&
               set.created.isAfter(startOfDay) &&
               set.created.isBefore(startOfTomorrow),
         )
@@ -749,7 +757,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
       unit: unit,
       created: DateTime.now().toLocal(),
       duration: _durationInMinutes(),
-      bodyWeight: bodyWeight,
+      bodyWeight: bodyWeight ?? 0.0,
       restMs: restMs?.toInt(),
       planId: widget.plan.id,
       reps: double.tryParse(reps.text) ?? 0,
@@ -793,7 +801,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     if (!mounted) return;
 
     setState(() {
-      _updateGymSetTextFields(gymSet);
+      _updateGymSetTextFields(gymSet, exercise);
       lastSaved = DateTime.now();
     });
 
@@ -830,9 +838,9 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
 
   Future<double?> _getBodyWeight(
     Exercise exercise,
-    dynamic settings,
+    SettingsRepository settings,
   ) async {
-    if (!settings.showBodyWeight) {
+    if (!settings.isEnabled(key: 'show_body_weight')) {
       return null;
     }
 
@@ -852,29 +860,24 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
       return;
     }
 
-    final exercise = planExercises[index].exercise;
-
-    if (exercise == null) return;
-
     setState(() {
       selected = index;
     });
 
-    final last = getLast(exercise);
+    final exercise = planExercises[index].exercise;
 
-    if (last == null || !mounted) {
-      setState(() {
-        cardio = exercise.cardio;
-        currentExercise = exercise;
-        category = exercise.category;
-        image = exercise.image;
-      });
-
+    if (exercise == null || !mounted) {
       return;
     }
 
+    final last = getLast(exercise);
+
+    if (last == null || !mounted) {
+      return;
+    }
+    print(selected);
     setState(() {
-      _updateGymSetTextFields(last);
+      _updateGymSetTextFields(last, exercise);
     });
   }
 
@@ -1101,6 +1104,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
               children: [
                 if (!cardio) strengthFields(),
                 if (cardio) ...cardioFields(),
+                unitSelector(),
                 notesField(),
                 const SizedBox(height: 4),
                 CustomSetIndicator(
@@ -1136,7 +1140,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
             color: Theme.of(context).colorScheme.inversePrimary,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: showImages && planItem.exercise?.image != null && planItem.exercise!.image!.isNotEmpty
+          child: showImages && planItem.exercise?.hasImage() == true
               ? Stack(
                   children: [
                     Image.file(

@@ -45,10 +45,8 @@ class _ExerciseModalState extends State<ExerciseModal> {
   @override
   Widget build(BuildContext context) {
     var repo = context.watch<PlanExercisesRepository>();
-    var planExercise = repo.planexercises
-        .where((p) => p.id == widget.planId && p.exercise == widget.exercise)
-        .take(1)
-        .first;
+    var planExercise =
+        repo.planexercises.where((p) => p.planId == widget.planId && p.exerciseId == widget.exercise.id).first;
     max.text = planExercise.maxSets.toString();
     warmup.text = planExercise.warmupSets?.toString() ?? '';
 
@@ -72,8 +70,7 @@ class _ExerciseModalState extends State<ExerciseModal> {
                     child: material.Column(
                       children: [
                         Selector<SettingsRepository, int?>(
-                          selector: (context, settings) =>
-                              settings.getInt(key: 'warmup_sets'),
+                          selector: (context, settings) => settings.getInt(key: 'warmup_sets'),
                           builder: (context, value, child) => TextField(
                             controller: warmup,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -90,8 +87,7 @@ class _ExerciseModalState extends State<ExerciseModal> {
                         ),
                         const SizedBox(height: 16),
                         Selector<SettingsRepository, int>(
-                          selector: (context, settings) =>
-                              settings.getInt(key: 'max_sets'),
+                          selector: (context, settings) => settings.getInt(key: 'max_sets'),
                           builder: (context, value, child) => TextField(
                             controller: max,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -144,10 +140,7 @@ class _ExerciseModalState extends State<ExerciseModal> {
             title: const Text('Edit'),
             onTap: () async {
               Navigator.pop(context);
-              final gymSet = gymSets
-                  .where((r) => r.exerciseId == (widget.exercise.id))
-                  .take(1)
-                  .first;
+              final gymSet = gymSets.where((r) => r.exerciseId == (widget.exercise.id)).take(1).first;
               if (!context.mounted) return;
               await Navigator.push(
                 context,
@@ -164,10 +157,7 @@ class _ExerciseModalState extends State<ExerciseModal> {
             title: const Text('Undo'),
             onTap: () async {
               Navigator.pop(context);
-              final gymSet = gymSets
-                  .where((r) => r.exerciseId == (widget.exercise.id))
-                  .take(1)
-                  .first;
+              final gymSet = gymSets.where((r) => r.exerciseId == (widget.exercise.id)).take(1).first;
               await setsRepo.deleteGymSetById(gymSet.id!);
               if (!context.mounted) return;
               final planState = context.read<PlansRepository>();

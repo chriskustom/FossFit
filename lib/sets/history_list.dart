@@ -140,7 +140,7 @@ class _HistoryListState extends State<HistoryList> {
       ),
     );
 
-    if (widget.selected.isEmpty && showImages && gymSet.exercise?.image != null) {
+    if (widget.selected.isEmpty && showImages && gymSet.exercise?.hasImage() == true) {
       leading = Container(
         width: 24,
         height: 24,

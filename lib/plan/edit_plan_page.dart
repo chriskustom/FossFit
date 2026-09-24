@@ -377,12 +377,12 @@ class _EditPlanPageState extends State<EditPlanPage> {
           exerciseId: exercise.exerciseId,
         );
 
-        await peRepo.addPlanExercises(
+        await peRepo.insertPlanExercise(
           newPe,
         );
       }
     } else {
-      final newPlan = await planRepo.addPlan(
+      final newPlan = await planRepo.insertPlan(
         Plan(
           days: selected.join(','),
           title: titleCtrl.text,
@@ -403,7 +403,7 @@ class _EditPlanPageState extends State<EditPlanPage> {
           exerciseId: exercise.exerciseId,
         );
 
-        await peRepo.addPlanExercises(
+        await peRepo.insertPlanExercise(
           newPe,
         );
       }

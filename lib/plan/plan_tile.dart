@@ -43,6 +43,7 @@ class _PlanTileState extends State<PlanTile> {
   Widget build(BuildContext context) {
     _exercisesStream = context.watch<PlanExercisesRepository>().getPlanExercisesByPlanId(widget.plan.id!);
     var settingsRepo = context.watch<SettingsRepository>();
+    final planRepo = context.watch<PlansRepository>();
     Widget title = const Text("Daily");
     if (widget.plan.title?.isNotEmpty == true) {
       final today = widget.plan.days.split(',').contains(widget.weekday);
@@ -139,11 +140,10 @@ class _PlanTileState extends State<PlanTile> {
                 child: const Icon(Icons.drag_handle),
               );
 
-            final state = context.watch<PlansRepository>();
-            final idx = state.planCounts.indexWhere((element) => element.planId == widget.plan.id);
+            final idx = planRepo.planCounts.indexWhere((element) => element.planId == widget.plan.id);
             PlanCount count;
             if (idx != -1)
-              count = state.planCounts[idx];
+              count = planRepo.planCounts[idx];
             else
               return const SizedBox();
 

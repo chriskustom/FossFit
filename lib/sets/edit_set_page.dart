@@ -679,7 +679,7 @@ class _EditSetPageState extends State<EditSetPage> {
       notes: notes.text,
     );
 
-    final settings = context.watch<SettingsRepository>();
+    final settings = context.read<SettingsRepository>();
     final setRepo = context.read<GymSetsRepository>();
     final exRepo = context.read<ExercisesRepository>();
 
@@ -779,10 +779,10 @@ class _EditSetPageState extends State<EditSetPage> {
       restMs = gymSet.restMs;
     });
 
-    if (gymSet.reps != 0) reps.text = toString(gymSet.reps);
+    reps.text = toString(gymSet.reps);
     weight.text = toString(gymSet.weight);
     setORM();
-    if (gymSet.bodyWeight != 0) body.text = toString(gymSet.bodyWeight ?? 0);
+    if (gymSet.bodyWeight != 0) body.text = toString(gymSet.bodyWeight);
     if (gymSet.duration != 0) {
       minutes.text = (gymSet.duration ?? 0).floor().toString();
       seconds.text = ((gymSet.duration ?? 0 * 60) % 60).floor().toString();

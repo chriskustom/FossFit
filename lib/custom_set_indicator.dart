@@ -44,24 +44,24 @@ class CustomSetIndicator extends StatelessWidget {
                 SizedBox(
                   height: 6,
                   width: double.infinity,
-                  child: AnimatedFractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: sets.length > i ? 1 : 0,
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.ease,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(2),
-                        color: theme.colorScheme.outlineVariant,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(2),
+                      color: theme.colorScheme.outlineVariant,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: AnimatedFractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: sets.length > i ? 1 : 0,
+                        duration: const Duration(milliseconds: 1000),
+                        curve: Curves.ease,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
                       ),
-                      child: i < sets.length
-                          ? DecoratedBox(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(2),
-                                color: theme.colorScheme.primary,
-                              ),
-                            )
-                          : null,
                     ),
                   ),
                 ),

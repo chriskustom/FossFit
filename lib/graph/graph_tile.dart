@@ -32,22 +32,18 @@ class GraphTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final gymSetRepo = context.watch<GymSetsRepository>();
     String trailing;
     final showImages = context.select<SettingsRepository, bool>(
       (settings) => settings.isEnabled(key: 'show_images'),
     );
-    var exercise = context
-        .watch<ExercisesRepository>()
-        .getExerciseById(gymSet.exerciseId)!;
+    var exercise = context.watch<ExercisesRepository>().getExerciseById(gymSet.exerciseId)!;
     if (exercise.cardio == true) {
       final minutes = gymSet.duration!.floor();
-      final seconds =
-          ((gymSet.duration! * 60) % 60).floor().toString().padLeft(2, '0');
-      trailing =
-          "${toString(gymSet.distance ?? 0)} ${gymSet.unit} / $minutes:$seconds";
+      final seconds = ((gymSet.duration! * 60) % 60).floor().toString().padLeft(2, '0');
+      trailing = "${toString(gymSet.distance ?? 0)} ${gymSet.unit} / $minutes:$seconds";
     } else {
-      trailing =
-          "${toString(gymSet.reps)} x ${toString(gymSet.weight)} ${gymSet.unit}";
+      trailing = "${toString(gymSet.reps)} x ${toString(gymSet.weight)} ${gymSet.unit}";
     }
 
     Widget? leading = SizedBox(
@@ -61,7 +57,7 @@ class GraphTile extends StatelessWidget {
       ),
     );
 
-    if (selected.isEmpty && showImages && exercise.image?.isNotEmpty == true) {
+    if (selected.isEmpty && showImages && exercise.hasImage()) {
       leading = GestureDetector(
         onTap: () => onSelect(exercise),
         child: Image.file(
@@ -120,12 +116,9 @@ class GraphTile extends StatelessWidget {
         leading: leading,
         title: Text(exercise.name),
         subtitle: Selector<SettingsRepository, String>(
-          selector: (context, settings) =>
-              settings.getSetting(key: 'long_date_format'),
+          selector: (context, settings) => settings.getSetting(key: 'long_date_format'),
           builder: (context, dateFormat, child) => Text(
-            dateFormat == 'timeago'
-                ? timeago.format(gymSet.created)
-                : DateFormat(dateFormat).format(gymSet.created),
+            dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat(dateFormat).format(gymSet.created),
           ),
         ),
         trailing: Text(
@@ -162,15 +155,15 @@ class GraphTile extends StatelessWidget {
             return;
           }
 
-          final data = await context.watch<GymSetsRepository>().getStrengthData(
-                target: gymSet.unit,
-                exerciseId: gymSet.exerciseId,
-                metric: StrengthMetric.bestWeight,
-                period: Period.day,
-                start: null,
-                end: null,
-                limit: 20,
-              );
+          final data = await gymSetRepo.getStrengthData(
+            target: gymSet.unit,
+            exerciseId: gymSet.exerciseId,
+            metric: StrengthMetric.bestWeight,
+            period: Period.day,
+            start: null,
+            end: null,
+            limit: 20,
+          );
           if (!context.mounted) return;
 
           Navigator.push(

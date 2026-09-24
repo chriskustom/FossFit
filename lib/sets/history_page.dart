@@ -36,6 +36,78 @@ class HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClientM
   bool get wantKeepAlive => true;
 
   @override
+  void initState() {
+    super.initState();
+
+    widget.tabController.addListener(_onTabChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Sync when HistoryPage is first created.
+    _refreshRepository();
+  }
+
+  @override
+  void didUpdateWidget(covariant HistoryPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.tabController != widget.tabController) {
+      oldWidget.tabController.removeListener(_onTabChanged);
+      widget.tabController.addListener(_onTabChanged);
+    }
+  }
+
+  void _onTabChanged() {
+    if (!mounted) {
+      return;
+    }
+
+    if (widget.tabController.indexIsChanging) {
+      return;
+    }
+
+    final settings = context.read<SettingsRepository>();
+
+    final tabs = settings
+        .getSetting(
+          key: 'tabs',
+        )
+        .split(',')
+        .map((tab) => tab.trim())
+        .where((tab) => tab.isNotEmpty)
+        .toList();
+
+    final historyIndex = tabs.indexOf('HistoryPage');
+
+    if (historyIndex < 0) {
+      return;
+    }
+
+    if (widget.tabController.index == historyIndex) {
+      _refreshRepository();
+    }
+  }
+
+  Future<void> _refreshRepository() async {
+    if (!mounted) {
+      return;
+    }
+
+    final setsRepo = context.read<GymSetsRepository>();
+
+    await setsRepo.loadAll();
+  }
+
+  @override
+  void dispose() {
+    widget.tabController.removeListener(_onTabChanged);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     super.build(context);
 
@@ -47,10 +119,18 @@ class HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClientM
           return;
         }
 
-        // This is an event handler, so read() is appropriate here.
         final settings = context.read<SettingsRepository>();
 
-        final historyIndex = settings.getSetting(key: 'tabs').split(',').indexOf('HistoryPage');
+        final tabs = settings
+            .getSetting(
+              key: 'tabs',
+            )
+            .split(',')
+            .map((tab) => tab.trim())
+            .where((tab) => tab.isNotEmpty)
+            .toList();
+
+        final historyIndex = tabs.indexOf('HistoryPage');
 
         if (widget.tabController.index == historyIndex) {
           navigator.pop();
@@ -105,7 +185,6 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
   DateTime? endDate;
   String? category;
 
-  bool _dependenciesReady = false;
   bool _statsLoading = false;
 
   SettingsRepository get settings => context.read<SettingsRepository>();
@@ -121,38 +200,7 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Repositories are inherited widgets, so this is the safe lifecycle
-    // method for obtaining them.
-    final setsRepo = context.read<GymSetsRepository>();
-
-    _allGymSets = List<GymSet>.of(setsRepo.gymsets);
-
-    if (!_dependenciesReady) {
-      _dependenciesReady = true;
-      _applyFilters();
-
-      if (settings.isEnabled(key: 'stats_panel')) {
-        _refreshStats();
-      }
-
-      return;
-    }
-
-    // The repository may have changed while this page was alive.
-    _allGymSets = List<GymSet>.of(setsRepo.gymsets);
-    _applyFilters();
-
-    if (settings.isEnabled(key: 'stats_panel')) {
-      _refreshStats();
-    }
-  }
-
-  void _onScroll() {
-    if (scroll.offset > 0.0) {
-      expand.collapse();
-    } else {
-      expand.expand();
-    }
+    _syncFromRepository();
   }
 
   @override
@@ -170,220 +218,293 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final settingsRepo = context.watch<SettingsRepository>();
-    final setsRepo = context.watch<GymSetsRepository>();
+  void _onScroll() {
+    if (scroll.offset > 0.0) {
+      expand.collapse();
+    } else {
+      expand.expand();
+    }
+  }
+
+  /// Copies the latest repository data into this page's local state.
+  ///
+  /// The repository is the source of truth.
+  void _syncFromRepository() {
+    if (!mounted) {
+      return;
+    }
+
+    final setsRepo = context.read<GymSetsRepository>();
 
     final repositorySets = setsRepo.gymsets;
 
-    if (!_sameGymSets(_allGymSets, repositorySets)) {
-      _allGymSets = List<GymSet>.of(repositorySets);
+    if (_sameGymSets(_allGymSets, repositorySets)) {
+      return;
     }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-
-      _applyFilters();
-
-      if (settingsRepo.isEnabled(key: 'stats_panel')) {
-        _refreshStats();
-      }
+    setState(() {
+      _allGymSets = List<GymSet>.of(repositorySets);
     });
 
-    final showStats = settingsRepo.isEnabled(key: 'stats_panel');
+    _applyFilters();
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: Column(
-        children: [
-          AppSearch(
-            filter: Filters(
-              repsGtCtrl: repsGt,
-              repsLtCtrl: repsLt,
-              weightGtCtrl: weightGt,
-              weightLtCtrl: weightLt,
-              setStream: () {
-                _resetLimitAndApplyFilters();
-              },
-              endDate: endDate,
-              startDate: startDate,
-              setEnd: (value) {
-                setState(() {
-                  endDate = value;
-                  limit = 100;
-                });
+    if (settings.isEnabled(key: 'stats_panel')) {
+      _refreshStats();
+    }
+  }
 
-                _applyFilters();
-              },
-              setStart: (value) {
-                setState(() {
-                  startDate = value;
-                  limit = 100;
-                });
+  @override
+  Widget build(BuildContext context) {
+    final settingsRepo = context.watch<SettingsRepository>();
 
-                _applyFilters();
-              },
-              category: category,
-              setCategory: (value) {
-                setState(() {
-                  category = value;
-                  limit = 100;
-                });
+    return Consumer<GymSetsRepository>(
+      builder: (
+        context,
+        setsRepo,
+        child,
+      ) {
+        final repositorySets = setsRepo.gymsets;
 
-                _applyFilters();
-              },
-            ),
-            onShare: _onShare,
-            onChange: (value) {
-              setState(() {
-                search = value;
-                limit = 100;
-              });
+        // Repository changes are the primary way this page updates.
+        //
+        // This is deliberately scheduled after build because _applyFilters()
+        // eventually calls setState().
+        if (!_sameGymSets(_allGymSets, repositorySets)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) {
+              return;
+            }
 
-              _applyFilters();
-            },
-            onClear: () {
-              setState(() {
-                selected.clear();
-              });
-            },
-            onDelete: () async {
-              final setsRepo = context.read<GymSetsRepository>();
+            _syncFromRepository();
+          });
+        }
 
-              await setsRepo.deleteGymSetsById(
-                selected.toList(),
-              );
+        final showStats = settingsRepo.isEnabled(
+          key: 'stats_panel',
+        );
 
-              if (!mounted) return;
-
-              setState(() {
-                selected.clear();
-              });
-
-              // Repository notification should normally update this page.
-              // Refreshing our local source explicitly makes this robust.
-              _syncFromRepository();
-            },
-            onSelect: () {
-              if (gymSets.isEmpty) return;
-
-              setState(() {
-                selected.addAll(
-                  gymSets.map((gymSet) => gymSet.id).whereType<int>(),
-                );
-              });
-            },
-            selected: selected,
-            onEdit: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EditSetsPage(
-                    ids: selected.toList(),
-                  ),
-                ),
-              );
-            },
-          ),
-          if (gymSets.isEmpty)
-            const ListTile(
-              title: Text('No entries yet'),
-              subtitle: Text(
-                'Complete some sets to see them here',
-              ),
-            ),
-          if (gymSets.isNotEmpty && showStats)
-            Theme(
-              data: Theme.of(context).copyWith(
-                dividerColor: Colors.transparent,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: ExpansionTile(
-                  childrenPadding: EdgeInsets.zero,
-                  iconColor: Theme.of(context).colorScheme.onSurface,
-                  leading: Icon(
-                    expand.isExpanded ? Icons.analytics_outlined : Icons.history_outlined,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  title: Text(
-                    expand.isExpanded ? 'Stats' : 'History',
-                  ),
-                  initiallyExpanded: true,
-                  controller: expand,
-                  children: [
-                    lastWorkout,
-                  ],
-                ),
-              ),
-            ),
-          Expanded(
-            child: Builder(
-              builder: (context) {
-                final groupHistory = settingsRepo.isEnabled(
-                  key: 'group_history',
-                );
-
-                if (groupHistory) {
-                  final exerciseItems = _getExerciseItems(gymSets);
-
-                  return HistoryCollapsed(
-                    scroll: scroll,
-                    days: exerciseItems.reversed.toList(),
-                    onSelect: (id) {
-                      setState(() {
-                        if (selected.contains(id)) {
-                          selected.remove(id);
-                        } else {
-                          selected.add(id);
-                        }
-                      });
-                    },
-                    selected: selected,
-                    onNext: () {
-                      setState(() {
-                        limit += 100;
-                      });
-
-                      _applyFilters();
-                    },
-                  );
-                }
-
-                return HistoryList(
-                  scroll: scroll,
-                  sets: gymSets,
-                  onSelect: (id) {
+        return Scaffold(
+          resizeToAvoidBottomInset: false,
+          body: Column(
+            children: [
+              AppSearch(
+                filter: Filters(
+                  repsGtCtrl: repsGt,
+                  repsLtCtrl: repsLt,
+                  weightGtCtrl: weightGt,
+                  weightLtCtrl: weightLt,
+                  setStream: _resetLimitAndApplyFilters,
+                  endDate: endDate,
+                  startDate: startDate,
+                  setEnd: (value) {
                     setState(() {
-                      if (selected.contains(id)) {
-                        selected.remove(id);
-                      } else {
-                        selected.add(id);
-                      }
-                    });
-                  },
-                  selected: selected,
-                  onNext: () {
-                    setState(() {
-                      limit += 100;
+                      endDate = value;
+                      limit = 100;
                     });
 
                     _applyFilters();
                   },
-                );
-              },
-            ),
+                  setStart: (value) {
+                    setState(() {
+                      startDate = value;
+                      limit = 100;
+                    });
+
+                    _applyFilters();
+                  },
+                  category: category,
+                  setCategory: (value) {
+                    setState(() {
+                      category = value;
+                      limit = 100;
+                    });
+
+                    _applyFilters();
+                  },
+                ),
+                onShare: _onShare,
+                onChange: (value) {
+                  setState(() {
+                    search = value;
+                    limit = 100;
+                  });
+
+                  _applyFilters();
+                },
+                onClear: () {
+                  setState(() {
+                    selected.clear();
+                  });
+                },
+                onDelete: () async {
+                  await setsRepo.deleteGymSetsById(
+                    selected.toList(),
+                  );
+
+                  if (!mounted) {
+                    return;
+                  }
+
+                  setState(() {
+                    selected.clear();
+                  });
+
+                  // deleteGymSetsById already updates the repository and
+                  // notifies listeners. This refresh is only needed if there
+                  // are changes made elsewhere at the database level.
+                  await _refreshRepository();
+                },
+                onSelect: () {
+                  if (gymSets.isEmpty) {
+                    return;
+                  }
+
+                  setState(() {
+                    selected.addAll(
+                      gymSets
+                          .map(
+                            (gymSet) => gymSet.id,
+                          )
+                          .whereType<int>(),
+                    );
+                  });
+                },
+                selected: selected,
+                onEdit: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EditSetsPage(
+                        ids: selected.toList(),
+                      ),
+                    ),
+                  ).then((_) {
+                    _refreshRepository();
+                  });
+                },
+              ),
+              if (gymSets.isEmpty)
+                const ListTile(
+                  title: Text('No entries yet'),
+                  subtitle: Text(
+                    'Complete some sets to see them here',
+                  ),
+                ),
+              if (gymSets.isNotEmpty && showStats)
+                Theme(
+                  data: Theme.of(context).copyWith(
+                    dividerColor: Colors.transparent,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      top: 8,
+                    ),
+                    child: ExpansionTile(
+                      childrenPadding: EdgeInsets.zero,
+                      iconColor: Theme.of(context).colorScheme.onSurface,
+                      leading: Icon(
+                        expand.isExpanded ? Icons.analytics_outlined : Icons.history_outlined,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      title: Text(
+                        expand.isExpanded ? 'Stats' : 'History',
+                      ),
+                      initiallyExpanded: true,
+                      controller: expand,
+                      children: [
+                        lastWorkout,
+                      ],
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: Builder(
+                  builder: (context) {
+                    final groupHistory = settingsRepo.isEnabled(
+                      key: 'group_history',
+                    );
+
+                    if (groupHistory) {
+                      final exerciseItems = _getExerciseItems(_allGymSets);
+
+                      return HistoryCollapsed(
+                        scroll: scroll,
+                        days: exerciseItems.reversed.toList(),
+                        onSelect: (id) {
+                          setState(() {
+                            if (selected.contains(id)) {
+                              selected.remove(id);
+                            } else {
+                              selected.add(id);
+                            }
+                          });
+                        },
+                        selected: selected,
+                        onNext: () {
+                          setState(() {
+                            limit += 100;
+                          });
+
+                          _applyFilters();
+                        },
+                      );
+                    }
+
+                    return HistoryList(
+                      scroll: scroll,
+                      sets: gymSets,
+                      onSelect: (id) {
+                        setState(() {
+                          if (selected.contains(id)) {
+                            selected.remove(id);
+                          } else {
+                            selected.add(id);
+                          }
+                        });
+                      },
+                      selected: selected,
+                      onNext: () {
+                        setState(() {
+                          limit += 100;
+                        });
+
+                        _applyFilters();
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      floatingActionButton: AnimatedFab(
-        onPressed: onAdd,
-        label: const Text('Add'),
-        icon: const Icon(Icons.add),
-        scroll: scroll,
-      ),
+          floatingActionButton: AnimatedFab(
+            onPressed: onAdd,
+            label: const Text('Add'),
+            icon: const Icon(Icons.add),
+            scroll: scroll,
+          ),
+        );
+      },
     );
+  }
+
+  Future<void> _refreshRepository() async {
+    if (!mounted) {
+      return;
+    }
+
+    final setsRepo = context.read<GymSetsRepository>();
+
+    await setsRepo.loadAll();
+
+    // loadAll() calls notifyListeners().
+    //
+    // Consumer above will therefore see the new data. We also explicitly
+    // synchronize here so this page doesn't depend on another build cycle.
+    if (!mounted) {
+      return;
+    }
+
+    _syncFromRepository();
   }
 
   Future<void> onAdd() async {
@@ -392,11 +513,15 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
 
     var bodyWeight = 0.0;
 
-    if (settings.isEnabled(key: 'show_body_weight')) {
+    if (settings.isEnabled(
+      key: 'show_body_weight',
+    )) {
       bodyWeight = (await getBodyWeight(context))?.weight ?? 0.0;
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     final now = DateTime.now().toLocal();
 
@@ -412,11 +537,14 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
         );
       }
     }
+
     if (gymSet == null) {
       final exercise = exercisesRepo.getExerciseById(1);
 
       if (exercise == null) {
-        toast('No default exercise is available');
+        toast(
+          'No default exercise is available',
+        );
         return;
       }
 
@@ -442,7 +570,9 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
     final exercise = gymSet.exercise;
 
     if (exercise == null) {
-      toast('Exercise could not be loaded');
+      toast(
+        'Exercise could not be loaded',
+      );
       return;
     }
 
@@ -468,7 +598,9 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
       }
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     await Navigator.push(
       context,
@@ -478,6 +610,10 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
         ),
       ),
     );
+
+    // EditSetPage may have changed the database without this page itself
+    // being rebuilt. Reload the repository when it returns.
+    await _refreshRepository();
   }
 
   Future<void> _onShare() async {
@@ -488,7 +624,9 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
         .toList();
 
     final summaries = selectedSets
-        .where((set) => set.exercise != null)
+        .where(
+          (set) => set.exercise != null,
+        )
         .map(
           (set) => '${toString(set.reps)}x'
               '${toString(set.weight)}'
@@ -503,27 +641,19 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
       ),
     );
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       selected.clear();
     });
   }
 
-  void _syncFromRepository() {
-    if (!mounted) return;
-
-    final setsRepo = context.read<GymSetsRepository>();
-
-    _allGymSets = List<GymSet>.of(
-      setsRepo.gymsets,
-    );
-
-    _applyFilters();
-  }
-
   void _resetLimitAndApplyFilters() {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       limit = 100;
@@ -533,13 +663,17 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
   }
 
   void _applyFilters() {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     Iterable<GymSet> query = _allGymSets.where(
       (set) => !set.hidden && set.exercise != null,
     );
 
-    final terms = search.toLowerCase().split(' ').where((term) => term.isNotEmpty);
+    final terms = search.toLowerCase().split(' ').where(
+          (term) => term.isNotEmpty,
+        );
 
     for (final term in terms) {
       query = query.where(
@@ -555,13 +689,21 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
 
     if (startDate != null) {
       query = query.where(
-        (set) => set.created.isAfter(startDate!) || set.created.isAtSameMomentAs(startDate!),
+        (set) =>
+            set.created.isAfter(startDate!) ||
+            set.created.isAtSameMomentAs(
+              startDate!,
+            ),
       );
     }
 
     if (endDate != null) {
       query = query.where(
-        (set) => set.created.isBefore(endDate!) || set.created.isAtSameMomentAs(endDate!),
+        (set) =>
+            set.created.isBefore(endDate!) ||
+            set.created.isAtSameMomentAs(
+              endDate!,
+            ),
       );
     }
 
@@ -604,22 +746,29 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
     });
   }
 
-  List<ExerciseItem> _getExerciseItems(List<GymSet> sets) {
+  List<ExerciseItem> _getExerciseItems(
+    List<GymSet> sets,
+  ) {
     final exerciseItems = <ExerciseItem>[];
 
     for (final gymSet in sets) {
       final exercise = gymSet.exercise;
 
-      // A gym set should normally always have an exercise.
-      // If the relation cannot be resolved, don't crash the history page.
       if (exercise == null || exercise.id == null) {
         continue;
       }
 
-      final day = DateUtils.dateOnly(gymSet.created);
+      final day = DateUtils.dateOnly(
+        gymSet.created,
+      );
 
       final index = exerciseItems.indexWhere(
-        (item) => isSameDay(item.date, day) && item.exerciseId == exercise.id,
+        (item) =>
+            isSameDay(
+              item.date,
+              day,
+            ) &&
+            item.exerciseId == exercise.id,
       );
 
       if (index == -1) {
@@ -646,26 +795,30 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
 
     _statsLoading = true;
 
-    final sets = List<GymSet>.of(gymSets);
-
-    getLastWorkout(sets).then(
-      (widget) {
-        if (!mounted) return;
-
-        setState(() {
-          lastWorkout = widget;
-        });
-      },
-    ).catchError(
-      (_) {
-        // Preserve the previous behavior of silently ignoring
-        // statistics errors.
-      },
-    ).whenComplete(
-      () {
-        _statsLoading = false;
-      },
+    final sets = List<GymSet>.of(
+      gymSets,
     );
+
+    getLastWorkout(sets)
+        .then(
+          (widget) {
+            if (!mounted) {
+              return;
+            }
+
+            setState(() {
+              lastWorkout = widget;
+            });
+          },
+        )
+        .catchError(
+          (_) {},
+        )
+        .whenComplete(
+          () {
+            _statsLoading = false;
+          },
+        );
   }
 
   Future<material.Widget> getLastWorkout(
@@ -683,13 +836,24 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
       return value > 1 ? 's' : '';
     }
 
-    final today = dayOnly(DateTime.now());
+    final today = dayOnly(
+      DateTime.now(),
+    );
 
     if (sets.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    final validDates = sets.map((set) => dayOnly(set.created)).where((date) => !date.isAfter(today)).toList();
+    final validDates = sets
+        .map(
+          (set) => dayOnly(
+            set.created,
+          ),
+        )
+        .where(
+          (date) => !date.isAfter(today),
+        )
+        .toList();
 
     if (validDates.isEmpty) {
       return const SizedBox.shrink();
@@ -725,12 +889,26 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
       return const SizedBox.shrink();
     }
 
-    final allWorkoutSets = totalWorkout.expand((exercise) => exercise.sets).toList();
-    final cardioSet = allWorkoutSets.where((set) => set.exercise!.cardio).firstOrNull;
+    final allWorkoutSets = totalWorkout
+        .expand(
+          (exercise) => exercise.sets,
+        )
+        .toList();
 
-    final strengthSet = allWorkoutSets.where((set) => !set.exercise!.cardio).firstOrNull;
+    final cardioSet = allWorkoutSets
+        .where(
+          (set) => set.exercise!.cardio,
+        )
+        .firstOrNull;
+
+    final strengthSet = allWorkoutSets
+        .where(
+          (set) => !set.exercise!.cardio,
+        )
+        .firstOrNull;
 
     final cardioUnit = cardioSet?.unit ?? '';
+
     final weightUnit = strengthSet?.unit ?? '';
 
     var totalSets = 0;
@@ -746,13 +924,18 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
 
       for (final set in exercise.sets) {
         totalReps += set.reps.toInt();
+
         totalDistance += set.distance ?? 0;
+
         totalWeight += set.weight * set.reps;
       }
     }
 
     return Selector<SettingsRepository, String>(
-      selector: (context, settings) {
+      selector: (
+        context,
+        settings,
+      ) {
         return settings.getSetting(
           key: 'short_date_format',
         );
@@ -764,9 +947,15 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
       ) {
         final formattedDate = DateFormat(
           dateFormat,
-        ).format(sortedDays.first.date);
+        ).format(
+          sortedDays.first.date,
+        );
 
-        final daysSince = DateTime.now().difference(sortedDays.first.date).inDays;
+        final daysSince = DateTime.now()
+            .difference(
+              sortedDays.first.date,
+            )
+            .inDays;
 
         final lastWorkoutText = daysSince == 0
             ? 'You last worked out today.'
@@ -781,11 +970,15 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
             horizontal: 8,
           ),
           child: ListTile(
-            title: Text(lastWorkoutText),
+            title: Text(
+              lastWorkoutText,
+            ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 16),
+                const SizedBox(
+                  height: 16,
+                ),
                 const Divider(),
                 Text(
                   '$totalExercises exercise'
@@ -835,7 +1028,25 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
     }
 
     for (var i = 0; i < a.length; i++) {
-      if (a[i].id != b[i].id) {
+      final aSet = a[i];
+      final bSet = b[i];
+
+      if (aSet.id != bSet.id) {
+        return false;
+      }
+
+      // Also compare values that can change while keeping the same ID.
+      if (aSet.created != bSet.created ||
+          aSet.weight != bSet.weight ||
+          aSet.reps != bSet.reps ||
+          aSet.distance != bSet.distance ||
+          aSet.duration != bSet.duration ||
+          aSet.hidden != bSet.hidden ||
+          aSet.unit != bSet.unit) {
+        return false;
+      }
+
+      if (aSet.exercise?.id != bSet.exercise?.id) {
         return false;
       }
     }

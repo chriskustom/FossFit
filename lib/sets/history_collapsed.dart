@@ -246,7 +246,7 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
               ),
             );
 
-            if (widget.selected.isEmpty && showImages && gymSet.exercise?.image != null) {
+            if (widget.selected.isEmpty && showImages && gymSet.exercise?.hasImage() == true) {
               leading = GestureDetector(
                 onTap: () => widget.onSelect(gymSet.id!),
                 child: Container(
