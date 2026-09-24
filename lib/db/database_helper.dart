@@ -12,7 +12,7 @@ class DatabaseHelper {
   DatabaseHelper._internal();
 
   static Database? _database;
-  static const dbFileName = 'fossfit.sqlite';
+  static const dbFileName = 'fossfit.db';
   static const backupPrefix = 'fossfit';
 
   //region Initialise DB
@@ -36,7 +36,8 @@ class DatabaseHelper {
           await db.execute('PRAGMA foreign_keys = ON');
         },
         onCreate: (db, version) async => _onCreate(db, version),
-        onUpgrade: (db, oldVersion, newVersion) async => _runMigrations(db, oldVersion, newVersion),
+        onUpgrade: (db, oldVersion, newVersion) async =>
+            _runMigrations(db, oldVersion, newVersion),
       );
 
   void _onCreate(Database db, int version) async {
@@ -130,8 +131,8 @@ class DatabaseHelper {
 
     await db.execute('''
       INSERT INTO settings
-      (alarm_sound, automatic_backups, backup_path, cardio_unit, curve_lines, curve_smoothness, duration_estimation, enable_sound, explained_permissions, group_history, id, long_date_format, max_sets, notifications, peek_graph, plan_trailing, rep_estimation, rest_timers, short_date_format, show_body_weight, show_categories, show_images, show_notes, show_global_progress, show_units, strength_unit, system_colors, tabs, theme_mode, timer_duration, vibrate, warmup_sets, scrollable_tabs, stats_panel)
-      VALUES('', 1, '', 'km', 1, 0.10870564027905905, 0, 0, 1, 1, 1, 'EEE, dd.MM.yyyy H:mm', 3, 0, 0, 'reorder', 0, 0, 'd/M/yy', 0, 1, 1, 1, 0, 1, 'kg', 1, 'HistoryPage,PlansPage,GraphsPage,SettingsPage', 'system', 120000, 1, 0, 0, 1);
+      (alarm_sound, automatic_backups, backup_path, cardio_unit, curve_lines, curve_smoothness, duration_estimation, enable_sound, explained_permissions, group_history, long_date_format, max_sets, notifications, peek_graph, plan_trailing, rep_estimation, rest_timers, short_date_format, show_body_weight, show_categories, show_images, show_notes, show_global_progress, show_units, strength_unit, system_colors, tabs, theme_mode, timer_duration, vibrate, warmup_sets, scrollable_tabs, stats_panel)
+      VALUES('', 0, '', 'km', 1, 0.1, 0, 0, 0, 1, 'EEE, dd.MM.yyyy H:mm', 3, 0, 0, 'reorder', 0, 0, 'd/M/yy', 0, 1, 1, 1, 0, 1, 'kg', 1, 'HistoryPage,PlansPage,GraphsPage,SettingsPage', 'system', 120000, 1, 0, 0, 1);
       ''');
 
     await db.execute('''
@@ -178,7 +179,11 @@ class DatabaseHelper {
       final dbFile = File(dbPath);
       if (!await dbFile.exists()) return false;
 
-      final timestamp = DateTime.now().toIso8601String().replaceAll(RegExp(r'[:\-]'), '').split('.').first;
+      final timestamp = DateTime.now()
+          .toIso8601String()
+          .replaceAll(RegExp(r'[:\-]'), '')
+          .split('.')
+          .first;
       final backupFileName = '${backupPrefix}_$timestamp.db';
       final backupFilePath = join(backupDirPath, backupFileName);
 
@@ -194,10 +199,15 @@ class DatabaseHelper {
     final backupFiles = backupDir
         .listSync()
         .whereType<File>()
-        .where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'))
+        .where(
+          (f) =>
+              basename(f.path).startsWith('${backupPrefix}_') &&
+              f.path.endsWith('.db'),
+        )
         .toList();
 
-    backupFiles.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    backupFiles
+        .sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
 
     for (var i = 2; i < backupFiles.length; i++) {
       try {
@@ -213,12 +223,17 @@ class DatabaseHelper {
     final files = dir
         .listSync()
         .whereType<File>()
-        .where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'))
+        .where(
+          (f) =>
+              basename(f.path).startsWith('${backupPrefix}_') &&
+              f.path.endsWith('.db'),
+        )
         .toList();
 
     if (files.isEmpty) return null;
 
-    files.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    files
+        .sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
 
     return files.first.statSync().modified;
   }
@@ -227,7 +242,8 @@ class DatabaseHelper {
     final backup = repo.getSettingByCategory(category: 'backup', key: 'backup');
     if (backup.isEmpty || backup == '0') return;
 
-    final backupDir = repo.getSettingByCategory(category: 'backup', key: 'directory');
+    final backupDir =
+        repo.getSettingByCategory(category: 'backup', key: 'directory');
     if (backupDir.isEmpty) return;
 
     final lastBackup = _getLastBackupDate(backupDir);
@@ -255,18 +271,27 @@ class DatabaseHelper {
       final targetPath = join(dbDir, dbFileName);
       final tempPath = join(dbDir, 'temp_import.db');
 
-      final currentDb = await database;
-      final currentVersion = await _getUserVersion(currentDb);
-      await currentDb.close();
-
       // 1️⃣ Validate imported version
       final importedDb = await openDatabase(importedPath, readOnly: true);
-      final importedVersion = await _getUserVersion(importedDb);
+      var importedVersion = await _getUserVersion(importedDb);
+
+      ///old flexify db. Reset version to allow migrations
+      if (importedPath.endsWith('sqlite')) {
+        importedDb.rawQuery('PRAGMA user_version = 1;');
+        importedVersion = 1;
+      }
       await importedDb.close();
 
+      final currentDb = await database;
+      final currentVersion = await _getUserVersion(currentDb);
+
       if (importedVersion > currentVersion) {
-        throw Exception('Backup was created with a newer app version ($importedVersion)');
+        await currentDb.close();
+        throw Exception(
+          'Backup was created with a newer app version ($importedVersion)',
+        );
       }
+      await currentDb.close();
 
       // 2️⃣ Copy to temp location first
       final tempFile = File(tempPath);

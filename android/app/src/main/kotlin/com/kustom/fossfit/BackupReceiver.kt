@@ -31,7 +31,7 @@ class BackupReceiver : BroadcastReceiver() {
         val dir = DocumentFile.fromTreeUri(context, backupUri)
         if (dir == null) return
 
-        val fileName = "fossfit.sqlite"
+        val fileName = "fossfit.db"
 
         // Delete existing backup if it exists
         dir.findFile(fileName)?.delete()

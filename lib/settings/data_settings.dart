@@ -23,7 +23,7 @@ void tapBackup(bool value, SettingsRepository settings) async {
 
   if (value) {
     final dbFolder = await getApplicationDocumentsDirectory();
-    final dbPath = p.join(dbFolder.path, 'FossFit.sqlite');
+    final dbPath = p.join(dbFolder.path, 'fossfit.db');
     androidChannel.invokeMethod('pick', {'dbPath': dbPath});
     await Permission.notification.request();
   }
@@ -36,17 +36,23 @@ List<Widget> getDataSettings(
 ) {
   return [
     if ('automatic backup'.contains(term.toLowerCase()))
-      ListTile(
-        title: const Text('Automatic backup'),
-        leading: settings.isEnabled(key: 'automatic_backups')
-            ? const Icon(Icons.timer)
-            : const Icon(Icons.timer_outlined),
-        onTap: () =>
-            tapBackup(!settings.isEnabled(key: 'automatic_backups'), settings),
-        trailing: Switch(
-          value: settings.isEnabled(key: 'automatic_backups'),
-          onChanged: (value) => tapBackup(value, settings),
-        ),
+      Selector<SettingsRepository, bool>(
+        selector: (p0, p1) => p1.isEnabled(key: 'automatic_backups'),
+        builder: (context, enabled, child) {
+          return ListTile(
+            title: const Text('Automatic backup'),
+            subtitle:
+                enabled ? Text(settings.getSetting(key: 'backup_path')) : null,
+            leading: enabled
+                ? const Icon(Icons.timer)
+                : const Icon(Icons.timer_outlined),
+            onTap: () => tapBackup(!enabled, settings),
+            trailing: Switch(
+              value: enabled,
+              onChanged: (value) => tapBackup(value, settings),
+            ),
+          );
+        },
       ),
     if ('share database'.contains(term.toLowerCase()) &&
         !kIsWeb &&
@@ -54,7 +60,7 @@ List<Widget> getDataSettings(
       TextButton.icon(
         onPressed: () async {
           final dbFolder = await getApplicationDocumentsDirectory();
-          final dbPath = p.join(dbFolder.path, 'FossFit.sqlite');
+          final dbPath = p.join(dbFolder.path, 'fossfit.db');
           await SharePlus.instance.share(ShareParams(files: [XFile(dbPath)]));
         },
         label: const Text("Share database"),
