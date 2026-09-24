@@ -129,6 +129,12 @@ class DatabaseHelper {
       ''');
 
     await db.execute('''
+      INSERT INTO settings
+      (alarm_sound, automatic_backups, backup_path, cardio_unit, curve_lines, curve_smoothness, duration_estimation, enable_sound, explained_permissions, group_history, id, long_date_format, max_sets, notifications, peek_graph, plan_trailing, rep_estimation, rest_timers, short_date_format, show_body_weight, show_categories, show_images, show_notes, show_global_progress, show_units, strength_unit, system_colors, tabs, theme_mode, timer_duration, vibrate, warmup_sets, scrollable_tabs, stats_panel)
+      VALUES('', 1, '', 'km', 1, 0.10870564027905905, 0, 0, 1, 1, 1, 'EEE, dd.MM.yyyy H:mm', 3, 0, 0, 'reorder', 0, 0, 'd/M/yy', 0, 1, 1, 1, 0, 1, 'kg', 1, 'HistoryPage,PlansPage,GraphsPage,SettingsPage', 'system', 120000, 1, 0, 0, 1);
+      ''');
+
+    await db.execute('''
       CREATE INDEX gym_sets_name_created ON gym_sets(name, created);
       ''');
 
@@ -230,7 +236,7 @@ class DatabaseHelper {
       return;
     }
 
-    final backupFreq = int.tryParse(repo.getSettingByCategory(category: 'backup', key: 'frequency')) ?? 14;
+    final backupFreq = 1;
     final now = DateTime.now();
     final difference = now.difference(lastBackup).inDays;
 

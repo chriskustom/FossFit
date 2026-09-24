@@ -1,3 +1,5 @@
+import 'package:fossfit/models/gym_set_model.dart';
+
 class Exercise {
   int? id;
   final String name;
@@ -45,4 +47,18 @@ class Exercise {
       image: map['image'] as String?,
     );
   }
+}
+
+class ExerciseItem {
+  final int exerciseId;
+  final String name;
+  final List<GymSet> sets;
+  final DateTime date;
+
+  ExerciseItem({
+    required this.exerciseId,
+    required this.name,
+    required this.sets,
+    required this.date,
+  });
 }

@@ -22,147 +22,162 @@ import 'package:timezone/timezone.dart' as tz;
 final rootScaffoldMessenger = GlobalKey<ScaffoldMessengerState>();
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   if (kIsWeb || PlatformDetail.isDesktop) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
-  WidgetsFlutterBinding.ensureInitialized();
-  //WidgetsBinding.instance.addObserver(AppLifecycleHandler());
+
   tz.initializeTimeZones();
+
   try {
     final timezoneInfo = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
+    tz.setLocalLocation(
+      tz.getLocation(timezoneInfo.identifier),
+    );
   } catch (_) {
-    tz.setLocalLocation(tz.getLocation('UTC'));
+    tz.setLocalLocation(
+      tz.getLocation('UTC'),
+    );
   }
 
   final dbHelper = DatabaseHelper();
-  final Database db = await dbHelper.database;
+  final db = await dbHelper.database;
+
   final settingsRepo = SettingsRepository(db);
 
   try {
     await settingsRepo.loadAll();
   } catch (error) {
-    return runApp(FailedMigrationsPage(error: error));
+    runApp(
+      FailedMigrationsPage(error: error),
+    );
+    return;
   }
-  // Run backup
+
   await dbHelper.checkBackup(settingsRepo);
 
-  runApp(appProviders(db, settingsRepo));
+  runApp(
+    appProviders(
+      db,
+      settingsRepo,
+    ),
+  );
 }
 
-MethodChannel androidChannel =
-    const MethodChannel("com.kustom.fossfit/android");
+final MethodChannel androidChannel = const MethodChannel(
+  'com.kustom.fossfit/android',
+);
 
-Widget appProviders(Database db, SettingsRepository repo) => MultiProvider(
-      providers: [
-        ChangeNotifierProvider<ExercisesRepository>(
-            create: (_) => ExercisesRepository(db)..loadAll(),),
-        ChangeNotifierProvider<GymSetsRepository>(
-            create: (_) => GymSetsRepository(db)..loadAll(),),
-        ChangeNotifierProvider<PlansRepository>(
-            create: (_) => PlansRepository(db)..loadAll(),),
-        ChangeNotifierProvider<PlanExercisesRepository>(
-            create: (_) => PlanExercisesRepository(db)..loadAll(),),
-        ChangeNotifierProvider<SettingsRepository>.value(value: repo),
-        ChangeNotifierProvider(create: (context) => TimerState()),
-      ],
-      child: App(),
-    );
+Widget appProviders(
+  Database db,
+  SettingsRepository repo,
+) {
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider<ExercisesRepository>(
+        create: (_) => ExercisesRepository(db)..loadAll(),
+      ),
+      ChangeNotifierProvider<GymSetsRepository>(
+        create: (_) => GymSetsRepository(db)..loadAll(),
+      ),
+      ChangeNotifierProvider<PlansRepository>(
+        create: (_) => PlansRepository(db)..loadAll(),
+      ),
+      ChangeNotifierProvider<PlanExercisesRepository>(
+        create: (_) => PlanExercisesRepository(db)..loadAll(),
+      ),
+      ChangeNotifierProvider<SettingsRepository>.value(
+        value: repo,
+      ),
+      ChangeNotifierProvider<TimerState>(
+        create: (_) => TimerState(),
+      ),
+    ],
+    child: const App(),
+  );
+}
 
 class App extends StatelessWidget {
   const App({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final settingsRepo =
-        Provider.of<SettingsRepository>(context, listen: false);
+    final settingsRepo = context.watch<SettingsRepository>();
 
-    final light = ColorScheme.fromSeed(seedColor: Colors.deepPurple);
+    final light = ColorScheme.fromSeed(
+      seedColor: Colors.deepPurple,
+    );
+
     final dark = ColorScheme.fromSeed(
       seedColor: Colors.deepPurple,
       brightness: Brightness.dark,
     );
 
-    return FutureBuilder<void>(
-      future: settingsRepo.loadAll(),
-      builder: (ctx, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const MaterialApp(
-            home: Scaffold(body: Center(child: CircularProgressIndicator())),
+    final themeName = settingsRepo
+            .getSettingByCategory(
+              category: SettingCategory.appearance.name,
+              key: 'theme_mode',
+            )
+            .isEmpty
+        ? 'system'
+        : settingsRepo.getSettingByCategory(
+            category: SettingCategory.appearance.name,
+            key: 'theme_mode',
           );
-        }
 
-        return Consumer<SettingsRepository>(
-          builder: (c, repo, _) {
-            final themeMode = ThemeMode.values.byName(
-              (
-                repo
-                        .getSettingByCategory(
-                          category: SettingCategory.appearance.name,
-                          key: 'theme_mode',
-                        )
-                        .isEmpty
-                    ? 'system'
-                    : repo.getSettingByCategory(
-                        category: SettingCategory.appearance.name,
-                        key: 'theme_mode',
-                      ),
-              ).toString().replaceFirst('ThemeMode.', ''),
-            );
-            final dynamicColours = repo.isEnabledByCategory(
-              category: SettingCategory.appearance,
-              key: 'system_colors',
-            );
-            return DynamicColorBuilder(
-              builder: (lightDynamic, darkDynamic) {
-                final currentBrightness = themeMode.name == 'dark' ||
-                        (themeMode.name == 'system' &&
-                            MediaQuery.of(context).platformBrightness ==
-                                Brightness.dark)
-                    ? Brightness.dark
-                    : Brightness.light;
+    final themeMode = ThemeMode.values.byName(
+      themeName,
+    );
 
-                SystemChrome.setSystemUIOverlayStyle(
-                  SystemUiOverlayStyle(
-                    statusBarIconBrightness:
-                        currentBrightness == Brightness.dark
-                            ? Brightness.light
-                            : Brightness.dark,
-                    systemNavigationBarIconBrightness:
-                        currentBrightness == Brightness.dark
-                            ? Brightness.light
-                            : Brightness.dark,
-                    statusBarColor: Colors.transparent,
-                    systemNavigationBarColor: Colors.transparent,
-                  ),
-                );
+    final dynamicColours = settingsRepo.isEnabledByCategory(
+      category: SettingCategory.appearance,
+      key: 'system_colors',
+    );
 
-                return MaterialApp(
-                  scaffoldMessengerKey: rootScaffoldMessenger,
-                  title: 'FossFit',
-                  theme: ThemeData(
-                    colorScheme: dynamicColours ? lightDynamic : light,
-                    fontFamily: 'Roboto',
-                    useMaterial3: true,
-                    inputDecorationTheme: const InputDecorationTheme(
-                      floatingLabelBehavior: FloatingLabelBehavior.always,
-                    ),
-                  ),
-                  darkTheme: ThemeData(
-                    colorScheme: dynamicColours ? darkDynamic : dark,
-                    fontFamily: 'Roboto',
-                    useMaterial3: true,
-                    inputDecorationTheme: const InputDecorationTheme(
-                      floatingLabelBehavior: FloatingLabelBehavior.always,
-                    ),
-                  ),
-                  themeMode: themeMode,
-                  home: HomePage(),
-                );
-              },
-            );
-          },
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) {
+        final brightness = MediaQuery.platformBrightnessOf(
+          context,
+        );
+
+        final currentBrightness =
+            themeMode == ThemeMode.dark || (themeMode == ThemeMode.system && brightness == Brightness.dark)
+                ? Brightness.dark
+                : Brightness.light;
+
+        SystemChrome.setSystemUIOverlayStyle(
+          SystemUiOverlayStyle(
+            statusBarIconBrightness: currentBrightness == Brightness.dark ? Brightness.light : Brightness.dark,
+            systemNavigationBarIconBrightness:
+                currentBrightness == Brightness.dark ? Brightness.light : Brightness.dark,
+            statusBarColor: Colors.transparent,
+            systemNavigationBarColor: Colors.transparent,
+          ),
+        );
+
+        return MaterialApp(
+          scaffoldMessengerKey: rootScaffoldMessenger,
+          title: 'FossFit',
+          theme: ThemeData(
+            colorScheme: dynamicColours ? lightDynamic : light,
+            fontFamily: 'Roboto',
+            useMaterial3: true,
+            inputDecorationTheme: const InputDecorationTheme(
+              floatingLabelBehavior: FloatingLabelBehavior.always,
+            ),
+          ),
+          darkTheme: ThemeData(
+            colorScheme: dynamicColours ? darkDynamic : dark,
+            fontFamily: 'Roboto',
+            useMaterial3: true,
+            inputDecorationTheme: const InputDecorationTheme(
+              floatingLabelBehavior: FloatingLabelBehavior.always,
+            ),
+          ),
+          themeMode: themeMode,
+          home: const HomePage(),
         );
       },
     );

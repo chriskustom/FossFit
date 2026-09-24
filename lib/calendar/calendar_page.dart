@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
+import 'package:fossfit/models/exercise_model.dart';
 import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/sets/edit_sets_page.dart';
 import 'package:fossfit/sets/history_collapsed.dart';
 import 'package:fossfit/sets/history_list.dart';
-import 'package:fossfit/sets/history_page.dart';
 import 'package:fossfit/settings/settings_page.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -23,8 +23,7 @@ class CalendarPage extends StatefulWidget {
   State<CalendarPage> createState() => CalendarPageState();
 }
 
-class CalendarPageState extends State<CalendarPage>
-    with AutomaticKeepAliveClientMixin {
+class CalendarPageState extends State<CalendarPage> with AutomaticKeepAliveClientMixin {
   final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
 
   @override
@@ -39,8 +38,7 @@ class CalendarPageState extends State<CalendarPage>
         if (navKey.currentState!.canPop() == false) return;
 
         final settings = context.watch<SettingsRepository>();
-        final index =
-            settings.getSetting(key: 'tabs').split(',').indexOf('CalendarPage');
+        final index = settings.getSetting(key: 'tabs').split(',').indexOf('CalendarPage');
 
         if (widget.tabController.index == index) {
           navKey.currentState!.pop();
@@ -107,9 +105,7 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
 
           final thisMonthsGymSets = allGymSets
               .where(
-                (t) =>
-                    t.created.month == monthToFilter &&
-                    t.created.year == yearToFilter,
+                (t) => t.created.month == monthToFilter && t.created.year == yearToFilter,
               )
               .toList();
 
@@ -241,9 +237,7 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
 
                           final ids = selected.toList();
 
-                          context
-                              .read<GymSetsRepository>()
-                              .deleteGymSetsById(ids);
+                          context.read<GymSetsRepository>().deleteGymSetsById(ids);
 
                           if (!context.mounted) return;
 
@@ -266,12 +260,9 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
                   icon: const Icon(Icons.more_vert),
                   tooltip: 'Show menu',
                   onPressed: () async {
-                    final RenderBox button = _menuKey.currentContext!
-                        .findRenderObject() as RenderBox;
+                    final RenderBox button = _menuKey.currentContext!.findRenderObject() as RenderBox;
 
-                    final RenderBox overlay = Overlay.of(context)
-                        .context
-                        .findRenderObject() as RenderBox;
+                    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
 
                     final Offset buttonPosition = button.localToGlobal(
                       Offset.zero,
@@ -481,14 +472,12 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
                 shape: BoxShape.circle,
               ),
               cellMargin: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-              todayTextStyle:
-                  TextStyle(color: Theme.of(context).colorScheme.primary),
+              todayTextStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
               selectedDecoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primary,
                 shape: BoxShape.circle,
               ),
-              selectedTextStyle:
-                  TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+              selectedTextStyle: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
               markerDecoration: BoxDecoration(
                 color: Colors.transparent,
                 shape: BoxShape.circle,
@@ -536,9 +525,7 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
                   );
                 }
 
-                final groupHistory = context
-                    .watch<SettingsRepository>()
-                    .isEnabled(key: 'group_history');
+                final groupHistory = context.watch<SettingsRepository>().isEnabled(key: 'group_history');
 
                 if (groupHistory) {
                   return HistoryCollapsed(

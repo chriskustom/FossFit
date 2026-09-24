@@ -58,8 +58,7 @@ class _PlansListState extends State<PlansList> {
 
     final filteredPlans = widget.plans!.where((plan) {
       final term = widget.search.toLowerCase();
-      return plan.title?.toLowerCase().contains(term) == true ||
-          plan.days.toLowerCase().contains(term);
+      return plan.title?.toLowerCase().contains(term) == true || plan.days.toLowerCase().contains(term);
     }).toList();
 
     if (widget.plans!.isEmpty || filteredPlans.isEmpty) return noneFound;
@@ -67,9 +66,7 @@ class _PlansListState extends State<PlansList> {
     final settings = context.read<SettingsRepository>();
 
     if (PlanTrailing.values.byName(
-          settings
-              .getSetting(key: 'plan_trailing')
-              .replaceFirst('PlanTrailing.', ''),
+          settings.getSetting(key: 'plan_trailing'),
         ) ==
         PlanTrailing.reorder)
       return ReorderableListView.builder(

@@ -32,15 +32,10 @@ class SettingsRepository extends ChangeNotifier {
   bool isEnabled({required String key}) => getSetting(key: key) == '1';
 
   String getSetting({required String key}) {
-    return _settingCache.values
-            .map((settings) => settings[key])
-            .whereType<String>()
-            .firstOrNull ??
-        '';
+    return _settingCache.values.map((settings) => settings[key]).whereType<String>().firstOrNull ?? '';
   }
 
-  double getDouble({required String key}) =>
-      double.tryParse(getSetting(key: key)) ?? 0.0;
+  double getDouble({required String key}) => double.tryParse(getSetting(key: key)) ?? 0.0;
 
   int getInt({required String key}) => int.tryParse(getSetting(key: key)) ?? 0;
 
@@ -57,8 +52,7 @@ class SettingsRepository extends ChangeNotifier {
     required SettingCategory category,
     required String key,
   }) =>
-      int.tryParse(getSettingByCategory(category: category.name, key: key)) ??
-      0;
+      int.tryParse(getSettingByCategory(category: category.name, key: key)) ?? 0;
   bool isEnabledByCategory({
     required SettingCategory category,
     required String key,
@@ -74,9 +68,7 @@ class SettingsRepository extends ChangeNotifier {
 
   List<SettingsCategory> get settingsAsList {
     return _settingCache.entries.map((categoryEntry) {
-      final settings = categoryEntry.value.entries
-          .map((kv) => KeyValue(key: kv.key, value: kv.value))
-          .toList();
+      final settings = categoryEntry.value.entries.map((kv) => KeyValue(key: kv.key, value: kv.value)).toList();
       return SettingsCategory(category: categoryEntry.key, settings: settings);
     }).toList();
   }
@@ -88,9 +80,9 @@ class SettingsRepository extends ChangeNotifier {
   }) async {
     final success = await db.update(
       tableName,
-      {'category': category, 'key': key, 'value': value},
+      {'category': category.name, 'key': key, 'value': value},
       where: 'category = ? AND key = ? and type = ?',
-      whereArgs: [category, key],
+      whereArgs: [category.name, key],
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
 

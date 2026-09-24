@@ -27,21 +27,16 @@ class GymSetsRepository extends ChangeNotifier {
 
   Future<void> loadAll() async {
     final rows = await _db.rawQuery('''
-    SELECT
-      gym_sets.*,
-
-      exercises.id AS exercise_id,
-      exercises.name AS exercise_name
-      exercises.cardio AS exercise_cardio
-      exercises.category AS exercise_category
-      exercises.image AS exercise_image
-
-    FROM gym_sets
-
-    LEFT JOIN exercises
-      ON exercises.id = gym_sets.exercise_id
-
-    ORDER BY gym_sets.created DESC
+    SELECT gym_sets.*,
+          exercises.id AS exercise_id,
+          exercises.name AS exercise_name,
+          exercises.cardio AS exercise_cardio,
+          exercises.category AS exercise_category,
+          exercises.image AS exercise_image
+        FROM gym_sets
+        LEFT JOIN exercises
+          ON exercises.id = gym_sets.exercise_id
+        ORDER BY gym_sets.created DESC;
   ''');
 
     _gymsets = rows.map((r) => GymSet.fromJoinedMap(r)).toList();
@@ -387,55 +382,57 @@ class GymSetsRepository extends ChangeNotifier {
   Future<List<Rpm>> getRpms() async {
     final results = await _db.rawQuery(
       '''
-      WITH time_diffs AS (
-        SELECT
-          name,
-          reps,
+    WITH time_diffs AS (
+      SELECT
+        e.name,
+        gs.reps,
+        (
           (
-            (
-              created -
-              LAG(created) OVER (
-                PARTITION BY name
-                ORDER BY created
-              )
-            ) / 60.0
-          ) AS time_diff,
-          weight
+            gs.created -
+            LAG(gs.created) OVER (
+              PARTITION BY gs.exercise_id
+              ORDER BY gs.created
+            )
+          ) / 60.0
+        ) AS time_diff,
+        gs.weight
 
-        FROM ${TableName.gymsets.name}
+      FROM ${TableName.gymsets.name} gs
 
-        WHERE created >=
-          strftime('%s', 'now') - 60 * 60 * 24 * 30
+      INNER JOIN exercises e
+        ON e.id = gs.exercise_id
 
-          AND cardio = 0
-      ),
+      WHERE gs.created >=
+        strftime('%s', 'now') - 60 * 60 * 24 * 30
 
-      reps_per_min AS (
-        SELECT
-          name,
-          (reps / time_diff) AS rpm,
-          weight
+        AND e.cardio = 0
+    ),
 
-        FROM time_diffs
-
-        WHERE time_diff IS NOT NULL
-          AND time_diff <= 5
-      )
-
+    reps_per_min AS (
       SELECT
         name,
-        AVG(rpm) AS rpm,
+        (reps / time_diff) AS rpm,
         weight
 
-      FROM reps_per_min
+      FROM time_diffs
 
-      WHERE rpm IS NOT NULL
-        AND rpm BETWEEN 0.1 AND 10
+      WHERE time_diff IS NOT NULL
+        AND time_diff <= 5
+    )
 
-      GROUP BY name, weight
-      ''',
+    SELECT
+      name,
+      AVG(rpm) AS rpm,
+      weight
+
+    FROM reps_per_min
+
+    WHERE rpm IS NOT NULL
+      AND rpm BETWEEN 0.1 AND 10
+
+    GROUP BY name, weight
+    ''',
     );
-
     return results
         .map(
           (result) => (

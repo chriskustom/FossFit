@@ -2,11 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
-import 'package:fossfit/db/repositories/plans_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
+import 'package:fossfit/models/exercise_model.dart';
 import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
-import 'package:fossfit/sets/history_page.dart';
 import 'package:fossfit/utils.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -458,7 +457,6 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
 
   Future<void> copyWorkoutTo(List<ExerciseItem> sets) async {
     final settings = context.watch<SettingsRepository>();
-    final planState = context.read<PlansRepository>();
     final repo = context.watch<GymSetsRepository>();
     var newDate = await selectDate();
 
@@ -488,7 +486,6 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
         );
 
         await repo.insertGymSet(set);
-        planState.updateDefaults();
       }
     }
     if (settings.isEnabled(key: 'notifications')) {

@@ -62,9 +62,10 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
   String? image;
   Exercise? currentExercise;
 
-  late List<PlanExercise> planExercises = [];
-  late String unit;
-  late String title;
+  List<PlanExercise> planExercises = [];
+
+  String unit = 'kg';
+  String title = '';
 
   Tapped lastTap = (
     index: 0,
@@ -88,6 +89,13 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    _refreshPlanFromRepository();
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
@@ -95,7 +103,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
       return;
     }
 
-    final settings = context.watch<SettingsRepository>();
+    final settings = context.read<SettingsRepository>();
     final difference = DateTime.now().difference(lastSaved!);
 
     if (cardio && settings.isEnabled(key: 'duration_estimation')) {
@@ -123,23 +131,110 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     super.dispose();
   }
 
+  void _refreshPlanFromRepository() {
+    if (!mounted || widget.plan.id == null) return;
+
+    final planRepo = context.read<PlansRepository>();
+    final currentPlan = planRepo.getPlanById(widget.plan.id!);
+
+    if (currentPlan == null) return;
+
+    final exercises = currentPlan.exercises ?? [];
+
+    if (_samePlanExercises(planExercises, exercises)) {
+      return;
+    }
+
+    final oldSelectedId = selected < planExercises.length ? planExercises[selected].id : null;
+
+    final oldExpandedId = expandedIndex != null && expandedIndex! >= 0 && expandedIndex! < planExercises.length
+        ? planExercises[expandedIndex!].id
+        : null;
+
+    planExercises = List<PlanExercise>.from(exercises);
+
+    if (planExercises.isEmpty) {
+      selected = 0;
+      expandedIndex = null;
+      currentExercise = null;
+      return;
+    }
+
+    final selectedIndex = planExercises.indexWhere(
+      (e) => e.id == oldSelectedId,
+    );
+
+    selected = selectedIndex >= 0 ? selectedIndex : 0;
+
+    final expandedIndexValue = planExercises.indexWhere(
+      (e) => e.id == oldExpandedId,
+    );
+
+    expandedIndex = expandedIndexValue >= 0 ? expandedIndexValue : 0;
+
+    if (selected >= planExercises.length) {
+      selected = planExercises.length - 1;
+    }
+
+    final exercise = planExercises[selected].exercise;
+
+    if (exercise != null) {
+      currentExercise = exercise;
+      cardio = exercise.cardio;
+      category = exercise.category;
+      image = exercise.image;
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  bool _samePlanExercises(
+    List<PlanExercise> a,
+    List<PlanExercise> b,
+  ) {
+    if (a.length != b.length) return false;
+
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id ||
+          a[i].exerciseId != b[i].exerciseId ||
+          a[i].sequence != b[i].sequence ||
+          a[i].enabled != b[i].enabled) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   Future<void> _loadExercises() async {
     if (!mounted) return;
 
-    final settings = context.watch<SettingsRepository>();
-    final repo = context.watch<GymSetsRepository>();
+    final settings = context.read<SettingsRepository>();
+    final repo = context.read<GymSetsRepository>();
+
     if (settings.isEnabled(key: 'rep_estimation')) {
-      repo.getRpms().then((value) {
-        if (!mounted) return;
-        setState(() => rpms = value);
+      final value = await repo.getRpms();
+
+      if (!mounted) return;
+
+      setState(() {
+        rpms = value;
       });
     }
-    var su = settings.getSetting(key: 'strength_unit');
-    var cu = settings.getSetting(key: 'cardio_unit');
+
+    final su = settings.getSetting(key: 'strength_unit');
+    final cu = settings.getSetting(key: 'cardio_unit');
+
     if (!cardio && su != 'last-entry') {
-      setState(() => unit = su);
+      if (mounted) {
+        setState(() => unit = su);
+      }
     } else if (cardio && cu != 'last-entry') {
-      setState(() => unit = cu);
+      if (mounted) {
+        setState(() => unit = cu);
+      }
     }
   }
 
@@ -149,14 +244,17 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
   }
 
   Future<void> _estimateReps(Duration difference) async {
-    final parsedWeight = double.parse(weight.text);
-    final planExercises = this.planExercises;
+    final parsedWeight = double.tryParse(weight.text) ?? 0;
 
     if (!mounted || rpms == null || planExercises.isEmpty) return;
 
+    if (selected < 0 || selected >= planExercises.length) return;
+
     final exercise = planExercises[selected].exercise;
 
-    final matchingRpms = rpms!.where((rpm) => rpm.name == exercise!.name).toList();
+    if (exercise == null) return;
+
+    final matchingRpms = rpms!.where((rpm) => rpm.name == exercise.name).toList();
 
     if (matchingRpms.isEmpty) return;
 
@@ -173,15 +271,24 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
 
   @override
   Widget build(BuildContext context) {
-    planExercises = widget.plan.exercises ?? [];
-    if (widget.plan.title?.isNotEmpty == true) {
-      title = widget.plan.title!;
-    }
+    _refreshPlanFromRepository();
 
     if (planExercises.isEmpty) {
-      return const SizedBox.shrink();
+      return const Scaffold(
+        body: Center(
+          child: Text('No exercises in this plan'),
+        ),
+      );
     }
-    select(0);
+
+    if (title.isEmpty) {
+      title = widget.plan.days.replaceAll(',', ', ');
+
+      if (widget.plan.title?.isNotEmpty == true) {
+        title = widget.plan.title!;
+      }
+    }
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: _buildAppBar(context),
@@ -203,7 +310,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
         ),
       ),
       floatingActionButton: AnimatedFab(
-        onPressed: () => save(),
+        onPressed: save,
         label: const Text('Save'),
         icon: const Icon(Icons.save),
       ),
@@ -235,9 +342,16 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
   Future<void> _showHistory() async {
     final exercise = currentExercise;
     if (exercise == null) return;
-    var setRepo = context.watch<GymSetsRepository>();
-    final gymSets =
-        setRepo.gymsets.where((tbl) => tbl.exercise!.name == exercise.name && !tbl.hidden).take(10).toList();
+
+    final setRepo = context.read<GymSetsRepository>();
+
+    final gymSets = setRepo.gymsets
+        .where(
+          (tbl) => tbl.exercise!.name == exercise.name && !tbl.hidden,
+        )
+        .take(10)
+        .toList();
+
     gymSets.sort((a, b) => b.created.compareTo(a.created));
 
     if (!mounted) return;
@@ -270,22 +384,25 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
   }
 
   Future<void> _editPlan() async {
-    final plan = widget.plan;
-
     if (!mounted) return;
 
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => EditPlanPage(
-          plan: plan,
+          plan: widget.plan,
         ),
       ),
     );
+
+    if (!mounted) return;
+
+    _refreshPlanFromRepository();
   }
 
   Widget strengthFields() {
-    double screenWidth = MediaQuery.of(context).size.width;
+    final screenWidth = MediaQuery.of(context).size.width;
+
     final repsField = TextFormField(
       controller: reps,
       decoration: const InputDecoration(labelText: 'Reps'),
@@ -478,13 +595,18 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
         return DropdownButtonFormField<String>(
           decoration: const InputDecoration(
             labelText: 'Unit',
-            labelStyle: TextStyle(overflow: TextOverflow.ellipsis),
+            labelStyle: TextStyle(
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           initialValue: unit,
           items: strengthUnits,
           onChanged: (value) {
             if (value == null) return;
-            setState(() => unit = value);
+
+            setState(() {
+              unit = value;
+            });
           },
         );
       },
@@ -512,22 +634,23 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
   }
 
   GymSet? getLast(Exercise exercise) {
-    var sets = context.watch<GymSetsRepository>().gymsets;
-    return sets.where((t) => t.id == exercise.id).first;
+    final sets = context.read<GymSetsRepository>().gymsets;
+
+    return sets.where((t) => t.id == exercise.id).firstOrNull;
   }
 
   void _updateGymSetTextFields(GymSet gymSet) {
-    final settings = context.watch<SettingsRepository>();
+    final settings = context.read<SettingsRepository>();
 
-    var su = settings.getSetting(key: 'strength_unit');
-    var cu = settings.getSetting(key: 'cardio_unit');
+    final su = settings.getSetting(key: 'strength_unit');
+    final cu = settings.getSetting(key: 'cardio_unit');
 
     if ((!gymSet.exercise!.cardio && su == 'last-entry') || (gymSet.exercise!.cardio && cu == 'last-entry')) {
       unit = gymSet.unit;
     } else if (gymSet.exercise!.cardio) {
-      unit = su;
-    } else {
       unit = cu;
+    } else {
+      unit = su;
     }
 
     reps.text = toString(gymSet.reps);
@@ -544,12 +667,13 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
   }
 
   List<GymSet> _todaySetsStream(Exercise exercise) {
-    var sets = context.watch<GymSetsRepository>().gymsets;
+    final sets = context.watch<GymSetsRepository>().gymsets;
+
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
     final startOfTomorrow = startOfDay.add(const Duration(days: 1));
 
-    var todays = sets
+    final todays = sets
         .where(
           (set) =>
               set.planId == widget.plan.id &&
@@ -558,7 +682,9 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
               set.created.isBefore(startOfTomorrow),
         )
         .toList();
+
     todays.sort((a, b) => a.created.compareTo(b.created));
+
     return todays;
   }
 
@@ -567,13 +693,20 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
       return;
     }
 
-    if (!mounted) return;
-    var setRepo = context.read<GymSetsRepository>();
-    var planRepo = context.read<PlansRepository>();
-    final exercise = planExercises[selected].exercise;
-    final settings = context.watch<SettingsRepository>();
+    if (!mounted || planExercises.isEmpty) return;
 
-    final bodyWeight = await _getBodyWeight(exercise!, settings);
+    final setRepo = context.read<GymSetsRepository>();
+    final planRepo = context.read<PlansRepository>();
+    final exercise = planExercises[selected].exercise;
+
+    if (exercise == null) return;
+
+    final settings = context.read<SettingsRepository>();
+
+    final bodyWeight = await _getBodyWeight(
+      exercise,
+      settings,
+    );
 
     if (!mounted) return;
 
@@ -589,6 +722,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     if (!mounted) return;
 
     final counts = planRepo.gymCounts;
+
     final countIndex = counts.indexWhere(
       (element) => element.name == exercise.name,
     );
@@ -608,6 +742,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     }
 
     var count = countIndex == -1 ? 0 : counts[countIndex].count;
+
     count++;
 
     final gymSetInsert = GymSet(
@@ -648,10 +783,11 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     final gymSet = await setRepo.insertGymSet(gymSetInsert);
 
     await planRepo.updateGymCounts(widget.plan.id!);
-    await planRepo.updateDefaults();
-    var trailing = settings.getSetting(key: 'plan_trailing');
+
+    final trailing = settings.getSetting(key: 'plan_trailing');
+
     if (['count', 'ratio', 'percent'].contains(trailing.split('.').last)) {
-      planRepo.updatePlanCounts();
+      await planRepo.updatePlanCounts();
     }
 
     if (!mounted) return;
@@ -663,10 +799,15 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
 
     if (finishedExercise) {
       await select(selected + 1);
-      controllers[selected]?.expand();
+
+      if (selected < planExercises.length) {
+        controllers[planExercises[selected].id]?.expand();
+      }
     }
 
-    if (!settings.isEnabled(key: 'notifications')) return;
+    if (!settings.isEnabled(key: 'notifications')) {
+      return;
+    }
 
     final best = await setRepo.isBest(gymSet);
 
@@ -702,16 +843,35 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     }
 
     final lastSet = getLast(exercise);
+
     return lastSet?.bodyWeight;
   }
 
   Future<void> select(int index) async {
-    setState(() => selected = index);
+    if (index < 0 || index >= planExercises.length) {
+      return;
+    }
 
-    final exercises = planExercises.first;
-    final last = getLast(exercises.exercise!);
+    final exercise = planExercises[index].exercise;
 
-    if (last == null || !mounted) return;
+    if (exercise == null) return;
+
+    setState(() {
+      selected = index;
+    });
+
+    final last = getLast(exercise);
+
+    if (last == null || !mounted) {
+      setState(() {
+        cardio = exercise.cardio;
+        currentExercise = exercise;
+        category = exercise.category;
+        image = exercise.image;
+      });
+
+      return;
+    }
 
     setState(() {
       _updateGymSetTextFields(last);
@@ -736,7 +896,8 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     List<GymCount> counts,
     Exercise exercise,
   ) async {
-    var sets = context.read<GymSetsRepository>().gymsets;
+    final sets = context.read<GymSetsRepository>().gymsets;
+
     await select(index);
 
     final count = counts.elementAtOrNull(index);
@@ -756,9 +917,9 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
       return;
     }
 
-    final gymSet = sets.where((t) => t.id == exercise.id).first;
+    final gymSet = sets.where((t) => t.id == exercise.id).firstOrNull;
 
-    if (!mounted) return;
+    if (gymSet == null || !mounted) return;
 
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -769,11 +930,10 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     );
   }
 
-  Widget _buildPlanList(
-    BuildContext context,
-  ) {
+  Widget _buildPlanList(BuildContext context) {
     final settings = context.watch<SettingsRepository>();
     final planExerciseRepo = context.watch<PlanExercisesRepository>();
+
     final maxSets = settings.getInt(key: 'max_sets');
 
     final trailing = PlanTrailing.values.byName(
@@ -784,6 +944,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     );
 
     final showImage = settings.isEnabled(key: 'show_images');
+
     final counts = context.watch<PlansRepository>().gymCounts;
 
     if (trailing == PlanTrailing.reorder) {
@@ -804,13 +965,19 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
           }
 
           final selectedId = planExercises[selected].id;
+
           final expandedId = expandedIndex != null ? planExercises[expandedIndex!].id : null;
 
           final item = planExercises.removeAt(oldIndex);
+
           planExercises.insert(newIndex, item);
 
           for (var i = 0; i < planExercises.length; i++) {
-            await planExerciseRepo.updatePlanExercise(planExercises[i].copyWith(sequence: i));
+            await planExerciseRepo.updatePlanExercise(
+              planExercises[i].copyWith(
+                sequence: i,
+              ),
+            );
           }
 
           if (!context.mounted) return;
@@ -827,12 +994,11 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
             expandedIndex = newExpandedIndex == -1 ? null : newExpandedIndex;
           }
 
-          if (expandedIndex != null) {
+          if (expandedIndex != null && expandedId != null) {
             controllers[expandedId]?.expand();
           }
 
-          final state = context.read<PlansRepository>();
-          state.updatePlans(null);
+          await context.read<PlansRepository>().updatePlans(null);
         },
       );
     }
@@ -874,8 +1040,10 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
       count = gymCount.count;
       max = gymCount.maxSets ?? maxSets;
     }
+
     final iconColor =
         index == expandedIndex ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface;
+
     return GestureDetector(
       key: ValueKey(planItem.id),
       onLongPressStart: (_) => _showExerciseModal(
@@ -893,7 +1061,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
               dividerColor: Colors.transparent,
             ),
             child: ExpansionTile(
-              tilePadding: EdgeInsets.all(2),
+              tilePadding: const EdgeInsets.all(2),
               initiallyExpanded: index == (expandedIndex ?? 0),
               controller: controllers.putIfAbsent(
                 planItem.id!,
@@ -910,6 +1078,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
                 if (open) {
                   if (expandedIndex != null && expandedIndex != index) {
                     final previousExercise = planExercises[expandedIndex!];
+
                     controllers[previousExercise.id]?.collapse();
                   }
 
@@ -918,6 +1087,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
                 } else if (expandedIndex == index) {
                   expandedIndex = null;
                 }
+
                 setState(() {});
               },
               title: _buildExerciseTitle(
@@ -934,7 +1104,9 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
                 notesField(),
                 const SizedBox(height: 4),
                 CustomSetIndicator(
-                  sets: _todaySetsStream(planItem.exercise!),
+                  sets: _todaySetsStream(
+                    planItem.exercise!,
+                  ),
                   max: max,
                 ),
               ],
@@ -964,22 +1136,27 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
             color: Theme.of(context).colorScheme.inversePrimary,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: showImages && planItem.exercise?.image != null
+          child: showImages && planItem.exercise?.image != null && planItem.exercise!.image!.isNotEmpty
               ? Stack(
                   children: [
                     Image.file(
                       width: 24,
                       height: 24,
-                      File(planItem.exercise!.image!),
-                      opacity: count == max ? AlwaysStoppedAnimation(0.75) : null,
+                      File(
+                        planItem.exercise!.image!,
+                      ),
+                      opacity: count == max
+                          ? const AlwaysStoppedAnimation(
+                              0.75,
+                            )
+                          : null,
                     ),
-                    count == max
-                        ? Icon(
-                            Icons.check,
-                            color: iconColor,
-                            size: 20,
-                          )
-                        : SizedBox.shrink(),
+                    if (count == max)
+                      Icon(
+                        Icons.check,
+                        color: iconColor,
+                        size: 20,
+                      ),
                   ],
                 )
               : Center(
@@ -1025,29 +1202,35 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
         return ReorderableDragStartListener(
           index: index,
           child: Platform.isAndroid || Platform.isIOS
-              ? Icon(
+              ? const Icon(
                   Icons.drag_handle,
                   size: 32,
                 )
-              : SizedBox.shrink(),
+              : const SizedBox.shrink(),
         );
 
       case PlanTrailing.ratio:
         return Text(
           '$count / $max',
-          style: const TextStyle(fontSize: 16),
+          style: const TextStyle(
+            fontSize: 16,
+          ),
         );
 
       case PlanTrailing.count:
         return Text(
           count.toString(),
-          style: const TextStyle(fontSize: 16),
+          style: const TextStyle(
+            fontSize: 16,
+          ),
         );
 
       case PlanTrailing.percent:
         return Text(
           '${(count / max * 100).toStringAsFixed(2)}%',
-          style: const TextStyle(fontSize: 16),
+          style: const TextStyle(
+            fontSize: 16,
+          ),
         );
 
       case PlanTrailing.none:
@@ -1055,8 +1238,12 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     }
   }
 
-  List<Widget> _buildBlips(int max, int count) {
-    List<Widget> items = [];
+  List<Widget> _buildBlips(
+    int max,
+    int count,
+  ) {
+    final items = <Widget>[];
+
     for (int i = 0; i < max; i++) {
       items.add(
         SizedBox(
@@ -1070,7 +1257,9 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
             child: AnimatedFractionallySizedBox(
               alignment: Alignment.centerLeft,
               widthFactor: count > i ? 1 : 0,
-              duration: const Duration(milliseconds: 250),
+              duration: const Duration(
+                milliseconds: 250,
+              ),
               curve: Curves.ease,
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -1082,10 +1271,14 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
           ),
         ),
       );
+
       if (i < max - 1) {
-        items.add(const SizedBox(width: 6));
+        items.add(
+          const SizedBox(width: 6),
+        );
       }
     }
+
     return items;
   }
 
@@ -1095,7 +1288,8 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     int index,
     int count,
   ) async {
-    var planRepo = context.watch<PlansRepository>();
+    final planRepo = context.read<PlansRepository>();
+
     await showModalBottomSheet(
       useRootNavigator: true,
       context: context,
@@ -1107,7 +1301,9 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
             hasData: count > 0,
             onSelect: () => select(index),
             onMax: () {
-              planRepo.updateGymCounts(widget.plan.id!);
+              planRepo.updateGymCounts(
+                widget.plan.id!,
+              );
             },
           ),
         );

@@ -23,6 +23,11 @@ A simple workout app
   - Added calendar page that shows days worked out.
   - Selecting a day shows what exercises were done that day.
 
+- **Database**
+  - Moved from Drift to SqfLite because writing my own SQL is easier (as a backend database & software engineer).
+  - Added 'Exercises' table, and moved 'name' specific references to Exercise.Id for safer referencing. 
+
+
 ## License
 
 FossFit is licensed under the [MIT License](LICENSE.md).

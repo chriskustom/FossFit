@@ -173,7 +173,7 @@ class _WeightPageState extends State<WeightPage> {
   @override
   void initState() {
     super.initState();
-    final settings = context.watch<SettingsRepository>();
+    final settings = context.read<SettingsRepository>();
 
     getBodyWeight(context).then(
       (value) => setState(() {

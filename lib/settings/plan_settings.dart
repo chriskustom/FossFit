@@ -64,9 +64,7 @@ List<Widget> getPlanSettings(
           message: 'Right side of list displays in Plans + Plan view',
           child: DropdownButtonFormField<PlanTrailing>(
             initialValue: PlanTrailing.values.byName(
-              settings
-                  .getSetting(key: 'plan_trailing')
-                  .replaceFirst('PlanTrailing.', ''),
+              settings.getSetting(key: 'plan_trailing'),
             ),
             decoration: const InputDecoration(
               labelStyle: TextStyle(),
@@ -121,7 +119,7 @@ List<Widget> getPlanSettings(
             onChanged: (value) => settings.setSetting(
               category: SettingCategory.plans,
               key: 'plan_trailing',
-              value: value.toString(),
+              value: value?.name ?? 'reorder',
             ),
           ),
         ),
@@ -139,8 +137,7 @@ class PlanSettings extends StatefulWidget {
 class _PlanSettingsRepository extends State<PlanSettings> {
   late var settings = context.watch<SettingsRepository>();
 
-  late final max =
-      TextEditingController(text: settings.getInt(key: 'max_sets').toString());
+  late final max = TextEditingController(text: settings.getInt(key: 'max_sets').toString());
 
   late final warmup = TextEditingController(
     text: settings.getInt(key: 'warmup_sets').toString(),

@@ -7,7 +7,6 @@ import 'package:fossfit/animated_fab.dart';
 import 'package:fossfit/constants.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
-import 'package:fossfit/db/repositories/plans_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/models/exercise_model.dart';
 import 'package:fossfit/models/gym_set_model.dart';
@@ -681,7 +680,6 @@ class _EditSetPageState extends State<EditSetPage> {
     );
 
     final settings = context.watch<SettingsRepository>();
-    final planRepo = context.read<PlansRepository>();
     final setRepo = context.read<GymSetsRepository>();
     final exRepo = context.read<ExercisesRepository>();
 
@@ -689,11 +687,9 @@ class _EditSetPageState extends State<EditSetPage> {
       await setRepo.updateGymSet(gymSet);
       if (image != null) await exRepo.updateExercise(gymSet.exercise!.copyWith(image: image));
       if (!mounted) return;
-      planRepo.updateDefaults();
       return Navigator.of(context).pop();
     } else {
       await setRepo.insertGymSet(gymSet.copyWith(id: null));
-      planRepo.updateDefaults();
     }
 
     if (settings.isEnabled(key: 'notifications')) {

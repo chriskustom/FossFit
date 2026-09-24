@@ -22,61 +22,101 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late TabController controller;
 
+  List<String> tabs = [];
+
   @override
   void initState() {
     super.initState();
 
-    final setting = context.read<SettingsRepository>().getSetting(key: 'tabs');
-    final tabs = setting.split(',');
-    controller = TabController(length: tabs.length, vsync: this);
-
-    // final info = PackageInfo.fromPlatform();
-    // info.then((pkg) async {
-    //   final meta = await (oldDb.metadata.select()..limit(1)).getSingleOrNull();
-    //   if (meta == null)
-    //     return oldDb.metadata.insertOne(
-    //       MetadataCompanion(buildNumber: Value(int.parse(pkg.buildNumber))),
-    //     );
-    //   else
-    //     oldDb.metadata.update().write(
-    //           MetadataCompanion(
-    //             buildNumber: Value(int.parse(pkg.buildNumber)),
-    //           ),
-    //         );
-    //   if (int.parse(pkg.buildNumber) == meta.buildNumber) return null;
-    //   if (mounted)
-    //     toast(
-    //       "New version ${pkg.version}",
-    //       action: SnackBarAction(
-    //         label: 'Changes',
-    //         onPressed: () => Navigator.of(context).push(
-    //           MaterialPageRoute(
-    //             builder: (context) => const WhatsNew(),
-    //           ),
-    //         ),
-    //       ),
-    //     );
-    // });
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  void hideTab(BuildContext context, String tab) {
     final settings = context.read<SettingsRepository>();
-    final old = settings.getSetting(key: 'tabs');
-    var tabs = old.split(',');
+    tabs = _readTabs(settings);
 
-    if (tabs.length == 1) return toast("Can't hide everything!");
-    tabs.remove(tab);
+    controller = TabController(
+      length: tabs.length,
+      vsync: this,
+    );
+  }
+
+  List<String> _readTabs(SettingsRepository settings) {
+    final value = settings.getSetting(
+      key: 'tabs',
+    );
+
+    return value.split(',').map((tab) => tab.trim()).where((tab) => tab.isNotEmpty).toList();
+  }
+
+  void _reloadTabs() {
+    final settings = context.read<SettingsRepository>();
+    final newTabs = _readTabs(settings);
+
+    if (_sameTabs(tabs, newTabs)) {
+      return;
+    }
+
+    final oldIndex = controller.index;
+
+    controller.dispose();
+
+    tabs = newTabs;
+
+    controller = TabController(
+      length: tabs.length,
+      vsync: this,
+      initialIndex: oldIndex.clamp(
+        0,
+        tabs.length - 1,
+      ),
+    );
+
+    setState(() {});
+  }
+
+  bool _sameTabs(
+    List<String> a,
+    List<String> b,
+  ) {
+    if (a.length != b.length) {
+      return false;
+    }
+
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  void hideTab(
+    BuildContext context,
+    String tab,
+  ) {
+    final settings = context.read<SettingsRepository>();
+
+    final old = settings.getSetting(
+      key: 'tabs',
+    );
+
+    final currentTabs = old.split(',').where((value) => value.isNotEmpty).toList();
+
+    if (currentTabs.length == 1) {
+      toast("Can't hide everything!");
+      return;
+    }
+
+    currentTabs.remove(tab);
+
+    final newValue = currentTabs.join(',');
+
     settings.setSetting(
       category: SettingCategory.tabs,
       key: 'tabs',
-      value: tabs.join(''),
+      value: newValue,
     );
+
+    _reloadTabs();
+
     toast(
       'Hid $tab',
       action: SnackBarAction(
@@ -87,78 +127,108 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             key: 'tabs',
             value: old,
           );
+
+          _reloadTabs();
         },
       ),
     );
   }
 
+  Widget _buildTab(
+    String tab,
+  ) {
+    switch (tab) {
+      case 'HistoryPage':
+        return HistoryPage(
+          tabController: controller,
+        );
+
+      case 'PlansPage':
+        return PlansPage(
+          tabController: controller,
+        );
+
+      case 'GraphsPage':
+        return GraphsPage(
+          tabController: controller,
+        );
+
+      case 'TimerPage':
+        return const TimerPage();
+
+      case 'SettingsPage':
+        return const SettingsPage();
+
+      case 'CalendarPage':
+        return CalendarPage(
+          tabController: controller,
+        );
+
+      default:
+        return ErrorWidget(
+          "Couldn't build tab content.",
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final settings = context.read<SettingsRepository>();
-    final tabSettings = settings.getSetting(key: 'tabs');
+    final settings = context.watch<SettingsRepository>();
 
-    final tabs = tabSettings.split(',');
-    final scrollableTabs = settings.isEnabled(key: 'scrollable_tabs');
-
-    if (tabs.length != controller.length) {
-      controller.dispose();
-      controller = TabController(length: tabs.length, vsync: this);
-      if (controller.index >= tabs.length) controller.index = tabs.length - 1;
-    }
+    final scrollableTabs = settings.isEnabled(
+      key: 'scrollable_tabs',
+    );
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
       extendBodyBehindAppBar: true,
       extendBody: true,
-      bottomSheet: SafeArea(
+      bottomSheet: const SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 48.0),
-          child: const TimerProgressIndicator(),
+          padding: EdgeInsets.symmetric(
+            horizontal: 48,
+          ),
+          child: TimerProgressIndicator(),
         ),
       ),
       body: SafeArea(
         child: Stack(
           children: [
             TabBarView(
+              key: const PageStorageKey<String>(
+                'home-tab-view',
+              ),
               controller: controller,
-              physics: scrollableTabs
-                  ? const AlwaysScrollableScrollPhysics()
-                  : const NeverScrollableScrollPhysics(),
-              children: tabs.map((tab) {
-                if (tab == 'HistoryPage')
-                  return HistoryPage(tabController: controller);
-                else if (tab == 'PlansPage')
-                  return PlansPage(
-                    tabController: controller,
-                  );
-                else if (tab == 'GraphsPage')
-                  return GraphsPage(tabController: controller);
-                else if (tab == 'TimerPage')
-                  return const TimerPage();
-                else if (tab == 'SettingsPage')
-                  return const SettingsPage();
-                else if (tab == 'CalendarPage')
-                  return CalendarPage(
-                    tabController: controller,
-                  );
-                else
-                  return ErrorWidget("Couldn't build tab content.");
-              }).toList(),
+              physics: scrollableTabs ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
+              children: tabs.map(_buildTab).toList(),
             ),
             Positioned(
               bottom: 0,
               left: 0,
               right: 0,
-              child: ValueListenableBuilder(
+              child: ValueListenableBuilder<double>(
                 valueListenable: controller.animation!,
-                builder: (context, value, child) {
+                builder: (
+                  context,
+                  value,
+                  child,
+                ) {
                   return BottomNav(
                     tabs: tabs,
                     currentIndex: value.round(),
                     onTap: (index) {
+                      if (index < 0 || index >= controller.length) {
+                        return;
+                      }
+
                       controller.animateTo(index);
                     },
-                    onLongPress: hideTab,
+                    onLongPress: (ctx, tab) {
+                      hideTab(
+                        ctx,
+                        tab,
+                      );
+                    },
                   );
                 },
               ),
@@ -167,5 +237,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 }

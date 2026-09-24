@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
 import 'package:fossfit/app_search.dart';
 import 'package:fossfit/constants.dart';
+import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
 import 'package:fossfit/db/repositories/plans_repository.dart';
@@ -36,6 +37,7 @@ class GraphsPage extends StatefulWidget {
 
 class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMixin {
   late List<GymSet> sets = [];
+  late List<Exercise> exercises = [];
 
   final Set<Exercise> selected = {};
   final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
@@ -53,6 +55,7 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
   Widget build(BuildContext context) {
     super.build(context);
     sets = context.watch<GymSetsRepository>().gymsets;
+    exercises = context.watch<ExercisesRepository>().exercises;
 
     return NavigatorPopHandler(
       onPopWithResult: (result) {
@@ -154,7 +157,7 @@ class GraphsPageState extends State<GraphsPage> with AutomaticKeepAliveClientMix
       resizeToAvoidBottomInset: false,
       body: Builder(
         builder: (context) {
-          if (sets.isEmpty) return const SizedBox();
+          if (exercises.isEmpty) return const SizedBox();
 
           final terms = search.toLowerCase().split(" ").where((term) => term.isNotEmpty);
           var stream = sets.where((gymSet) {

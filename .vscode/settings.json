@@ -18,7 +18,7 @@
     "source.fixAll": "always",
     "source.organizeImports": "always"
   },
-  "dart.flutterSdkPath": "",
+  "dart.flutterSdkPath": "C:\\Users\\sitcxs4\\Flutter\\flutter\\bin",
   "C_Cpp_Runner.cCompilerPath": "gcc",
   "C_Cpp_Runner.cppCompilerPath": "g++",
   "C_Cpp_Runner.debuggerPath": "gdb",

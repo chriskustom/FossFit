@@ -8,11 +8,9 @@ import 'package:fossfit/models/constants.dart';
 import 'package:fossfit/widgets/setting_switch.dart';
 import 'package:provider/provider.dart';
 
-void enableDisable(SettingsRepository settings, String k, bool v) =>
-    setSetting(settings, k, v ? '1' : '0');
+void enableDisable(SettingsRepository settings, String k, bool v) => setSetting(settings, k, v ? '1' : '0');
 
-void setSetting(SettingsRepository settings, String k, String v) =>
-    settings.setSetting(
+void setSetting(SettingsRepository settings, String k, String v) => settings.setSetting(
       category: SettingCategory.appearance,
       key: k,
       value: v,
@@ -29,9 +27,7 @@ List<Widget> getAppearanceSettings(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: DropdownButtonFormField<ThemeMode>(
           initialValue: ThemeMode.values.byName(
-            settings
-                .getSetting(key: 'theme_mode')
-                .replaceFirst('ThemeMode.', ''),
+            settings.getSetting(key: 'theme_mode'),
           ),
           decoration: const InputDecoration(
             labelStyle: TextStyle(),
@@ -51,8 +47,7 @@ List<Widget> getAppearanceSettings(
               child: Text("Light"),
             ),
           ],
-          onChanged: (value) =>
-              setSetting(settings, 'theme_mode', value.toString()),
+          onChanged: (value) => setSetting(settings, 'theme_mode', value?.name ?? 'system'),
         ),
       ),
     if ('system color scheme'.contains(term.toLowerCase()))
@@ -127,8 +122,7 @@ List<Widget> getAppearanceSettings(
           ),
           Slider(
             value: settings.getDouble(key: 'curve_smoothness'),
-            inactiveColor:
-                Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
+            inactiveColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
             onChanged: (value) => setSetting(
               settings,
               'curve_smoothness',
@@ -151,8 +145,7 @@ List<Widget> getAppearanceSettings(
               FlSpot(2, 2),
             ],
             tooltipData: () => LineTouchTooltipData(
-              getTooltipColor: (touchedSpot) =>
-                  Theme.of(context).colorScheme.surface,
+              getTooltipColor: (touchedSpot) => Theme.of(context).colorScheme.surface,
               getTooltipItems: (touchedSpots) => touchedSpots
                   .map(
                     (spot) => LineTooltipItem(
