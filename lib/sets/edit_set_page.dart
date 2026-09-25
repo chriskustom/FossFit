@@ -519,13 +519,13 @@ class _EditSetPageState extends State<EditSetPage> {
           visible: showImages,
           child: material.Column(
             children: [
-              if (image == null)
+              if (image == null || image == '')
                 TextButton.icon(
                   onPressed: pick,
                   label: const Text('Image'),
                   icon: const Icon(Icons.image),
                 ),
-              if (image != null) ...[
+              if (image != null && image != '') ...[
                 const SizedBox(height: 8),
                 Tooltip(
                   message: 'Long-press to delete',

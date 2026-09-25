@@ -234,7 +234,8 @@ class _WorkoutPageWidgetState extends State<_WorkoutPageWidget> {
         child,
       ) {
         latestSets = setsRepo.latestgymsets;
-        gymSets = filteredGymSets.isEmpty ? latestSets : filteredGymSets;
+        gymSets = filteredGymSets;
+
         final showStats = settingsRepo.isEnabled(
           key: 'stats_panel',
         );
@@ -382,9 +383,13 @@ class _WorkoutPageWidgetState extends State<_WorkoutPageWidget> {
                           gymSet: gymSet,
                         ),
                       ),
-                    ).then((_) async {
-                      await _refreshRepository();
-                    });
+                    );
+
+                    await _refreshRepository();
+
+                    if (mounted) {
+                      setState(() {});
+                    }
                   },
                   selected: selected,
                   scroll: scroll,
@@ -405,19 +410,16 @@ class _WorkoutPageWidgetState extends State<_WorkoutPageWidget> {
   }
 
   Future<void> _refreshRepository() async {
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     final setsRepo = context.read<GymSetsRepository>();
 
     await setsRepo.loadAll();
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
-    _syncFromRepository();
+    latestSets = setsRepo.latestgymsets;
+    _applyFilters();
   }
 
   Future<void> onAdd() async {
