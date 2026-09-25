@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
-import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +17,7 @@ class Filters extends StatefulWidget {
   final Function(DateTime?) setStart;
   final Function(DateTime?) setEnd;
   final Function setStream;
+  final bool full;
 
   const Filters({
     super.key,
@@ -31,6 +32,7 @@ class Filters extends StatefulWidget {
     required this.endDate,
     required this.category,
     required this.setCategory,
+    required this.full,
   });
 
   @override
@@ -66,7 +68,7 @@ class _FiltersState extends State<Filters> {
       isLabelVisible: filtersCount > 0,
       backgroundColor: Theme.of(context).colorScheme.primary,
       child: FutureBuilder(
-        future: context.watch<GymSetsRepository>().getCategoriesList(),
+        future: context.watch<ExercisesRepository>().getDistinctCategories(),
         builder: (context, snapshot) {
           return PopupMenuButton(
             itemBuilder: (context) => [
@@ -210,69 +212,72 @@ class _FiltersState extends State<Filters> {
                   },
                 ),
               ),
-              PopupMenuItem(
-                child: ListTile(
-                  leading: const Icon(Icons.calendar_today),
-                  title: const Text("Start date"),
-                  onLongPress: () {
-                    widget.setStart(null);
-                    Navigator.pop(context);
-                  },
-                  subtitle: Selector<SettingsRepository, String>(
-                    selector: (p0, settings) =>
-                        settings.getSetting(key: 'short_date_format'),
-                    builder: (context, shortDateFormat, child) =>
-                        widget.startDate != null
-                            ? Text(
-                                DateFormat(shortDateFormat)
-                                    .format(widget.startDate!),
-                              )
-                            : Text(shortDateFormat),
+              if (widget.full)
+                PopupMenuItem(
+                  child: ListTile(
+                    leading: const Icon(Icons.calendar_today),
+                    title: const Text("Start date"),
+                    onLongPress: () {
+                      widget.setStart(null);
+                      Navigator.pop(context);
+                    },
+                    subtitle: Selector<SettingsRepository, String>(
+                      selector: (p0, settings) =>
+                          settings.getSetting(key: 'short_date_format'),
+                      builder: (context, shortDateFormat, child) =>
+                          widget.startDate != null
+                              ? Text(
+                                  DateFormat(shortDateFormat)
+                                      .format(widget.startDate!),
+                                )
+                              : Text(shortDateFormat),
+                    ),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      final DateTime? pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: widget.startDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (pickedDate != null)
+                        widget.setStart(pickedDate.toLocal());
+                    },
                   ),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final DateTime? pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: widget.startDate,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (pickedDate != null)
-                      widget.setStart(pickedDate.toLocal());
-                  },
                 ),
-              ),
-              PopupMenuItem(
-                child: ListTile(
-                  leading: const Icon(Icons.calendar_month),
-                  title: const Text("End date"),
-                  subtitle: Selector<SettingsRepository, String>(
-                    selector: (p0, settings) =>
-                        settings.getSetting(key: 'short_date_format'),
-                    builder: (context, shortDateFormat, child) =>
-                        widget.endDate != null
-                            ? Text(
-                                DateFormat(shortDateFormat)
-                                    .format(widget.endDate!),
-                              )
-                            : Text(shortDateFormat),
+              if (widget.full)
+                PopupMenuItem(
+                  child: ListTile(
+                    leading: const Icon(Icons.calendar_month),
+                    title: const Text("End date"),
+                    subtitle: Selector<SettingsRepository, String>(
+                      selector: (p0, settings) =>
+                          settings.getSetting(key: 'short_date_format'),
+                      builder: (context, shortDateFormat, child) =>
+                          widget.endDate != null
+                              ? Text(
+                                  DateFormat(shortDateFormat)
+                                      .format(widget.endDate!),
+                                )
+                              : Text(shortDateFormat),
+                    ),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      final DateTime? pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: widget.endDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (pickedDate != null)
+                        widget.setEnd(pickedDate.toLocal());
+                    },
+                    onLongPress: () {
+                      widget.setEnd(null);
+                      Navigator.pop(context);
+                    },
                   ),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    final DateTime? pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: widget.endDate,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (pickedDate != null) widget.setEnd(pickedDate.toLocal());
-                  },
-                  onLongPress: () {
-                    widget.setEnd(null);
-                    Navigator.pop(context);
-                  },
                 ),
-              ),
               PopupMenuItem(
                 child: ListTile(
                   leading: const Icon(Icons.clear),

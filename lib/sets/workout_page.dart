@@ -10,31 +10,30 @@ import 'package:fossfit/models/exercise_model.dart';
 import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
 import 'package:fossfit/sets/edit_sets_page.dart';
-import 'package:fossfit/sets/history_collapsed.dart';
-import 'package:fossfit/sets/history_list.dart';
 import 'package:fossfit/utils.dart';
+import 'package:fossfit/widgets/workout_history.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-class HistoryPage extends StatefulWidget {
+class WorkoutPage extends StatefulWidget {
   final TabController tabController;
 
-  const HistoryPage({
+  const WorkoutPage({
     super.key,
     required this.tabController,
   });
 
   @override
-  State<HistoryPage> createState() => HistoryPageState();
+  State<WorkoutPage> createState() => WorkoutPageState();
 }
 
-class HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClientMixin {
+class WorkoutPageState extends State<WorkoutPage>
+    with AutomaticKeepAliveClientMixin {
   final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
 
   @override
   bool get wantKeepAlive => true;
-
   @override
   void initState() {
     super.initState();
@@ -43,21 +42,15 @@ class HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClientM
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    // Sync when HistoryPage is first created.
-    _refreshRepository();
+  void dispose() {
+    widget.tabController.removeListener(_onTabChanged);
+    super.dispose();
   }
 
   @override
-  void didUpdateWidget(covariant HistoryPage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (oldWidget.tabController != widget.tabController) {
-      oldWidget.tabController.removeListener(_onTabChanged);
-      widget.tabController.addListener(_onTabChanged);
-    }
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _refreshRepository();
   }
 
   void _onTabChanged() {
@@ -80,13 +73,13 @@ class HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClientM
         .where((tab) => tab.isNotEmpty)
         .toList();
 
-    final historyIndex = tabs.indexOf('HistoryPage');
+    final workoutIndex = tabs.indexOf('WorkoutPage');
 
-    if (historyIndex < 0) {
+    if (workoutIndex < 0) {
       return;
     }
 
-    if (widget.tabController.index == historyIndex) {
+    if (widget.tabController.index == workoutIndex) {
       _refreshRepository();
     }
   }
@@ -102,15 +95,8 @@ class HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClientM
   }
 
   @override
-  void dispose() {
-    widget.tabController.removeListener(_onTabChanged);
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     super.build(context);
-
     return NavigatorPopHandler(
       onPopWithResult: (result) {
         final navigator = navKey.currentState;
@@ -130,7 +116,7 @@ class HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClientM
             .where((tab) => tab.isNotEmpty)
             .toList();
 
-        final historyIndex = tabs.indexOf('HistoryPage');
+        final historyIndex = tabs.indexOf('WorkoutPage');
 
         if (widget.tabController.index == historyIndex) {
           navigator.pop();
@@ -140,7 +126,7 @@ class HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClientM
         key: navKey,
         onGenerateRoute: (settings) {
           return MaterialPageRoute(
-            builder: (context) => _HistoryPageWidget(
+            builder: (context) => _WorkoutPageWidget(
               navigatorKey: navKey,
             ),
             settings: settings,
@@ -151,18 +137,18 @@ class HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClientM
   }
 }
 
-class _HistoryPageWidget extends StatefulWidget {
+class _WorkoutPageWidget extends StatefulWidget {
   final GlobalKey<NavigatorState> navigatorKey;
 
-  const _HistoryPageWidget({
+  const _WorkoutPageWidget({
     required this.navigatorKey,
   });
 
   @override
-  State<_HistoryPageWidget> createState() => _HistoryPageWidgetState();
+  State<_WorkoutPageWidget> createState() => _WorkoutPageWidgetState();
 }
 
-class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
+class _WorkoutPageWidgetState extends State<_WorkoutPageWidget> {
   final repsGt = TextEditingController();
   final repsLt = TextEditingController();
   final weightGt = TextEditingController();
@@ -172,14 +158,14 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
   final expand = ExpansibleController();
 
   List<GymSet> gymSets = [];
-  List<GymSet> _allGymSets = [];
+  List<GymSet> latestSets = [];
+  List<GymSet> filteredGymSets = [];
 
   Widget lastWorkout = const SizedBox.shrink();
 
   final Set<int> selected = {};
 
   String search = '';
-  int limit = 100;
 
   DateTime? startDate;
   DateTime? endDate;
@@ -220,32 +206,16 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
 
   void _onScroll() {
     if (scroll.offset > 0.0) {
-      expand.collapse();
+      //expand.collapse();
     } else {
-      expand.expand();
+      //expand.expand();
     }
   }
 
-  /// Copies the latest repository data into this page's local state.
-  ///
-  /// The repository is the source of truth.
   void _syncFromRepository() {
     if (!mounted) {
       return;
     }
-
-    final setsRepo = context.read<GymSetsRepository>();
-
-    final repositorySets = setsRepo.gymsets;
-
-    if (_sameGymSets(_allGymSets, repositorySets)) {
-      return;
-    }
-
-    setState(() {
-      _allGymSets = List<GymSet>.of(repositorySets);
-    });
-
     _applyFilters();
 
     if (settings.isEnabled(key: 'stats_panel')) {
@@ -263,32 +233,22 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
         setsRepo,
         child,
       ) {
-        final repositorySets = setsRepo.gymsets;
-
-        // Repository changes are the primary way this page updates.
-        //
-        // This is deliberately scheduled after build because _applyFilters()
-        // eventually calls setState().
-        if (!_sameGymSets(_allGymSets, repositorySets)) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) {
-              return;
-            }
-
-            _syncFromRepository();
-          });
-        }
-
+        latestSets = setsRepo.latestgymsets;
+        gymSets = filteredGymSets.isEmpty ? latestSets : filteredGymSets;
         final showStats = settingsRepo.isEnabled(
           key: 'stats_panel',
         );
-
+        if (showStats) getStats(latestSets);
+        final groupHistory = settingsRepo.isEnabled(
+          key: 'group_history',
+        );
         return Scaffold(
           resizeToAvoidBottomInset: false,
           body: Column(
             children: [
               AppSearch(
                 filter: Filters(
+                  full: false,
                   repsGtCtrl: repsGt,
                   repsLtCtrl: repsLt,
                   weightGtCtrl: weightGt,
@@ -297,38 +257,25 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
                   endDate: endDate,
                   startDate: startDate,
                   setEnd: (value) {
-                    setState(() {
-                      endDate = value;
-                      limit = 100;
-                    });
+                    endDate = value;
 
                     _applyFilters();
                   },
                   setStart: (value) {
-                    setState(() {
-                      startDate = value;
-                      limit = 100;
-                    });
+                    startDate = value;
 
                     _applyFilters();
                   },
                   category: category,
                   setCategory: (value) {
-                    setState(() {
-                      category = value;
-                      limit = 100;
-                    });
+                    category = value;
 
                     _applyFilters();
                   },
                 ),
                 onShare: _onShare,
                 onChange: (value) {
-                  setState(() {
-                    search = value;
-                    limit = 100;
-                  });
-
+                  search = value;
                   _applyFilters();
                 },
                 onClear: () {
@@ -348,10 +295,6 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
                   setState(() {
                     selected.clear();
                   });
-
-                  // deleteGymSetsById already updates the repository and
-                  // notifies listeners. This refresh is only needed if there
-                  // are changes made elsewhere at the database level.
                   await _refreshRepository();
                 },
                 onSelect: () {
@@ -370,16 +313,16 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
                   });
                 },
                 selected: selected,
-                onEdit: () {
-                  Navigator.push(
+                onEdit: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => EditSetsPage(
                         ids: selected.toList(),
                       ),
                     ),
-                  ).then((_) {
-                    _refreshRepository();
+                  ).then((_) async {
+                    await _refreshRepository();
                   });
                 },
               ),
@@ -403,11 +346,13 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
                       childrenPadding: EdgeInsets.zero,
                       iconColor: Theme.of(context).colorScheme.onSurface,
                       leading: Icon(
-                        expand.isExpanded ? Icons.analytics_outlined : Icons.history_outlined,
+                        expand.isExpanded
+                            ? Icons.analytics_outlined
+                            : Icons.fitness_center_rounded,
                         color: Theme.of(context).colorScheme.primary,
                       ),
                       title: Text(
-                        expand.isExpanded ? 'Stats' : 'History',
+                        expand.isExpanded ? 'Stats' : 'Exercises',
                       ),
                       initiallyExpanded: true,
                       controller: expand,
@@ -418,60 +363,32 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
                   ),
                 ),
               Expanded(
-                child: Builder(
-                  builder: (context) {
-                    final groupHistory = settingsRepo.isEnabled(
-                      key: 'group_history',
-                    );
-
-                    if (groupHistory) {
-                      final exerciseItems = _getExerciseItems(_allGymSets);
-
-                      return HistoryCollapsed(
-                        scroll: scroll,
-                        days: exerciseItems.reversed.toList(),
-                        onSelect: (id) {
-                          setState(() {
-                            if (selected.contains(id)) {
-                              selected.remove(id);
-                            } else {
-                              selected.add(id);
-                            }
-                          });
-                        },
-                        selected: selected,
-                        onNext: () {
-                          setState(() {
-                            limit += 100;
-                          });
-
-                          _applyFilters();
-                        },
-                      );
-                    }
-
-                    return HistoryList(
-                      scroll: scroll,
-                      sets: gymSets,
-                      onSelect: (id) {
-                        setState(() {
-                          if (selected.contains(id)) {
-                            selected.remove(id);
-                          } else {
-                            selected.add(id);
-                          }
-                        });
-                      },
-                      selected: selected,
-                      onNext: () {
-                        setState(() {
-                          limit += 100;
-                        });
-
-                        _applyFilters();
-                      },
-                    );
+                child: WorkoutHistory(
+                  gymSets: gymSets,
+                  onSelect: (id) {
+                    setState(() {
+                      if (selected.contains(id)) {
+                        selected.remove(id);
+                      } else {
+                        selected.add(id);
+                      }
+                    });
                   },
+                  onEdit: (gymSet) async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditSetPage(
+                          gymSet: gymSet,
+                        ),
+                      ),
+                    ).then((_) async {
+                      await _refreshRepository();
+                    });
+                  },
+                  selected: selected,
+                  scroll: scroll,
+                  groupHistory: groupHistory,
                 ),
               ),
             ],
@@ -496,10 +413,6 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
 
     await setsRepo.loadAll();
 
-    // loadAll() calls notifyListeners().
-    //
-    // Consumer above will therefore see the new data. We also explicitly
-    // synchronize here so this page doesn't depend on another build cycle.
     if (!mounted) {
       return;
     }
@@ -611,8 +524,6 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
       ),
     );
 
-    // EditSetPage may have changed the database without this page itself
-    // being rebuilt. Reload the repository when it returns.
     await _refreshRepository();
   }
 
@@ -654,11 +565,6 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
     if (!mounted) {
       return;
     }
-
-    setState(() {
-      limit = 100;
-    });
-
     _applyFilters();
   }
 
@@ -667,7 +573,7 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
       return;
     }
 
-    Iterable<GymSet> query = _allGymSets.where(
+    Iterable<GymSet> query = latestSets.where(
       (set) => !set.hidden && set.exercise != null,
     );
 
@@ -739,11 +645,9 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
       );
     }
 
-    final filtered = query.take(limit).toList();
+    filteredGymSets = query.toList();
 
-    setState(() {
-      gymSets = filtered;
-    });
+    setState(() {});
   }
 
   List<ExerciseItem> _getExerciseItems(
@@ -821,55 +725,24 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
         );
   }
 
+  void getStats(List<GymSet> sets) async {
+    try {
+      final lw = await getLastWorkout(sets);
+      setState(() {
+        lastWorkout = lw;
+      });
+    } catch (_) {}
+  }
+
   Future<material.Widget> getLastWorkout(
     List<GymSet> sets,
   ) async {
-    DateTime dayOnly(DateTime date) {
-      return DateTime(
-        date.year,
-        date.month,
-        date.day,
-      );
-    }
-
-    String plural(int value) {
-      return value > 1 ? 's' : '';
-    }
-
-    final today = dayOnly(
-      DateTime.now(),
-    );
-
+    String plural(int s) => s > 1 ? 's' : '';
     if (sets.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    final validDates = sets
-        .map(
-          (set) => dayOnly(
-            set.created,
-          ),
-        )
-        .where(
-          (date) => !date.isAfter(today),
-        )
-        .toList();
-
-    if (validDates.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final mostRecentDay = validDates.reduce(
-      (a, b) => a.isAfter(b) ? a : b,
-    );
-
-    final result = sets
-        .where(
-          (set) => dayOnly(set.created) == mostRecentDay,
-        )
-        .toList();
-
-    var sortedDays = _getExerciseItems(result);
+    var sortedDays = _getExerciseItems(sets);
 
     if (sortedDays.isEmpty) {
       return const SizedBox.shrink();
@@ -1013,44 +886,5 @@ class _HistoryPageWidgetState extends State<_HistoryPageWidget> {
         );
       },
     );
-  }
-
-  bool _sameGymSets(
-    List<GymSet> a,
-    List<GymSet> b,
-  ) {
-    if (identical(a, b)) {
-      return true;
-    }
-
-    if (a.length != b.length) {
-      return false;
-    }
-
-    for (var i = 0; i < a.length; i++) {
-      final aSet = a[i];
-      final bSet = b[i];
-
-      if (aSet.id != bSet.id) {
-        return false;
-      }
-
-      // Also compare values that can change while keeping the same ID.
-      if (aSet.created != bSet.created ||
-          aSet.weight != bSet.weight ||
-          aSet.reps != bSet.reps ||
-          aSet.distance != bSet.distance ||
-          aSet.duration != bSet.duration ||
-          aSet.hidden != bSet.hidden ||
-          aSet.unit != bSet.unit) {
-        return false;
-      }
-
-      if (aSet.exercise?.id != bSet.exercise?.id) {
-        return false;
-      }
-    }
-
-    return true;
   }
 }

@@ -5,7 +5,7 @@ import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/graph/graphs_page.dart';
 import 'package:fossfit/models/constants.dart';
 import 'package:fossfit/plan/plans_page.dart';
-import 'package:fossfit/sets/history_page.dart';
+import 'package:fossfit/sets/workout_page.dart';
 import 'package:fossfit/settings/settings_page.dart';
 import 'package:fossfit/timer/timer_page.dart';
 import 'package:fossfit/timer/timer_progress_widgets.dart';
@@ -42,7 +42,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       key: 'tabs',
     );
 
-    return value.split(',').map((tab) => tab.trim()).where((tab) => tab.isNotEmpty).toList();
+    return value
+        .split(',')
+        .map((tab) => tab.trim())
+        .where((tab) => tab.isNotEmpty)
+        .toList();
   }
 
   void _reloadTabs() {
@@ -98,7 +102,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       key: 'tabs',
     );
 
-    final currentTabs = old.split(',').where((value) => value.isNotEmpty).toList();
+    final currentTabs =
+        old.split(',').where((value) => value.isNotEmpty).toList();
 
     if (currentTabs.length == 1) {
       toast("Can't hide everything!");
@@ -118,7 +123,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _reloadTabs();
 
     toast(
-      'Hid $tab',
+      '$tab hidden',
       action: SnackBarAction(
         label: 'Undo',
         onPressed: () {
@@ -138,8 +143,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     String tab,
   ) {
     switch (tab) {
-      case 'HistoryPage':
-        return HistoryPage(
+      case 'WorkoutPage':
+        return WorkoutPage(
           tabController: controller,
         );
 
@@ -199,7 +204,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 'home-tab-view',
               ),
               controller: controller,
-              physics: scrollableTabs ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
+              physics: scrollableTabs
+                  ? const AlwaysScrollableScrollPhysics()
+                  : const NeverScrollableScrollPhysics(),
               children: tabs.map(_buildTab).toList(),
             ),
             Positioned(

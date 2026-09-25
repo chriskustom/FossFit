@@ -91,7 +91,8 @@ class GymSet {
     return GymSet(
       id: map['id'] as int?,
       bodyWeight: (map['body_weight'] as num).toDouble(),
-      created: DateTime.fromMillisecondsSinceEpoch((map['created'] as num).toInt()),
+      created:
+          DateTime.fromMillisecondsSinceEpoch((map['created'] as num).toInt()),
       distance: (map['distance'] as num).toDouble(),
       duration: (map['duration'] as num).toDouble(),
       hidden: map['hidden'] == 1,
@@ -114,7 +115,7 @@ class GymSet {
             id: (map['exercise_id'] as num).toInt(),
             name: map['exercise_name'] as String,
             cardio: map['exercise_cardio'] == 1,
-            category: map['exercise_category'] as String,
+            category: map['exercise_category'] as String?,
             image: map['exercise_image'] as String?,
           );
 

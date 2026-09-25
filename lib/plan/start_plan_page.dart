@@ -41,7 +41,8 @@ typedef Tapped = ({
   DateTime dateTime,
 });
 
-class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserver {
+class _StartPlanPageState extends State<StartPlanPage>
+    with WidgetsBindingObserver {
   final reps = TextEditingController(text: '0.0');
   final weight = TextEditingController(text: '0.0');
   final notes = TextEditingController();
@@ -99,7 +100,10 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
-    if (state != AppLifecycleState.resumed || rpms == null || !mounted || lastSaved == null) {
+    if (state != AppLifecycleState.resumed ||
+        rpms == null ||
+        !mounted ||
+        lastSaved == null) {
       return;
     }
 
@@ -145,9 +149,12 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
       return;
     }
 
-    final oldSelectedId = selected < planExercises.length ? planExercises[selected].id : null;
+    final oldSelectedId =
+        selected < planExercises.length ? planExercises[selected].id : null;
 
-    final oldExpandedId = expandedIndex != null && expandedIndex! >= 0 && expandedIndex! < planExercises.length
+    final oldExpandedId = expandedIndex != null &&
+            expandedIndex! >= 0 &&
+            expandedIndex! < planExercises.length
         ? planExercises[expandedIndex!].id
         : null;
 
@@ -254,12 +261,16 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
 
     if (exercise == null) return;
 
-    final matchingRpms = rpms!.where((rpm) => rpm.name == exercise.name).toList();
+    final matchingRpms =
+        rpms!.where((rpm) => rpm.name == exercise.name).toList();
 
     if (matchingRpms.isEmpty) return;
 
     final closestRpm = matchingRpms.reduce(
-      (rpm1, rpm2) => (rpm1.weight - parsedWeight).abs() < (rpm2.weight - parsedWeight).abs() ? rpm1 : rpm2,
+      (rpm1, rpm2) => (rpm1.weight - parsedWeight).abs() <
+              (rpm2.weight - parsedWeight).abs()
+          ? rpm1
+          : rpm2,
     );
 
     final estimatedReps = (difference.inMinutes * closestRpm.rpm).clamp(1, 50);
@@ -523,7 +534,8 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
       decoration: InputDecoration(
         labelText: 'Weight ($unit)',
         suffixIcon: Selector<SettingsRepository, bool>(
-          selector: (context, settings) => settings.isEnabled(key: 'show_body_weight'),
+          selector: (context, settings) =>
+              settings.isEnabled(key: 'show_body_weight'),
           builder: (context, showBodyWeight, child) {
             if (!showBodyWeight) {
               return const SizedBox.shrink();
@@ -653,7 +665,8 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     final su = settings.getSetting(key: 'strength_unit');
     final cu = settings.getSetting(key: 'cardio_unit');
 
-    if ((!exercise.cardio && su == 'last-entry') || (exercise.cardio && cu == 'last-entry')) {
+    if ((!exercise.cardio && su == 'last-entry') ||
+        (exercise.cardio && cu == 'last-entry')) {
       unit = gymSet.unit;
     } else if (exercise.cardio) {
       unit = cu;
@@ -718,7 +731,9 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
 
     if (!mounted) return;
 
-    if (!settings.isEnabled(key: 'explained_permissions') && settings.isEnabled(key: 'rest_timers') && !kIsWeb) {
+    if (!settings.isEnabled(key: 'explained_permissions') &&
+        settings.isEnabled(key: 'rest_timers') &&
+        !kIsWeb) {
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -769,15 +784,21 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
       hidden: false,
     );
 
-    final finishedSetCount = count == (maxSets ?? settings.getInt(key: 'max_sets'));
+    final finishedSetCount =
+        count == (maxSets ?? settings.getInt(key: 'max_sets'));
 
-    final finishedPlan = finishedSetCount && selected == planExercises.length - 1;
+    final finishedPlan =
+        finishedSetCount && selected == planExercises.length - 1;
 
-    final isWarmup = count <= (warmupSets ?? settings.getInt(key: 'warmup_sets'));
+    final isWarmup =
+        count <= (warmupSets ?? settings.getInt(key: 'warmup_sets'));
 
     restMs ??= settings.getInt(key: 'timer_duration').toDouble();
 
-    if (!finishedPlan && !isWarmup && settings.isEnabled(key: 'rest_timers') && peTimers) {
+    if (!finishedPlan &&
+        !isWarmup &&
+        settings.isEnabled(key: 'rest_timers') &&
+        peTimers) {
       context.read<TimerState>().startTimer(
             '$exercise ($count)',
             Duration(milliseconds: restMs.toInt()),
@@ -786,7 +807,8 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
           );
     }
 
-    final finishedExercise = finishedSetCount && selected < planExercises.length - 1;
+    final finishedExercise =
+        finishedSetCount && selected < planExercises.length - 1;
 
     final gymSet = await setRepo.insertGymSet(gymSetInsert);
 
@@ -833,7 +855,8 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
   }
 
   double _durationInMinutes() {
-    return (int.tryParse(seconds.text) ?? 0) / 60 + (int.tryParse(minutes.text) ?? 0);
+    return (int.tryParse(seconds.text) ?? 0) / 60 +
+        (int.tryParse(minutes.text) ?? 0);
   }
 
   Future<double?> _getBodyWeight(
@@ -875,7 +898,6 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     if (last == null || !mounted) {
       return;
     }
-    print(selected);
     setState(() {
       _updateGymSetTextFields(last, exercise);
     });
@@ -909,7 +931,8 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
 
     final now = DateTime.now();
 
-    if (now.difference(lastTap.dateTime) >= const Duration(milliseconds: 300) || index != lastTap.index) {
+    if (now.difference(lastTap.dateTime) >= const Duration(milliseconds: 300) ||
+        index != lastTap.index) {
       setState(() {
         lastTap = (
           index: index,
@@ -969,7 +992,8 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
 
           final selectedId = planExercises[selected].id;
 
-          final expandedId = expandedIndex != null ? planExercises[expandedIndex!].id : null;
+          final expandedId =
+              expandedIndex != null ? planExercises[expandedIndex!].id : null;
 
           final item = planExercises.removeAt(oldIndex);
 
@@ -1044,8 +1068,9 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
       max = gymCount.maxSets ?? maxSets;
     }
 
-    final iconColor =
-        index == expandedIndex ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface;
+    final iconColor = index == expandedIndex
+        ? Theme.of(context).colorScheme.primary
+        : Theme.of(context).colorScheme.onSurface;
 
     return GestureDetector(
       key: ValueKey(planItem.id),
@@ -1190,7 +1215,8 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
           ),
         ),
         const SizedBox(width: 8),
-        if (controllers[planItem.id]?.isExpanded == false) ..._buildBlips(max, count),
+        if (controllers[planItem.id]?.isExpanded == false)
+          ..._buildBlips(planItem.exercise!),
       ],
     );
   }
@@ -1242,13 +1268,15 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
     }
   }
 
-  List<Widget> _buildBlips(
-    int max,
-    int count,
-  ) {
+  List<Widget> _buildBlips(Exercise exercise) {
     final items = <Widget>[];
-
-    for (int i = 0; i < max; i++) {
+    var completedSets = _todaySetsStream(exercise).length;
+    var maxSets = widget.plan.exercises
+            ?.where((t) => t.exerciseId == exercise.id)
+            .firstOrNull
+            ?.maxSets ??
+        3;
+    for (int i = 0; i < maxSets; i++) {
       items.add(
         SizedBox(
           width: 10,
@@ -1260,7 +1288,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
             height: 4,
             child: AnimatedFractionallySizedBox(
               alignment: Alignment.centerLeft,
-              widthFactor: count > i ? 1 : 0,
+              widthFactor: completedSets > i ? 1 : 0,
               duration: const Duration(
                 milliseconds: 250,
               ),
@@ -1276,7 +1304,7 @@ class _StartPlanPageState extends State<StartPlanPage> with WidgetsBindingObserv
         ),
       );
 
-      if (i < max - 1) {
+      if (i < maxSets - 1) {
         items.add(
           const SizedBox(width: 6),
         );

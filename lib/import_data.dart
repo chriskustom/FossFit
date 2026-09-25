@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fossfit/db/database_helper.dart';
 
 class ImportData extends StatelessWidget {
@@ -25,6 +26,8 @@ class ImportData extends StatelessWidget {
 
     if (kIsWeb) {
       await _importDatabaseWeb(context);
+      await Future.delayed(const Duration(milliseconds: 2000));
+      SystemNavigator.pop(animated: true);
     } else {
       await _importDatabaseNative(context);
     }

@@ -60,8 +60,9 @@ class _StrengthPageState extends State<StrengthPage> {
   }
 
   void _onTabChanged() {
-    final settings = context.watch<SettingsRepository>();
-    if (widget.tabCtrl.index == settings.getSetting(key: 'tabs').indexOf('GraphsPage')) {
+    final settings = context.read<SettingsRepository>();
+    if (widget.tabCtrl.index ==
+        settings.getSetting(key: 'tabs').indexOf('GraphsPage')) {
       setData();
     }
   }
@@ -70,7 +71,9 @@ class _StrengthPageState extends State<StrengthPage> {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsRepository>();
     final setsRepo = context.watch<GymSetsRepository>();
-    gymSets = setsRepo.gymsets.where((t) => t.exerciseId == widget.exercise.id!).toList();
+    gymSets = setsRepo.gymsets
+        .where((t) => t.exerciseId == widget.exercise.id!)
+        .toList();
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
@@ -92,7 +95,8 @@ class _StrengthPageState extends State<StrengthPage> {
                     exercise: widget.exercise,
                     gymSets: gymSets
                         .where(
-                          (t) => t.exerciseId == widget.exercise.id && !t.hidden,
+                          (t) =>
+                              t.exerciseId == widget.exercise.id && !t.hidden,
                         )
                         .take(20)
                         .toList(),
@@ -267,7 +271,8 @@ class _StrengthPageState extends State<StrengthPage> {
                         child: ListTile(
                           title: const Text('Stop date'),
                           subtitle: Selector<SettingsRepository, String>(
-                            selector: (p0, settings) => settings.getSetting(key: 'short_date_format'),
+                            selector: (p0, settings) =>
+                                settings.getSetting(key: 'short_date_format'),
                             builder: (context, value, child) {
                               if (end == null) return Text(value);
 
@@ -307,7 +312,10 @@ class _StrengthPageState extends State<StrengthPage> {
                     ),
                     Slider(
                       value: limit.toDouble(),
-                      inactiveColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
+                      inactiveColor: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.24),
                       min: 10,
                       max: 100,
                       onChanged: (value) {
@@ -324,7 +332,8 @@ class _StrengthPageState extends State<StrengthPage> {
                   child: data.isEmpty
                       ? const ListTile(title: Text("No data yet."))
                       : Padding(
-                          padding: const EdgeInsets.only(right: 32.0, top: 16.0),
+                          padding:
+                              const EdgeInsets.only(right: 32.0, top: 16.0),
                           child: FlexLine(
                             data: data,
                             spots: spots,
@@ -347,15 +356,16 @@ class _StrengthPageState extends State<StrengthPage> {
 
   Future<void> setData() async {
     if (!mounted) return;
-    final strengthData = await context.read<GymSetsRepository>().getStrengthData(
-          target: target,
-          exerciseId: widget.exercise.id!,
-          metric: metric,
-          period: period,
-          start: start,
-          end: end,
-          limit: limit,
-        );
+    final strengthData =
+        await context.read<GymSetsRepository>().getStrengthData(
+              target: target,
+              exerciseId: widget.exercise.id!,
+              metric: metric,
+              period: period,
+              start: start,
+              end: end,
+              limit: limit,
+            );
     setState(() {
       data = strengthData;
     });
@@ -414,11 +424,9 @@ class _StrengthPageState extends State<StrengthPage> {
     var theseSets = gymSets.where((t) => t.created == row.created).toList();
     switch (metric) {
       case StrengthMetric.oneRepMax:
-        // final ormExpression = theseSets.first.weight / (const CustomExpression<double>('1.0278 - 0.0278 * reps'));
-        // gymSet = await (gymSets.where(
-        //   (tbl) => tbl.created.equals(row.created) & ormExpression.equals(row.value) & tbl.name.equals(widget.name),
-        // )..limit(1))
-        //     .getSingle();
+        gymSet = await context
+            .read<GymSetsRepository>()
+            .getOrmEstimate(row.created, row.value, widget.exercise.name);
         break;
       case StrengthMetric.volume:
         gymSet = theseSets.take(1).first;
@@ -434,7 +442,8 @@ class _StrengthPageState extends State<StrengthPage> {
       case StrengthMetric.relativeStrength:
         gymSet = theseSets
             .where(
-              (tbl) => ((tbl.weight / (tbl.bodyWeight)) == (row.value) || (tbl.weight / (tbl.bodyWeight)).isNaN),
+              (tbl) => ((tbl.weight / (tbl.bodyWeight)) == (row.value) ||
+                  (tbl.weight / (tbl.bodyWeight)).isNaN),
             )
             .take(1)
             .first;

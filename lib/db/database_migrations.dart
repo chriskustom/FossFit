@@ -18,7 +18,7 @@ Future<void> migrateToV2(Database db) async {
     ''');
     await txn.execute('''
   INSERT INTO settings (category, key, value)      
-    SELECT 'appearance', 'theme_mode', COALESCE(CAST(theme_mode AS TEXT), '') FROM settings_old
+    SELECT 'appearance', 'theme_mode', COALESCE(CAST(substr(theme_mode, instr(theme_mode, '.') + 1) AS TEXT), '') FROM settings_old
     UNION ALL
     SELECT 'appearance', 'system_colors', COALESCE(CAST(system_colors AS TEXT), '') FROM settings_old
     UNION ALL
@@ -53,7 +53,7 @@ Future<void> migrateToV2(Database db) async {
     UNION ALL
     SELECT 'plans', 'max_sets', COALESCE(CAST(max_sets AS TEXT), '') FROM settings_old
     UNION ALL
-    SELECT 'plans', 'plan_trailing', COALESCE(CAST(plan_trailing AS TEXT), '') FROM settings_old
+    SELECT 'plans', 'plan_trailing', COALESCE(CAST(substr(plan_trailing, instr(plan_trailing, '.') + 1) AS TEXT), '') FROM settings_old
 
     UNION ALL
     SELECT 'tabs', 'tabs', COALESCE(CAST(tabs AS TEXT), '') FROM settings_old
@@ -259,13 +259,14 @@ Future<void> migrateToV2(Database db) async {
           pe.id,
           pe.enabled,
           pe.timers,
-          pe.max_sets,
+          COALESCE(CAST(pe.max_sets AS INTEGER), 3),
           pe.plan_id,
           pe.warmup_sets,
           pe.sequence,
           e.id
         FROM plan_exercises pe
-        INNER JOIN exercises e ON e.name = pe.exercise;
+        INNER JOIN exercises e ON e.name = pe.exercise
+        WHERE pe.enabled;
       ''');
     //drop and rename
     await txn.execute('DROP TABLE plan_exercises;');

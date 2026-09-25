@@ -116,8 +116,8 @@ class BottomNav extends StatelessWidget {
 
 IconData _getIconForTab(String tab) {
   switch (tab) {
-    case 'HistoryPage':
-      return Icons.history_rounded;
+    case 'WorkoutPage':
+      return Icons.fitness_center;
     case 'PlansPage':
       return Icons.calendar_today_rounded;
     case 'GraphsPage':
@@ -135,8 +135,8 @@ IconData _getIconForTab(String tab) {
 
 String _getLabelForTab(String tab) {
   switch (tab) {
-    case 'HistoryPage':
-      return 'History';
+    case 'WorkoutPage':
+      return 'Workout';
     case 'PlansPage':
       return 'Plans';
     case 'GraphsPage':

@@ -1,9 +1,7 @@
 {
   "git.detectSubmodules": false,
   "git.detectSubmodulesLimit": 0,
-  "dart.analysisExcludedFolders": [
-    "flutter"
-  ],
+  "dart.analysisExcludedFolders": ["flutter"],
   "files.exclude": {
     "**/.git": true,
     "**/.svn": true,
@@ -18,7 +16,7 @@
     "source.fixAll": "always",
     "source.organizeImports": "always"
   },
-  "dart.flutterSdkPath": "C:\\Users\\sitcxs4\\Flutter\\flutter\\bin",
+  "dart.flutterSdkPath": "/home/chris/Flutter/flutter/",
   "C_Cpp_Runner.cCompilerPath": "gcc",
   "C_Cpp_Runner.cppCompilerPath": "g++",
   "C_Cpp_Runner.debuggerPath": "gdb",
@@ -58,10 +56,7 @@
   "C_Cpp_Runner.compilerArgs": [],
   "C_Cpp_Runner.linkerArgs": [],
   "C_Cpp_Runner.includePaths": [],
-  "C_Cpp_Runner.includeSearch": [
-    "*",
-    "**/*"
-  ],
+  "C_Cpp_Runner.includeSearch": ["*", "**/*"],
   "C_Cpp_Runner.excludeSearch": [
     "**/build",
     "**/build/**",

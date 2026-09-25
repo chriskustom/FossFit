@@ -16,10 +16,12 @@ class GymSetsRepository extends ChangeNotifier {
   final Database _db;
 
   List<GymSet> _gymsets = [];
+  List<GymSet> _latestgymsets = [];
 
   GymSetsRepository(this._db);
 
   List<GymSet> get gymsets => List.unmodifiable(_gymsets);
+  List<GymSet> get latestgymsets => List.unmodifiable(_latestgymsets);
 
   // ---------------------------------------------------------------------------
   // Loading
@@ -45,7 +47,7 @@ class GymSetsRepository extends ChangeNotifier {
     ''');
 
     _gymsets = rows.map(GymSet.fromJoinedMap).toList();
-
+    await _loadLatestWorkout();
     notifyListeners();
   }
 
@@ -305,7 +307,7 @@ class GymSetsRepository extends ChangeNotifier {
         return """
           STRFTIME(
             '%Y-%m-%d',
-            DATE(created, 'unixepoch', 'localtime')
+            DATE(created / 1000, 'unixepoch', 'localtime')
           )
         """;
 
@@ -313,7 +315,7 @@ class GymSetsRepository extends ChangeNotifier {
         return """
           STRFTIME(
             '%Y-%m-%W',
-            DATE(created, 'unixepoch', 'localtime')
+            DATE(created / 1000, 'unixepoch', 'localtime')
           )
         """;
 
@@ -321,7 +323,7 @@ class GymSetsRepository extends ChangeNotifier {
         return """
           STRFTIME(
             '%Y-%m',
-            DATE(created, 'unixepoch', 'localtime')
+            DATE(created / 1000, 'unixepoch', 'localtime')
           )
         """;
 
@@ -329,7 +331,7 @@ class GymSetsRepository extends ChangeNotifier {
         return """
           STRFTIME(
             '%Y',
-            DATE(created, 'unixepoch', 'localtime')
+            DATE(created / 1000, 'unixepoch', 'localtime')
           )
         """;
     }
@@ -520,6 +522,32 @@ class GymSetsRepository extends ChangeNotifier {
     }
   }
 
+  Future<GymSet> getOrmEstimate(
+    DateTime date,
+    double value,
+    String name,
+  ) async {
+    final created = date.millisecondsSinceEpoch;
+
+    final result = await _db.rawQuery(
+      '''
+    SELECT *
+    FROM gymSets
+    WHERE created = ?
+      AND ABS(weight / (1.0278 - 0.0278 * reps) - ?) < 0.001
+      AND name = ?
+    LIMIT 1
+    ''',
+      [created, value, name],
+    );
+
+    if (result.isEmpty) {
+      throw Exception('No matching GymSet found');
+    }
+
+    return GymSet.fromMap(result.first);
+  }
+
   // ---------------------------------------------------------------------------
   // RPM
   // ---------------------------------------------------------------------------
@@ -624,7 +652,8 @@ class GymSetsRepository extends ChangeNotifier {
       args.add(toUnixSeconds(end));
     }
 
-    final repsExpression = metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
+    final repsExpression =
+        metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
 
     final sql = '''
       SELECT
@@ -710,59 +739,61 @@ class GymSetsRepository extends ChangeNotifier {
     final groupBy = getCreatedSql(period);
 
     final where = <String>[
-      'hidden = 0',
-      'category IS NOT NULL',
+      'e.category IS NOT NULL',
+      'g.hidden = 0',
     ];
 
     final args = <dynamic>[];
 
     if (start != null) {
-      where.add('created >= ?');
+      where.add('g.created >= ?');
       args.add(toUnixSeconds(start));
     }
 
     if (end != null) {
-      where.add('created < ?');
+      where.add('g.created < ?');
       args.add(toUnixSeconds(end));
     }
 
-    final repsExpression = metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
+    final repsExpression = metric == StrengthMetric.bestReps
+        ? 'MAX(g.reps) AS max_reps'
+        : 'g.reps';
 
     final sql = '''
-      SELECT
-        MAX(weight) AS max_weight,
+    SELECT
+      MAX(g.weight) AS max_weight,
 
-        ${getVolumeSql()} AS volume,
+      ${getVolumeSql()} AS volume,
 
-        ${getOrmSql()} AS orm,
+      ${getOrmSql()} AS orm,
 
-        created,
+      g.created,
 
-        $repsExpression,
+      $repsExpression,
 
-        unit,
+      g.unit,
 
-        ${getRelativeSql()} AS relative_strength,
+      ${getRelativeSql()} AS relative_strength,
 
-        category
+      e.category AS category
 
-      FROM ${TableName.gymsets.name}
+    FROM ${TableName.gymsets.name} g
 
-      WHERE ${where.join(' AND ')}
+    JOIN ${TableName.exercises.name} e
+      ON g.exercise_id = e.id
 
-      GROUP BY category, $groupBy
+    WHERE ${where.join(' AND ')}
 
-      ORDER BY $groupBy DESC
+    GROUP BY e.category, $groupBy
 
-      LIMIT ?
-    ''';
+    ORDER BY $groupBy DESC
+
+    LIMIT ?
+  ''';
 
     args.add(limit);
 
-    final results = await _db.rawQuery(
-      sql,
-      args,
-    );
+    final results = await _db.rawQuery(sql, args);
 
     final list = <StrengthData>[];
 
@@ -808,7 +839,7 @@ class GymSetsRepository extends ChangeNotifier {
     final results = await _db.rawQuery(
       '''
       SELECT category
-      FROM ${TableName.gymsets.name}
+      FROM ${TableName.exercises.name}
       WHERE category IS NOT NULL
       GROUP BY category
       ''',
@@ -817,22 +848,6 @@ class GymSetsRepository extends ChangeNotifier {
     return results
         .map(
           (result) => result['category'] as String?,
-        )
-        .toList();
-  }
-
-  Future<List<String>> getCategoriesList() async {
-    final results = await _db.rawQuery(
-      '''
-      SELECT DISTINCT category
-      FROM ${TableName.gymsets.name}
-      WHERE category IS NOT NULL
-      ''',
-    );
-
-    return results
-        .map(
-          (result) => result['category'] as String? ?? '',
         )
         .toList();
   }
@@ -1026,5 +1041,18 @@ class GymSetsRepository extends ChangeNotifier {
 
     // Keep the in-memory cache consistent after conversions.
     await loadAll();
+  }
+
+  Future<void> _loadLatestWorkout() async {
+    DateTime dayOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+    final today = dayOnly(DateTime.now());
+    if (_gymsets.isEmpty) _latestgymsets = [];
+    final mostRecentDay = _gymsets
+        .map((s) => dayOnly(s.created))
+        .where((d) => !d.isAfter(today))
+        .reduce((a, b) => a.isAfter(b) ? a : b);
+
+    _latestgymsets =
+        _gymsets.where((s) => dayOnly(s.created) == mostRecentDay).toList();
   }
 }

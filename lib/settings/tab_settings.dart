@@ -21,7 +21,7 @@ typedef TabSetting = ({
 
 class _TabSettingsRepository extends State<TabSettings> {
   List<TabSetting> tabs = [
-    (name: 'HistoryPage', enabled: false),
+    (name: 'WorkoutPage', enabled: false),
     (name: 'PlansPage', enabled: false),
     (name: 'GraphsPage', enabled: false),
     (name: 'CalendarPage', enabled: false),
@@ -84,7 +84,7 @@ class _TabSettingsRepository extends State<TabSettings> {
                 },
                 itemBuilder: (context, index) {
                   final tab = tabs[index];
-                  if (tab.name == 'HistoryPage') {
+                  if (tab.name == 'WorkoutPage') {
                     return ListTile(
                       key: Key(tab.name),
                       onTap: () => setTab(tab.name, !tab.enabled),

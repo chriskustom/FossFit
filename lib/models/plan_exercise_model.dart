@@ -80,7 +80,7 @@ class PlanExercise {
             id: (map['exercise_joined_id'] as num).toInt(),
             name: map['exercise_name'] as String,
             cardio: map['exercise_cardio'] == 1,
-            category: map['exercise_category'] as String,
+            category: map['exercise_category'] as String?,
             image: map['exercise_image'] as String?,
           );
 

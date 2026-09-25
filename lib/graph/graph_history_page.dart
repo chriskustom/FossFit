@@ -3,7 +3,7 @@ import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/models/exercise_model.dart';
 import 'package:fossfit/models/gym_set_model.dart';
-import 'package:fossfit/sets/history_list.dart';
+import 'package:fossfit/sets/workout_list.dart';
 import 'package:provider/provider.dart';
 
 class GraphHistoryPage extends StatefulWidget {
@@ -43,7 +43,7 @@ class _GraphHistoryPageState extends State<GraphHistoryPage> {
               subtitle: const Text("Enter some data to view graphs here"),
             );
 
-          return HistoryList(
+          return WorkoutList(
             scroll: scroll,
             sets: sets,
             onSelect: (_) {},
@@ -81,7 +81,7 @@ class _GraphHistoryPageState extends State<GraphHistoryPage> {
 
   void setSets() async {
     final result = context
-        .watch<GymSetsRepository>()
+        .read<GymSetsRepository>()
         .gymsets
         .where(
           (e) => !e.hidden && e.exerciseId == widget.exercise.id,

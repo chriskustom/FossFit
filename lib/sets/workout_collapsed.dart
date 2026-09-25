@@ -5,39 +5,39 @@ import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/models/exercise_model.dart';
 import 'package:fossfit/models/gym_set_model.dart';
-import 'package:fossfit/sets/edit_set_page.dart';
 import 'package:fossfit/utils.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:sticky_headers/sticky_headers/widget.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-class HistoryCollapsed extends StatefulWidget {
+class WorkoutCollapsed extends StatefulWidget {
   final List<ExerciseItem> days;
   final ScrollController scroll;
   final Function(int) onSelect;
+  final Function(GymSet) onEdit;
   final Set<int> selected;
-  final Function onNext;
-  const HistoryCollapsed({
+  const WorkoutCollapsed({
     super.key,
     required this.days,
     required this.onSelect,
+    required this.onEdit,
     required this.selected,
-    required this.onNext,
     required this.scroll,
   });
 
   @override
-  State<HistoryCollapsed> createState() => _HistoryCollapsedState();
+  State<WorkoutCollapsed> createState() => _WorkoutCollapsedState();
 }
 
-class _HistoryCollapsedState extends State<HistoryCollapsed> {
-  bool goingNext = false;
+class _WorkoutCollapsedState extends State<WorkoutCollapsed> {
   Map<DateTime, List<ExerciseItem>> _grouped = {};
   @override
   Widget build(BuildContext context) {
-    final showImages = context.watch<SettingsRepository>().isEnabled(key: 'show_images');
-    final sortedDays = List<ExerciseItem>.from(widget.days)..sort((a, b) => b.date.compareTo(a.date));
+    final showImages =
+        context.watch<SettingsRepository>().isEnabled(key: 'show_images');
+    final sortedDays = List<ExerciseItem>.from(widget.days)
+      ..sort((a, b) => b.date.compareTo(a.date));
     _grouped = _groupByDay(sortedDays);
 
     return ListView.builder(
@@ -63,7 +63,7 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: List.generate(
               sets.length,
-              (index) => historyChildren(sets[index], context, showImages),
+              (index) => workoutChildren(sets[index], context, showImages),
             ),
           ),
         );
@@ -74,7 +74,6 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
   @override
   void dispose() {
     super.dispose();
-    widget.scroll.removeListener(scrollListener);
   }
 
   Widget _buildSectionDivider(DateTime date, List<ExerciseItem> day) {
@@ -98,7 +97,8 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
         );
       },
       onLongPressStart: (details) {
-        final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+        final overlay =
+            Overlay.of(context).context.findRenderObject() as RenderBox;
         showMenu(
           context: context,
           position: RelativeRect.fromRect(
@@ -155,7 +155,8 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
             const Icon(Icons.today, size: 16),
             const SizedBox(width: 4),
             Text(
-              DateFormat(settings.getSetting(key: 'short_date_format')).format(date),
+              DateFormat(settings.getSetting(key: 'short_date_format'))
+                  .format(date),
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(width: 4),
@@ -166,14 +167,15 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
     );
   }
 
-  Widget historyChildren(
+  Widget workoutChildren(
     ExerciseItem history,
     BuildContext context,
     bool showImages,
   ) {
     return GestureDetector(
       onLongPressStart: (details) {
-        final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+        final overlay =
+            Overlay.of(context).context.findRenderObject() as RenderBox;
         showMenu(
           context: context,
           position: RelativeRect.fromRect(
@@ -228,12 +230,16 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
         children: history.sets.reversed.toList().map(
           (gymSet) {
             final minutes = (gymSet.duration ?? 0).floor();
-            final seconds = (((gymSet.duration ?? 0) * 60) % 60).floor().toString().padLeft(2, '0');
+            final seconds = (((gymSet.duration ?? 0) * 60) % 60)
+                .floor()
+                .toString()
+                .padLeft(2, '0');
             final distance = toString((gymSet.distance ?? 0));
             final reps = toString(gymSet.reps);
             final weight = toString(gymSet.weight);
             String incline = '';
-            if (gymSet.incline != null && gymSet.incline! > 0) incline = '@ ${gymSet.incline}%';
+            if (gymSet.incline != null && gymSet.incline! > 0)
+              incline = '@ ${gymSet.incline}%';
 
             Widget? leading = SizedBox(
               height: 24,
@@ -246,7 +252,9 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
               ),
             );
 
-            if (widget.selected.isEmpty && showImages && gymSet.exercise?.hasImage() == true) {
+            if (widget.selected.isEmpty &&
+                showImages &&
+                gymSet.exercise?.hasImage() == true) {
               leading = GestureDetector(
                 onTap: () => widget.onSelect(gymSet.id!),
                 child: Container(
@@ -260,7 +268,8 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
                     width: 24,
                     height: 24,
                     File(gymSet.exercise!.image!),
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.error),
                   ),
                 ),
               );
@@ -277,7 +286,9 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
                   ),
                   child: Center(
                     child: Text(
-                      gymSet.exercise!.name.isNotEmpty ? gymSet.exercise!.name[0].toUpperCase() : '?',
+                      gymSet.exercise!.name.isNotEmpty
+                          ? gymSet.exercise!.name[0].toUpperCase()
+                          : '?',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -309,7 +320,8 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
               ),
               selected: widget.selected.contains(gymSet.id),
               trailing: Selector<SettingsRepository, String>(
-                selector: (context, settings) => settings.getSetting(key: 'short_date_format'),
+                selector: (context, settings) =>
+                    settings.getSetting(key: 'short_date_format'),
                 builder: (context, dateFormat, child) => Text(
                   dateFormat == 'timeago'
                       ? timeago.format(gymSet.created)
@@ -319,16 +331,11 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
               onLongPress: () {
                 widget.onSelect(gymSet.id!);
               },
-              onTap: () {
+              onTap: () async {
                 if (widget.selected.isNotEmpty)
                   widget.onSelect(gymSet.id!);
                 else
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => EditSetPage(gymSet: gymSet),
-                    ),
-                  );
+                  widget.onEdit(gymSet);
               },
             );
           },
@@ -375,7 +382,8 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
 
     var sortedDays = sets;
     sortedDays.sort((a, b) => a.date.compareTo(b.date));
-    var totalWorkout = sortedDays.where((d) => d.date == sortedDays.first.date).toList();
+    var totalWorkout =
+        sortedDays.where((d) => d.date == sortedDays.first.date).toList();
 
     var cardioUnit = totalWorkout.first.sets.any((n) => n.exercise!.cardio)
         ? totalWorkout.first.sets.firstWhere((n) => n.exercise!.cardio).unit
@@ -419,7 +427,8 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
                 Text(
                   '${num.parse(totalWeight.toStringAsFixed(3))}$weightUnit total lifted',
                 ),
-              if (totalDistance > 0) Text('$totalDistance$cardioUnit total travelled'),
+              if (totalDistance > 0)
+                Text('$totalDistance$cardioUnit total travelled'),
             ],
           ),
         );
@@ -529,20 +538,5 @@ class _HistoryCollapsedState extends State<HistoryCollapsed> {
   @override
   void initState() {
     super.initState();
-    widget.scroll.addListener(scrollListener);
-  }
-
-  void scrollListener() {
-    if (widget.scroll.position.pixels < widget.scroll.position.maxScrollExtent - 200 || goingNext) return;
-    setState(() {
-      goingNext = true;
-    });
-    try {
-      widget.onNext();
-    } finally {
-      setState(() {
-        goingNext = false;
-      });
-    }
   }
 }

@@ -9,7 +9,6 @@ import 'package:fossfit/graph/cardio_page.dart';
 import 'package:fossfit/graph/strength_page.dart';
 import 'package:fossfit/models/exercise_model.dart';
 import 'package:fossfit/models/gym_set_model.dart';
-import 'package:fossfit/utils.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -19,7 +18,8 @@ class GraphTile extends StatelessWidget {
   final Set<Exercise> selected;
   final Function(Exercise?) onSelect;
   final TabController tabCtrl;
-  final bool timeBasedXAxis; // new flag to control x-axis behaviour
+  final bool timeBasedXAxis;
+  final Widget? peekGraph;
 
   const GraphTile({
     super.key,
@@ -27,24 +27,19 @@ class GraphTile extends StatelessWidget {
     required this.onSelect,
     required this.gymSet,
     required this.tabCtrl,
+    this.peekGraph,
     this.timeBasedXAxis = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final gymSetRepo = context.watch<GymSetsRepository>();
-    String trailing;
     final showImages = context.select<SettingsRepository, bool>(
       (settings) => settings.isEnabled(key: 'show_images'),
     );
-    var exercise = context.watch<ExercisesRepository>().getExerciseById(gymSet.exerciseId)!;
-    if (exercise.cardio == true) {
-      final minutes = gymSet.duration!.floor();
-      final seconds = ((gymSet.duration! * 60) % 60).floor().toString().padLeft(2, '0');
-      trailing = "${toString(gymSet.distance ?? 0)} ${gymSet.unit} / $minutes:$seconds";
-    } else {
-      trailing = "${toString(gymSet.reps)} x ${toString(gymSet.weight)} ${gymSet.unit}";
-    }
+    var exercise = context
+        .watch<ExercisesRepository>()
+        .getExerciseById(gymSet.exerciseId)!;
 
     Widget? leading = SizedBox(
       height: 24,
@@ -115,15 +110,15 @@ class GraphTile extends StatelessWidget {
       child: ListTile(
         leading: leading,
         title: Text(exercise.name),
-        subtitle: Selector<SettingsRepository, String>(
-          selector: (context, settings) => settings.getSetting(key: 'long_date_format'),
+        subtitle: peekGraph,
+        trailing: Selector<SettingsRepository, String>(
+          selector: (context, settings) =>
+              settings.getSetting(key: 'long_date_format'),
           builder: (context, dateFormat, child) => Text(
-            dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat(dateFormat).format(gymSet.created),
+            dateFormat == 'timeago'
+                ? timeago.format(gymSet.created)
+                : DateFormat(dateFormat).format(gymSet.created),
           ),
-        ),
-        trailing: Text(
-          trailing,
-          style: const TextStyle(fontSize: 16),
         ),
         onTap: () async {
           if (selected.isNotEmpty) {

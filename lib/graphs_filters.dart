@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fossfit/db/repositories/gym_sets_repository.dart';
+import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:provider/provider.dart';
 
 import 'constants.dart';
@@ -35,7 +35,7 @@ class _GraphsFiltersState extends State<GraphsFilters> {
       isLabelVisible: count > 0,
       backgroundColor: Theme.of(context).colorScheme.primary,
       child: FutureBuilder(
-        future: context.watch<GymSetsRepository>().getCategoriesList(),
+        future: context.watch<ExercisesRepository>().getDistinctCategories(),
         builder: (context, snapshot) {
           return PopupMenuButton(
             tooltip: "Filter",

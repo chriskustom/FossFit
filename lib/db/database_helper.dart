@@ -119,7 +119,7 @@ class DatabaseHelper {
           show_units INTEGER NOT NULL CHECK (show_units IN (0, 1)),
           strength_unit TEXT NOT NULL,
           system_colors INTEGER NOT NULL CHECK (system_colors IN (0, 1)), 
-          tabs TEXT NOT NULL DEFAULT 'HistoryPage,PlansPage,GraphsPage,TimerPage',
+          tabs TEXT NOT NULL DEFAULT 'WorkoutPage,PlansPage,GraphsPage,TimerPage',
           theme_mode TEXT NOT NULL,
           timer_duration INTEGER NOT NULL,
           vibrate INTEGER NOT NULL CHECK (vibrate IN (0, 1)), 
@@ -132,7 +132,7 @@ class DatabaseHelper {
     await db.execute('''
       INSERT INTO settings
       (alarm_sound, automatic_backups, backup_path, cardio_unit, curve_lines, curve_smoothness, duration_estimation, enable_sound, explained_permissions, group_history, long_date_format, max_sets, notifications, peek_graph, plan_trailing, rep_estimation, rest_timers, short_date_format, show_body_weight, show_categories, show_images, show_notes, show_global_progress, show_units, strength_unit, system_colors, tabs, theme_mode, timer_duration, vibrate, warmup_sets, scrollable_tabs, stats_panel)
-      VALUES('', 0, '', 'km', 1, 0.1, 0, 0, 0, 1, 'EEE, dd.MM.yyyy H:mm', 3, 0, 0, 'reorder', 0, 0, 'd/M/yy', 0, 1, 1, 1, 0, 1, 'kg', 1, 'HistoryPage,PlansPage,GraphsPage,SettingsPage', 'system', 120000, 1, 0, 0, 1);
+      VALUES('', 0, '', 'km', 1, 0.1, 0, 0, 0, 1, 'EEE, dd.MM.yyyy H:mm', 3, 0, 0, 'reorder', 0, 0, 'd/M/yy', 0, 1, 1, 1, 0, 1, 'kg', 1, 'WorkoutPage,PlansPage,GraphsPage,SettingsPage', 'system', 120000, 1, 0, 0, 1);
       ''');
 
     await db.execute('''
@@ -272,13 +272,13 @@ class DatabaseHelper {
       final tempPath = join(dbDir, 'temp_import.db');
 
       // 1️⃣ Validate imported version
-      final importedDb = await openDatabase(importedPath, readOnly: true);
+      final importedDb = await openDatabase(importedPath, readOnly: false);
       var importedVersion = await _getUserVersion(importedDb);
 
       ///old flexify db. Reset version to allow migrations
       if (importedPath.endsWith('sqlite')) {
-        importedDb.rawQuery('PRAGMA user_version = 1;');
-        importedVersion = 1;
+        await importedDb.rawQuery('PRAGMA user_version = 1;');
+        importedVersion = await _getUserVersion(importedDb);
       }
       await importedDb.close();
 
@@ -315,7 +315,9 @@ class DatabaseHelper {
 
       // 5️⃣ Reopen normally
       _database = await _openDb(targetPath);
-
+      while (!_database!.isOpen) {
+        sleep(Duration(seconds: 1));
+      }
       return 'Database imported and migrated successfully';
     } catch (e) {
       return 'Failed to import database: $e';

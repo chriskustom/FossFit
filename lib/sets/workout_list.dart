@@ -10,7 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:sticky_headers/sticky_headers.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-class HistoryList extends StatefulWidget {
+class WorkoutList extends StatefulWidget {
   final List<GymSet> sets;
   final ScrollController scroll;
   final Function(int) onSelect;
@@ -18,7 +18,7 @@ class HistoryList extends StatefulWidget {
   final Function onNext;
   final bool? peek;
 
-  const HistoryList({
+  const WorkoutList({
     super.key,
     required this.sets,
     required this.onSelect,
@@ -29,10 +29,10 @@ class HistoryList extends StatefulWidget {
   });
 
   @override
-  State<HistoryList> createState() => _HistoryListState();
+  State<WorkoutList> createState() => _WorkoutListState();
 }
 
-class _HistoryListState extends State<HistoryList> {
+class _WorkoutListState extends State<WorkoutList> {
   bool goingNext = false;
   final GlobalKey<AnimatedListState> _key = GlobalKey<AnimatedListState>();
   List<GymSet> _current = [];
@@ -47,7 +47,7 @@ class _HistoryListState extends State<HistoryList> {
   }
 
   @override
-  void didUpdateWidget(HistoryList oldWidget) {
+  void didUpdateWidget(WorkoutList oldWidget) {
     super.didUpdateWidget(oldWidget);
 
     final toRemove = _current
@@ -122,7 +122,8 @@ class _HistoryListState extends State<HistoryList> {
     bool showImages,
   ) {
     final minutes = (gymSet.duration ?? 0).floor();
-    final seconds = (((gymSet.duration ?? 0) * 60) % 60).floor().toString().padLeft(2, '0');
+    final seconds =
+        (((gymSet.duration ?? 0) * 60) % 60).floor().toString().padLeft(2, '0');
     final distance = toString((gymSet.distance ?? 0));
     final reps = toString(gymSet.reps);
     final weight = toString(gymSet.weight);
@@ -140,7 +141,9 @@ class _HistoryListState extends State<HistoryList> {
       ),
     );
 
-    if (widget.selected.isEmpty && showImages && gymSet.exercise?.hasImage() == true) {
+    if (widget.selected.isEmpty &&
+        showImages &&
+        gymSet.exercise?.hasImage() == true) {
       leading = Container(
         width: 24,
         height: 24,
@@ -154,7 +157,8 @@ class _HistoryListState extends State<HistoryList> {
             width: 24,
             height: 24,
             File(gymSet.exercise!.image!),
-            errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
+            errorBuilder: (context, error, stackTrace) =>
+                const Icon(Icons.error),
           ),
         ),
       );
@@ -171,7 +175,9 @@ class _HistoryListState extends State<HistoryList> {
           ),
           child: Center(
             child: Text(
-              gymSet.exercise!.name.isNotEmpty ? gymSet.exercise!.name[0].toUpperCase() : '?',
+              gymSet.exercise!.name.isNotEmpty
+                  ? gymSet.exercise!.name[0].toUpperCase()
+                  : '?',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -186,14 +192,19 @@ class _HistoryListState extends State<HistoryList> {
 
     leading = AnimatedSwitcher(
       duration: const Duration(milliseconds: 150),
-      transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+      transitionBuilder: (child, animation) =>
+          ScaleTransition(scale: animation, child: child),
       child: leading,
     );
 
     String trailing = "$reps REPS @ $weight ${gymSet.unit}";
-    if (gymSet.exercise!.cardio && (gymSet.unit == 'kg' || gymSet.unit == 'lb' || gymSet.unit == 'stone')) {
+    if (gymSet.exercise!.cardio &&
+        (gymSet.unit == 'kg' ||
+            gymSet.unit == 'lb' ||
+            gymSet.unit == 'stone')) {
       trailing = "$weight ${gymSet.unit} / $minutes:$seconds $incline";
-    } else if (gymSet.exercise!.cardio && (gymSet.unit == 'km' || gymSet.unit == 'mi' || gymSet.unit == 'kcal')) {
+    } else if (gymSet.exercise!.cardio &&
+        (gymSet.unit == 'km' || gymSet.unit == 'mi' || gymSet.unit == 'kcal')) {
       trailing = "$distance ${gymSet.unit} / $minutes:$seconds $incline";
     }
 
@@ -223,9 +234,11 @@ class _HistoryListState extends State<HistoryList> {
     final title = Text(
       _peek ? "${_getSetNumber(gymSet)}: $trailing" : gymSet.exercise!.name,
     );
-    final dateFormat = context.watch<SettingsRepository>().getSetting(key: 'long_date_format');
+    final dateFormat =
+        context.watch<SettingsRepository>().getSetting(key: 'long_date_format');
 
-    final subtitle = dateFormat == 'timeago' ? Text(timeago.format(gymSet.created)) : null;
+    final subtitle =
+        dateFormat == 'timeago' ? Text(timeago.format(gymSet.created)) : null;
 
     return ListTile(
       dense: true,
@@ -234,9 +247,12 @@ class _HistoryListState extends State<HistoryList> {
       title: title,
       subtitle: subtitle,
       trailing: Selector<SettingsRepository, String>(
-        selector: (context, settings) => settings.getSetting(key: 'short_date_format'),
+        selector: (context, settings) =>
+            settings.getSetting(key: 'short_date_format'),
         builder: (context, dateFormat, child) => Text(
-          dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
+          dateFormat == 'timeago'
+              ? timeago.format(gymSet.created)
+              : DateFormat("HH:mm a").format(gymSet.created),
         ),
       ),
       onLongPress: () => widget.onSelect(gymSet.id!),
@@ -273,7 +289,8 @@ class _HistoryListState extends State<HistoryList> {
 
   @override
   Widget build(BuildContext context) {
-    final showImages = context.watch<SettingsRepository>().isEnabled(key: 'show_images');
+    final showImages =
+        context.watch<SettingsRepository>().isEnabled(key: 'show_images');
     _grouped = _groupByDay(_current);
 
     return ListView.builder(
@@ -305,7 +322,9 @@ class _HistoryListState extends State<HistoryList> {
   }
 
   void scrollListener() {
-    if (widget.scroll.position.pixels < widget.scroll.position.maxScrollExtent - 200 || goingNext) return;
+    if (widget.scroll.position.pixels <
+            widget.scroll.position.maxScrollExtent - 200 ||
+        goingNext) return;
     setState(() {
       goingNext = true;
     });
@@ -325,7 +344,8 @@ class _HistoryListState extends State<HistoryList> {
   }
 
   Widget _buildSectionDivider(DateTime date) {
-    final format = context.read<SettingsRepository>().getSetting(key: 'short_date_format');
+    final format =
+        context.read<SettingsRepository>().getSetting(key: 'short_date_format');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -405,5 +425,6 @@ class DateHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get minExtent => 44;
 
   @override
-  bool shouldRebuild(DateHeaderDelegate oldDelegate) => oldDelegate.date != date;
+  bool shouldRebuild(DateHeaderDelegate oldDelegate) =>
+      oldDelegate.date != date;
 }

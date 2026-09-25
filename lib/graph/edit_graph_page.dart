@@ -111,8 +111,9 @@ class _EditGraphPageState extends State<EditGraphPage> {
                 builder: (context, showCategories, child) {
                   if (!showCategories) return const SizedBox();
                   return FutureBuilder(
-                    future:
-                        context.watch<GymSetsRepository>().getCategoriesList(),
+                    future: context
+                        .watch<ExercisesRepository>()
+                        .getDistinctCategories(),
                     builder: (context, snapshot) {
                       return DropdownButtonFormField(
                         decoration:
