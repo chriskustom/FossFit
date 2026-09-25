@@ -20,6 +20,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+  late final SettingsRepository settings;
   late TabController controller;
 
   List<String> tabs = [];
@@ -28,12 +29,26 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
-    final settings = context.read<SettingsRepository>();
+    settings = context.read<SettingsRepository>();
+
     tabs = _readTabs(settings);
 
-    controller = TabController(
+    controller = _createController(
+      tabs,
+      initialIndex: 0,
+    );
+
+    settings.addListener(_onSettingsChanged);
+  }
+
+  TabController _createController(
+    List<String> tabs, {
+    required int initialIndex,
+  }) {
+    return TabController(
       length: tabs.length,
       vsync: this,
+      initialIndex: tabs.isEmpty ? 0 : initialIndex.clamp(0, tabs.length - 1),
     );
   }
 
@@ -49,8 +64,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         .toList();
   }
 
+  void _onSettingsChanged() {
+    if (!mounted) {
+      return;
+    }
+
+    _reloadTabs();
+  }
+
   void _reloadTabs() {
-    final settings = context.read<SettingsRepository>();
     final newTabs = _readTabs(settings);
 
     if (_sameTabs(tabs, newTabs)) {
@@ -58,19 +80,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
 
     final oldIndex = controller.index;
-
-    controller.dispose();
+    final oldController = controller;
 
     tabs = newTabs;
 
-    controller = TabController(
-      length: tabs.length,
-      vsync: this,
-      initialIndex: oldIndex.clamp(
-        0,
-        tabs.length - 1,
-      ),
+    controller = _createController(
+      tabs,
+      initialIndex: oldIndex,
     );
+
+    oldController.dispose();
 
     setState(() {});
   }
@@ -96,14 +115,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     BuildContext context,
     String tab,
   ) {
-    final settings = context.read<SettingsRepository>();
-
     final old = settings.getSetting(
       key: 'tabs',
     );
 
-    final currentTabs =
-        old.split(',').where((value) => value.isNotEmpty).toList();
+    final currentTabs = old
+        .split(',')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
 
     if (currentTabs.length == 1) {
       toast("Can't hide everything!");
@@ -112,15 +132,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     currentTabs.remove(tab);
 
-    final newValue = currentTabs.join(',');
-
     settings.setSetting(
       category: SettingCategory.tabs,
       key: 'tabs',
-      value: newValue,
+      value: currentTabs.join(','),
     );
-
-    _reloadTabs();
 
     toast(
       '$tab hidden',
@@ -132,16 +148,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             key: 'tabs',
             value: old,
           );
-
-          _reloadTabs();
         },
       ),
     );
   }
 
-  Widget _buildTab(
-    String tab,
-  ) {
+  Widget _buildTab(String tab) {
     switch (tab) {
       case 'WorkoutPage':
         return WorkoutPage(
@@ -178,8 +190,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsRepository>();
-
     final scrollableTabs = settings.isEnabled(
       key: 'scrollable_tabs',
     );
@@ -200,9 +210,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child: Stack(
           children: [
             TabBarView(
-              key: const PageStorageKey<String>(
-                'home-tab-view',
-              ),
+              key: ValueKey(tabs.join(',')),
               controller: controller,
               physics: scrollableTabs
                   ? const AlwaysScrollableScrollPhysics()
@@ -231,10 +239,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       controller.animateTo(index);
                     },
                     onLongPress: (ctx, tab) {
-                      hideTab(
-                        ctx,
-                        tab,
-                      );
+                      hideTab(ctx, tab);
                     },
                   );
                 },
@@ -248,6 +253,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    settings.removeListener(_onSettingsChanged);
     controller.dispose();
     super.dispose();
   }
