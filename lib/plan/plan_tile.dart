@@ -13,7 +13,6 @@ class PlanTile extends StatefulWidget {
   final Plan plan;
   final String weekday;
   final int index;
-  final GlobalKey<NavigatorState> navigatorKey;
   final Function(int) onSelect;
   final Set<int> selected;
 
@@ -22,7 +21,6 @@ class PlanTile extends StatefulWidget {
     required this.plan,
     required this.weekday,
     required this.index,
-    required this.navigatorKey,
     required this.onSelect,
     required this.selected,
   });
@@ -41,7 +39,9 @@ class _PlanTileState extends State<PlanTile> {
 
   @override
   Widget build(BuildContext context) {
-    _exercisesStream = context.watch<PlanExercisesRepository>().getPlanExercisesByPlanId(widget.plan.id!);
+    _exercisesStream = context
+        .watch<PlanExercisesRepository>()
+        .getPlanExercisesByPlanId(widget.plan.id!);
     var settingsRepo = context.watch<SettingsRepository>();
     final planRepo = context.watch<PlansRepository>();
     Widget title = const Text("Daily");
@@ -80,7 +80,9 @@ class _PlanTileState extends State<PlanTile> {
           ),
           child: Center(
             child: Text(
-              widget.plan.title?.isNotEmpty == true ? widget.plan.title![0] : widget.plan.days[0].toUpperCase(),
+              widget.plan.title?.isNotEmpty == true
+                  ? widget.plan.title![0]
+                  : widget.plan.days[0].toUpperCase(),
               textAlign: TextAlign.justify,
               style: const TextStyle(
                 color: Colors.white,
@@ -132,15 +134,18 @@ class _PlanTileState extends State<PlanTile> {
             );
 
             if (trailing == PlanTrailing.none) return const SizedBox();
-            if (trailing == PlanTrailing.reorder && defaultTargetPlatform == TargetPlatform.linux)
+            if (trailing == PlanTrailing.reorder &&
+                defaultTargetPlatform == TargetPlatform.linux)
               return const SizedBox();
-            else if (trailing == PlanTrailing.reorder && defaultTargetPlatform == TargetPlatform.android)
+            else if (trailing == PlanTrailing.reorder &&
+                defaultTargetPlatform == TargetPlatform.android)
               return ReorderableDragStartListener(
                 index: widget.index,
                 child: const Icon(Icons.drag_handle),
               );
 
-            final idx = planRepo.planCounts.indexWhere((element) => element.planId == widget.plan.id);
+            final idx = planRepo.planCounts
+                .indexWhere((element) => element.planId == widget.plan.id);
             PlanCount count;
             if (idx != -1)
               count = planRepo.planCounts[idx];
@@ -166,11 +171,12 @@ class _PlanTileState extends State<PlanTile> {
           },
         ),
         onTap: () async {
-          if (widget.selected.isNotEmpty) return widget.onSelect(widget.plan.id!);
+          if (widget.selected.isNotEmpty)
+            return widget.onSelect(widget.plan.id!);
           final state = context.read<PlansRepository>();
           await state.updateGymCounts(widget.plan.id!);
-
-          widget.navigatorKey.currentState!.push(
+          if (!context.mounted) return;
+          Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => StartPlanPage(
                 plan: widget.plan,
@@ -195,8 +201,11 @@ class _PlanTileState extends State<PlanTile> {
         TextSpan(
           text: day.trim(),
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontWeight: widget.weekday == day.trim() ? FontWeight.bold : null,
-                decoration: widget.weekday == day.trim() ? TextDecoration.underline : null,
+                fontWeight:
+                    widget.weekday == day.trim() ? FontWeight.bold : null,
+                decoration: widget.weekday == day.trim()
+                    ? TextDecoration.underline
+                    : null,
               ),
         ),
       );

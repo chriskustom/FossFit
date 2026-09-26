@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/app_shell.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/models/exercise_model.dart';
@@ -30,8 +31,8 @@ class _GraphHistoryPageState extends State<GraphHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
+    return AppShell(
+      showNavBar: false,
       appBar: AppBar(
         title: Text(widget.exercise.name),
       ),

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
 import 'package:fossfit/constants.dart';
 import 'package:fossfit/custom_set_indicator.dart';
+import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
 import 'package:fossfit/db/repositories/plans_repository.dart';
@@ -36,6 +37,7 @@ class StartPlanPage extends StatefulWidget {
   State<StartPlanPage> createState() => _StartPlanPageState();
 }
 
+//TODO FIX IMAGES
 typedef Tapped = ({
   int index,
   DateTime dateTime,
@@ -158,43 +160,44 @@ class _StartPlanPageState extends State<StartPlanPage>
         ? planExercises[expandedIndex!].id
         : null;
 
-    planExercises = List<PlanExercise>.from(exercises);
+    final newPlanExercises = List<PlanExercise>.from(exercises);
 
-    if (planExercises.isEmpty) {
-      selected = 0;
-      expandedIndex = null;
-      currentExercise = null;
+    if (newPlanExercises.isEmpty) {
+      setState(() {
+        planExercises = [];
+        selected = 0;
+        expandedIndex = null;
+        currentExercise = null;
+      });
       return;
     }
 
-    final selectedIndex = planExercises.indexWhere(
+    final selectedIndex = newPlanExercises.indexWhere(
       (e) => e.id == oldSelectedId,
     );
 
-    selected = selectedIndex >= 0 ? selectedIndex : 0;
+    final newSelected = selectedIndex >= 0 ? selectedIndex : 0;
 
-    final expandedIndexValue = planExercises.indexWhere(
+    final expandedIndexValue = newPlanExercises.indexWhere(
       (e) => e.id == oldExpandedId,
     );
 
-    expandedIndex = expandedIndexValue >= 0 ? expandedIndexValue : 0;
+    final newExpanded = expandedIndexValue >= 0 ? expandedIndexValue : 0;
 
-    if (selected >= planExercises.length) {
-      selected = planExercises.length - 1;
-    }
+    final exercise = newPlanExercises[newSelected].exercise;
 
-    final exercise = planExercises[selected].exercise;
+    setState(() {
+      planExercises = newPlanExercises;
+      selected = newSelected.clamp(0, newPlanExercises.length - 1);
+      expandedIndex = newExpanded;
 
-    if (exercise != null) {
-      currentExercise = exercise;
-      cardio = exercise.cardio;
-      category = exercise.category;
-      image = exercise.image;
-    }
-
-    if (mounted) {
-      setState(() {});
-    }
+      if (exercise != null) {
+        currentExercise = exercise;
+        cardio = exercise.cardio;
+        category = exercise.category;
+        image = exercise.image;
+      }
+    });
   }
 
   bool _samePlanExercises(
@@ -207,7 +210,8 @@ class _StartPlanPageState extends State<StartPlanPage>
       if (a[i].id != b[i].id ||
           a[i].exerciseId != b[i].exerciseId ||
           a[i].sequence != b[i].sequence ||
-          a[i].enabled != b[i].enabled) {
+          a[i].enabled != b[i].enabled ||
+          a[i].exercise?.image != b[i].exercise?.image) {
         return false;
       }
     }
@@ -282,6 +286,9 @@ class _StartPlanPageState extends State<StartPlanPage>
 
   @override
   Widget build(BuildContext context) {
+    context.watch<PlansRepository>();
+    context.watch<PlanExercisesRepository>();
+    context.watch<ExercisesRepository>();
     _refreshPlanFromRepository();
 
     if (planExercises.isEmpty) {

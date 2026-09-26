@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/app_shell.dart';
 import 'package:fossfit/constants.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
@@ -8,10 +9,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class GlobalProgressPage extends StatefulWidget {
-  final TabController tabController;
   const GlobalProgressPage({
     super.key,
-    required this.tabController,
   });
 
   @override
@@ -153,8 +152,8 @@ class _GlobalProgressPageState extends State<GlobalProgressPage> {
       ),
     );
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
+    return AppShell(
+      showNavBar: false,
       appBar: AppBar(
         title: const Text("Global progress"),
         actions: [

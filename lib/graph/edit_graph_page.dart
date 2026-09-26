@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
+import 'package:fossfit/app/app_shell.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/plans_repository.dart';
@@ -47,8 +48,8 @@ class _EditGraphPageState extends State<EditGraphPage> {
       seconds.text = (duration.inSeconds % 60).toString();
     }
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
+    return AppShell(
+      showNavBar: false,
       appBar: AppBar(
         title: Text("Update all ${widget.exercise.name.toLowerCase()}"),
       ),

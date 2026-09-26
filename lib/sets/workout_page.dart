@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
+import 'package:fossfit/app/app_shell.dart';
 import 'package:fossfit/app_search.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
@@ -9,146 +10,21 @@ import 'package:fossfit/filters.dart';
 import 'package:fossfit/models/exercise_model.dart';
 import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
-import 'package:fossfit/sets/edit_sets_page.dart';
 import 'package:fossfit/utils.dart';
 import 'package:fossfit/widgets/workout_history.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 class WorkoutPage extends StatefulWidget {
-  final TabController tabController;
-
   const WorkoutPage({
     super.key,
-    required this.tabController,
   });
 
   @override
   State<WorkoutPage> createState() => WorkoutPageState();
 }
 
-class WorkoutPageState extends State<WorkoutPage>
-    with AutomaticKeepAliveClientMixin {
-  final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
-
-  @override
-  bool get wantKeepAlive => true;
-  @override
-  void initState() {
-    super.initState();
-
-    widget.tabController.addListener(_onTabChanged);
-  }
-
-  @override
-  void dispose() {
-    widget.tabController.removeListener(_onTabChanged);
-    super.dispose();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _refreshRepository();
-  }
-
-  void _onTabChanged() {
-    if (!mounted) {
-      return;
-    }
-
-    if (widget.tabController.indexIsChanging) {
-      return;
-    }
-
-    final settings = context.read<SettingsRepository>();
-
-    final tabs = settings
-        .getSetting(
-          key: 'tabs',
-        )
-        .split(',')
-        .map((tab) => tab.trim())
-        .where((tab) => tab.isNotEmpty)
-        .toList();
-
-    final workoutIndex = tabs.indexOf('WorkoutPage');
-
-    if (workoutIndex < 0) {
-      return;
-    }
-
-    if (widget.tabController.index == workoutIndex) {
-      _refreshRepository();
-    }
-  }
-
-  Future<void> _refreshRepository() async {
-    if (!mounted) {
-      return;
-    }
-
-    final setsRepo = context.read<GymSetsRepository>();
-
-    await setsRepo.loadAll();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return NavigatorPopHandler(
-      onPopWithResult: (result) {
-        final navigator = navKey.currentState;
-
-        if (navigator == null || !navigator.canPop()) {
-          return;
-        }
-
-        final settings = context.read<SettingsRepository>();
-
-        final tabs = settings
-            .getSetting(
-              key: 'tabs',
-            )
-            .split(',')
-            .map((tab) => tab.trim())
-            .where((tab) => tab.isNotEmpty)
-            .toList();
-
-        final historyIndex = tabs.indexOf('WorkoutPage');
-
-        if (widget.tabController.index == historyIndex) {
-          navigator.pop();
-        }
-      },
-      child: Navigator(
-        key: navKey,
-        onGenerateRoute: (settings) {
-          return MaterialPageRoute(
-            builder: (context) => _WorkoutPageWidget(
-              navigatorKey: navKey,
-            ),
-            settings: settings,
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _WorkoutPageWidget extends StatefulWidget {
-  final GlobalKey<NavigatorState> navigatorKey;
-
-  const _WorkoutPageWidget({
-    required this.navigatorKey,
-  });
-
-  @override
-  State<_WorkoutPageWidget> createState() => _WorkoutPageWidgetState();
-}
-
-class _WorkoutPageWidgetState extends State<_WorkoutPageWidget> {
+class WorkoutPageState extends State<WorkoutPage> {
   final repsGt = TextEditingController();
   final repsLt = TextEditingController();
   final weightGt = TextEditingController();
@@ -171,8 +47,6 @@ class _WorkoutPageWidgetState extends State<_WorkoutPageWidget> {
   DateTime? endDate;
   String? category;
 
-  bool _statsLoading = false;
-
   SettingsRepository get settings => context.read<SettingsRepository>();
 
   @override
@@ -185,8 +59,6 @@ class _WorkoutPageWidgetState extends State<_WorkoutPageWidget> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
-    _syncFromRepository();
   }
 
   @override
@@ -212,214 +84,172 @@ class _WorkoutPageWidgetState extends State<_WorkoutPageWidget> {
     }
   }
 
-  void _syncFromRepository() {
-    if (!mounted) {
-      return;
-    }
-    _applyFilters();
-
-    if (settings.isEnabled(key: 'stats_panel')) {
-      _refreshStats();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final settingsRepo = context.watch<SettingsRepository>();
+    final setsRepo = context.watch<GymSetsRepository>();
+    latestSets = setsRepo.latestgymsets;
+    gymSets = filteredGymSets;
 
-    return Consumer<GymSetsRepository>(
-      builder: (
-        context,
-        setsRepo,
-        child,
-      ) {
-        latestSets = setsRepo.latestgymsets;
-        gymSets = filteredGymSets;
-
-        final showStats = settingsRepo.isEnabled(
-          key: 'stats_panel',
-        );
-        if (showStats) getStats(latestSets);
-        final groupHistory = settingsRepo.isEnabled(
-          key: 'group_history',
-        );
-        return Scaffold(
-          resizeToAvoidBottomInset: false,
-          body: Column(
-            children: [
-              AppSearch(
-                filter: Filters(
-                  full: false,
-                  repsGtCtrl: repsGt,
-                  repsLtCtrl: repsLt,
-                  weightGtCtrl: weightGt,
-                  weightLtCtrl: weightLt,
-                  setStream: _resetLimitAndApplyFilters,
-                  endDate: endDate,
-                  startDate: startDate,
-                  setEnd: (value) {
-                    endDate = value;
-
-                    _applyFilters();
-                  },
-                  setStart: (value) {
-                    startDate = value;
-
-                    _applyFilters();
-                  },
-                  category: category,
-                  setCategory: (value) {
-                    category = value;
-
-                    _applyFilters();
-                  },
-                ),
-                onShare: _onShare,
-                onChange: (value) {
-                  search = value;
-                  _applyFilters();
-                },
-                onClear: () {
-                  setState(() {
-                    selected.clear();
-                  });
-                },
-                onDelete: () async {
-                  await setsRepo.deleteGymSetsById(
-                    selected.toList(),
-                  );
-
-                  if (!mounted) {
-                    return;
-                  }
-
-                  setState(() {
-                    selected.clear();
-                  });
-                  await _refreshRepository();
-                },
-                onSelect: () {
-                  if (gymSets.isEmpty) {
-                    return;
-                  }
-
-                  setState(() {
-                    selected.addAll(
-                      gymSets
-                          .map(
-                            (gymSet) => gymSet.id,
-                          )
-                          .whereType<int>(),
-                    );
-                  });
-                },
-                selected: selected,
-                onEdit: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => EditSetsPage(
-                        ids: selected.toList(),
-                      ),
-                    ),
-                  ).then((_) async {
-                    await _refreshRepository();
-                  });
-                },
+    final showStats = settingsRepo.isEnabled(
+      key: 'stats_panel',
+    );
+    if (showStats) getStats(latestSets);
+    final groupHistory = settingsRepo.isEnabled(
+      key: 'group_history',
+    );
+    return AppShell(
+      appBar: buildAppBar(),
+      floatingActionButton: AnimatedFab(
+        onPressed: onAdd,
+        label: const Text('Add'),
+        icon: const Icon(Icons.add),
+        scroll: scroll,
+      ),
+      body: Column(
+        children: [
+          if (latestSets.isEmpty)
+            const ListTile(
+              title: Text('No entries yet'),
+              subtitle: Text(
+                'Complete some sets to see them here',
               ),
-              if (gymSets.isEmpty)
-                const ListTile(
-                  title: Text('No entries yet'),
-                  subtitle: Text(
-                    'Complete some sets to see them here',
-                  ),
+            ),
+          if (latestSets.isNotEmpty && showStats)
+            Theme(
+              data: Theme.of(context).copyWith(
+                dividerColor: Colors.transparent,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  top: 8,
                 ),
-              if (gymSets.isNotEmpty && showStats)
-                Theme(
-                  data: Theme.of(context).copyWith(
-                    dividerColor: Colors.transparent,
+                child: ExpansionTile(
+                  childrenPadding: EdgeInsets.zero,
+                  iconColor: Theme.of(context).colorScheme.onSurface,
+                  leading: Icon(
+                    expand.isExpanded
+                        ? Icons.analytics_outlined
+                        : Icons.fitness_center_rounded,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      top: 8,
-                    ),
-                    child: ExpansionTile(
-                      childrenPadding: EdgeInsets.zero,
-                      iconColor: Theme.of(context).colorScheme.onSurface,
-                      leading: Icon(
-                        expand.isExpanded
-                            ? Icons.analytics_outlined
-                            : Icons.fitness_center_rounded,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      title: Text(
-                        expand.isExpanded ? 'Stats' : 'Exercises',
-                      ),
-                      initiallyExpanded: true,
-                      controller: expand,
-                      children: [
-                        lastWorkout,
-                      ],
-                    ),
+                  title: Text(
+                    expand.isExpanded ? 'Stats' : 'Exercises',
                   ),
-                ),
-              Expanded(
-                child: WorkoutHistory(
-                  gymSets: gymSets,
-                  onSelect: (id) {
-                    setState(() {
-                      if (selected.contains(id)) {
-                        selected.remove(id);
-                      } else {
-                        selected.add(id);
-                      }
-                    });
-                  },
-                  onEdit: (gymSet) async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EditSetPage(
-                          gymSet: gymSet,
-                        ),
-                      ),
-                    );
-
-                    await _refreshRepository();
-
-                    if (mounted) {
-                      setState(() {});
-                    }
-                  },
-                  selected: selected,
-                  scroll: scroll,
-                  groupHistory: groupHistory,
+                  initiallyExpanded: true,
+                  controller: expand,
+                  children: [
+                    lastWorkout,
+                  ],
                 ),
               ),
-            ],
+            ),
+          Expanded(
+            child: WorkoutHistory(
+              gymSets: latestSets,
+              onSelect: (id) {
+                setState(() {
+                  if (selected.contains(id)) {
+                    selected.remove(id);
+                  } else {
+                    selected.add(id);
+                  }
+                });
+              },
+              onEdit: (gymSet) async => onEdit(gymSet),
+              selected: selected,
+              scroll: scroll,
+              groupHistory: groupHistory,
+            ),
           ),
-          floatingActionButton: AnimatedFab(
-            onPressed: onAdd,
-            label: const Text('Add'),
-            icon: const Icon(Icons.add),
-            scroll: scroll,
-          ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  Future<void> _refreshRepository() async {
-    if (!mounted) return;
+  AppSearch buildAppBar() {
+    return AppSearch(
+      selected: selected,
+      filter: Filters(
+        full: false,
+        repsGtCtrl: repsGt,
+        repsLtCtrl: repsLt,
+        weightGtCtrl: weightGt,
+        weightLtCtrl: weightLt,
+        setStream: _resetLimitAndApplyFilters,
+        endDate: endDate,
+        startDate: startDate,
+        setEnd: (value) {
+          endDate = value;
 
-    final setsRepo = context.read<GymSetsRepository>();
+          _applyFilters();
+        },
+        setStart: (value) {
+          startDate = value;
 
-    await setsRepo.loadAll();
+          _applyFilters();
+        },
+        category: category,
+        setCategory: (value) {
+          category = value;
 
-    if (!mounted) return;
+          _applyFilters();
+        },
+      ),
+      onChange: (value) {
+        search = value;
+        _applyFilters();
+      },
+      onClear: () {
+        setState(() {
+          selected.clear();
+        });
+      },
+      onDelete: () async {
+        await context.read<GymSetsRepository>().deleteGymSetsById(
+              selected.toList(),
+            );
 
-    latestSets = setsRepo.latestgymsets;
-    _applyFilters();
+        if (!mounted) {
+          return;
+        }
+
+        setState(() {
+          selected.clear();
+        });
+      },
+      onSelect: () {
+        if (gymSets.isEmpty) {
+          return;
+        }
+
+        setState(() {
+          selected.addAll(
+            gymSets
+                .map(
+                  (gymSet) => gymSet.id,
+                )
+                .whereType<int>(),
+          );
+        });
+      },
+      onEdit: (gymSet) async => onEdit(gymSet),
+    );
+  }
+
+  void onEdit(GymSet gymSet) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditSetPage(
+          gymSet: gymSet,
+        ),
+      ),
+    );
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> onAdd() async {
@@ -526,41 +356,7 @@ class _WorkoutPageWidgetState extends State<_WorkoutPageWidget> {
       ),
     );
 
-    await _refreshRepository();
-  }
-
-  Future<void> _onShare() async {
-    final selectedSets = gymSets
-        .where(
-          (gymSet) => selected.contains(gymSet.id),
-        )
-        .toList();
-
-    final summaries = selectedSets
-        .where(
-          (set) => set.exercise != null,
-        )
-        .map(
-          (set) => '${toString(set.reps)}x'
-              '${toString(set.weight)}'
-              '${set.unit} '
-              '${set.exercise!.name}',
-        )
-        .join(', ');
-
-    await SharePlus.instance.share(
-      ShareParams(
-        text: 'I just did $summaries',
-      ),
-    );
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      selected.clear();
-    });
+    setState(() {});
   }
 
   void _resetLimitAndApplyFilters() {
@@ -692,39 +488,6 @@ class _WorkoutPageWidgetState extends State<_WorkoutPageWidget> {
     }
 
     return exerciseItems;
-  }
-
-  void _refreshStats() {
-    if (!mounted || _statsLoading) {
-      return;
-    }
-
-    _statsLoading = true;
-
-    final sets = List<GymSet>.of(
-      gymSets,
-    );
-
-    getLastWorkout(sets)
-        .then(
-          (widget) {
-            if (!mounted) {
-              return;
-            }
-
-            setState(() {
-              lastWorkout = widget;
-            });
-          },
-        )
-        .catchError(
-          (_) {},
-        )
-        .whenComplete(
-          () {
-            _statsLoading = false;
-          },
-        );
   }
 
   void getStats(List<GymSet> sets) async {

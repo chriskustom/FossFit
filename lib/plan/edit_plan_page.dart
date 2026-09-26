@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
+import 'package:fossfit/app/app_shell.dart';
 import 'package:fossfit/constants.dart';
 import 'package:fossfit/day_selector.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
@@ -101,7 +102,8 @@ class _EditPlanPageState extends State<EditPlanPage> {
   Widget build(BuildContext context) {
     final exerciseRepo = context.watch<ExercisesRepository>();
 
-    final tiles = _loadingExercises ? <Widget>[] : _buildTiles(exerciseRepo.exercises);
+    final tiles =
+        _loadingExercises ? <Widget>[] : _buildTiles(exerciseRepo.exercises);
 
     var title = widget.plan.days.replaceAll(',', ', ');
 
@@ -111,8 +113,8 @@ class _EditPlanPageState extends State<EditPlanPage> {
       title = 'Add plan';
     }
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
+    return AppShell(
+      showNavBar: false,
       appBar: AppBar(
         title: Text(title),
       ),

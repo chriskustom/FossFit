@@ -73,3 +73,31 @@ const defaultExercises = [
   ('Wide-grip pull-up', 0, 'Back', null),
   ('Wide-grip push-up', 0, 'Chest', null),
 ];
+
+enum NavRoute {
+  workouts("/workouts"),
+  plans('/plans'),
+  graphs('/graphs'),
+  calendar('/calendar'),
+  timer('/timer'),
+  settings('/settings');
+
+  const NavRoute(this.route);
+  final String route;
+
+  static NavRoute fromRoute(String? route) {
+    if (route == null) return NavRoute.workouts;
+    return NavRoute.values.firstWhere(
+      (e) => e.route == route || route.startsWith(e.route),
+      orElse: () => NavRoute.workouts,
+    );
+  }
+
+  bool matches(String? route) => route != null && route.startsWith(this.route);
+
+  static List<String> get allRoutes =>
+      NavRoute.values.map((e) => e.route).toList();
+
+  @override
+  String toString() => route;
+}

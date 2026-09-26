@@ -1,76 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/app_shell.dart';
+import 'package:fossfit/app_search.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
+import 'package:fossfit/filters.dart';
 import 'package:fossfit/models/exercise_model.dart';
 import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/sets/edit_set_page.dart';
-import 'package:fossfit/sets/edit_sets_page.dart';
-import 'package:fossfit/settings/settings_page.dart';
 import 'package:fossfit/widgets/workout_history.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class CalendarPage extends StatefulWidget {
-  final TabController tabController;
-
   const CalendarPage({
     super.key,
-    required this.tabController,
   });
 
   @override
   State<CalendarPage> createState() => CalendarPageState();
 }
 
-class CalendarPageState extends State<CalendarPage>
-    with AutomaticKeepAliveClientMixin {
-  final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
-
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-
-    return NavigatorPopHandler(
-      onPopWithResult: (result) {
-        if (navKey.currentState!.canPop() == false) return;
-
-        final settings = context.watch<SettingsRepository>();
-        final index =
-            settings.getSetting(key: 'tabs').split(',').indexOf('CalendarPage');
-
-        if (widget.tabController.index == index) {
-          navKey.currentState!.pop();
-        }
-      },
-      child: Navigator(
-        key: navKey,
-        onGenerateRoute: (settings) => MaterialPageRoute(
-          builder: (context) => _CalendarPageWidget(
-            navKey: navKey,
-          ),
-          settings: settings,
-        ),
-      ),
-    );
-  }
-}
-
-class _CalendarPageWidget extends StatefulWidget {
-  final GlobalKey<NavigatorState> navKey;
-
-  const _CalendarPageWidget({
-    required this.navKey,
-  });
-
-  @override
-  State<_CalendarPageWidget> createState() => _CalendarPageWidgetState();
-}
-
-class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
+class CalendarPageState extends State<CalendarPage> {
   List<GymSet> gymSets = [];
 
   DateTime? _selectedDay;
@@ -83,6 +34,23 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
   int yearToFilter = DateTime.now().year;
 
   late PageController _pageController;
+  final repsGt = TextEditingController();
+  final repsLt = TextEditingController();
+  final weightGt = TextEditingController();
+  final weightLt = TextEditingController();
+
+  final expand = ExpansibleController();
+
+  List<GymSet> latestSets = [];
+  List<GymSet> filteredGymSets = [];
+
+  Widget lastWorkout = const SizedBox.shrink();
+
+  String search = '';
+
+  DateTime? startDate;
+  DateTime? endDate;
+  String? category;
 
   @override
   void initState() {
@@ -99,270 +67,194 @@ class _CalendarPageWidgetState extends State<_CalendarPageWidget> {
   Widget build(BuildContext context) {
     gymSets = context.watch<GymSetsRepository>().gymsets;
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: Builder(
-        builder: (context) {
-          final allGymSets = gymSets;
+    final allGymSets = gymSets;
 
-          final thisMonthsGymSets = allGymSets
-              .where(
-                (t) =>
-                    t.created.month == monthToFilter &&
-                    t.created.year == yearToFilter,
-              )
-              .toList();
+    final thisMonthsGymSets = allGymSets
+        .where(
+          (t) =>
+              t.created.month == monthToFilter &&
+              t.created.year == yearToFilter,
+        )
+        .toList();
 
-          final exerciseItems = _getExerciseItems(thisMonthsGymSets);
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildTitleBar(exerciseItems),
-              Expanded(
-                child: _getCalendar(thisMonthsGymSets),
-              ),
-            ],
-          );
-        },
-      ),
+    return AppShell(
+      appBar: buildAppBar(),
+      body: _getCalendar(thisMonthsGymSets),
     );
   }
 
-  final GlobalKey _menuKey = GlobalKey();
-  Widget _buildTitleBar(List<ExerciseItem> monthlyExercises) {
-    final hasSelection = selected.isNotEmpty;
-    var selectedDayGymSets = monthlyExercises
-        .where(
-          (exercise) => isSameDay(
-            exercise.date,
-            _selectedDay,
-          ),
-        )
-        .toList()
-        .expand((g) => g.sets);
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(40),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).colorScheme.shadow.withValues(alpha: .5),
-              spreadRadius: 0,
-              blurRadius: 10,
-              offset: Offset(0, 5),
-            ),
-          ],
-        ),
-        child: ListTile(
-          tileColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(40),
-          ),
-          title: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Text(
-              'Calendar',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          ),
-          leading: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 150),
-            transitionBuilder: (child, animation) {
-              return ScaleTransition(
-                scale: animation,
-                child: child,
-              );
-            },
-            child: hasSelection
-                ? IconButton(
-                    key: const ValueKey('backButton'),
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () {
-                      setState(() {
-                        selected.clear();
-                      });
-                    },
-                  )
-                : const Icon(Icons.calendar_month_rounded),
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 150),
-                transitionBuilder: (child, animation) {
-                  return ScaleTransition(
-                    scale: animation,
-                    child: child,
-                  );
-                },
-                child: hasSelection
-                    ? IconButton(
-                        key: const ValueKey('deleteButton'),
-                        icon: const Icon(Icons.delete),
-                        tooltip: 'Delete selected',
-                        onPressed: () async {
-                          final confirmed = await showDialog<bool>(
-                            context: context,
-                            builder: (dialogContext) {
-                              return AlertDialog(
-                                title: const Text('Confirm Delete'),
-                                content: Text(
-                                  'Are you sure you want to delete '
-                                  '${selected.length} records? '
-                                  'This action is not reversible.',
-                                ),
-                                actions: [
-                                  TextButton.icon(
-                                    icon: const Icon(Icons.close),
-                                    label: const Text('Cancel'),
-                                    onPressed: () {
-                                      Navigator.pop(dialogContext, false);
-                                    },
-                                  ),
-                                  TextButton.icon(
-                                    icon: const Icon(Icons.delete),
-                                    label: const Text('Delete'),
-                                    onPressed: () {
-                                      Navigator.pop(dialogContext, true);
-                                    },
-                                  ),
-                                ],
-                              );
-                            },
-                          );
+  AppSearch buildAppBar() {
+    return AppSearch(
+      selected: selected,
+      filter: Filters(
+        full: false,
+        repsGtCtrl: repsGt,
+        repsLtCtrl: repsLt,
+        weightGtCtrl: weightGt,
+        weightLtCtrl: weightLt,
+        setStream: _resetLimitAndApplyFilters,
+        endDate: endDate,
+        startDate: startDate,
+        setEnd: (value) {
+          endDate = value;
 
-                          if (confirmed != true || !mounted) return;
+          _applyFilters();
+        },
+        setStart: (value) {
+          startDate = value;
 
-                          final ids = selected.toList();
+          _applyFilters();
+        },
+        category: category,
+        setCategory: (value) {
+          category = value;
 
-                          context
-                              .read<GymSetsRepository>()
-                              .deleteGymSetsById(ids);
+          _applyFilters();
+        },
+      ),
+      onChange: (value) {
+        search = value;
+        _applyFilters();
+      },
+      onClear: () {
+        setState(() {
+          selected.clear();
+        });
+      },
+      onDelete: () async {
+        await context.read<GymSetsRepository>().deleteGymSetsById(
+              selected.toList(),
+            );
 
-                          if (!context.mounted) return;
+        if (!mounted) {
+          return;
+        }
 
-                          setState(() {
-                            selected.clear();
-                          });
-                        },
-                      )
-                    : const SizedBox(
-                        key: ValueKey('emptyWidget'),
-                        width: 0,
-                      ),
-              ),
-              Badge.count(
-                count: selected.length,
-                isLabelVisible: hasSelection,
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                child: IconButton(
-                  key: _menuKey,
-                  icon: const Icon(Icons.more_vert),
-                  tooltip: 'Show menu',
-                  onPressed: () async {
-                    final RenderBox button = _menuKey.currentContext!
-                        .findRenderObject() as RenderBox;
+        setState(() {
+          selected.clear();
+        });
+      },
+      onSelect: () {
+        if (gymSets.isEmpty) {
+          return;
+        }
 
-                    final RenderBox overlay = Overlay.of(context)
-                        .context
-                        .findRenderObject() as RenderBox;
+        setState(() {
+          selected.addAll(
+            gymSets
+                .map(
+                  (gymSet) => gymSet.id,
+                )
+                .whereType<int>(),
+          );
+        });
+      },
+      onEdit: (gymSet) async => onEdit(gymSet),
+    );
+  }
 
-                    final Offset buttonPosition = button.localToGlobal(
-                      Offset.zero,
-                      ancestor: overlay,
-                    );
-
-                    final RelativeRect position = RelativeRect.fromRect(
-                      Rect.fromLTWH(
-                        buttonPosition.dx,
-                        buttonPosition.dy,
-                        button.size.width,
-                        button.size.height,
-                      ),
-                      Offset.zero & overlay.size,
-                    );
-
-                    final action = await showMenu<String>(
-                      context: context,
-                      position: position,
-                      items: [
-                        if (selectedDayGymSets.isNotEmpty)
-                          const PopupMenuItem<String>(
-                            value: 'select_all',
-                            child: ListTile(
-                              leading: Icon(Icons.done_all),
-                              title: Text('Select all'),
-                            ),
-                          ),
-                        if (hasSelection)
-                          const PopupMenuItem<String>(
-                            value: 'edit',
-                            child: ListTile(
-                              leading: Icon(Icons.edit),
-                              title: Text('Edit'),
-                            ),
-                          ),
-                        if (!hasSelection)
-                          const PopupMenuItem<String>(
-                            value: 'settings',
-                            child: ListTile(
-                              leading: Icon(Icons.settings),
-                              title: Text('Settings'),
-                            ),
-                          ),
-                      ],
-                    );
-
-                    if (!mounted) return;
-
-                    switch (action) {
-                      case 'select_all':
-                        setState(() {
-                          selected
-                            ..clear()
-                            ..addAll(
-                              selectedDayGymSets.map((gymSet) => gymSet.id!),
-                            );
-                        });
-                        break;
-
-                      case 'edit':
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EditSetsPage(
-                              ids: selected.toList(),
-                            ),
-                          ),
-                        );
-                        break;
-
-                      case 'settings':
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SettingsPage(),
-                          ),
-                        );
-                        break;
-
-                      case null:
-                        break;
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
+  void onEdit(GymSet gymSet) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditSetPage(
+          gymSet: gymSet,
         ),
       ),
     );
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _resetLimitAndApplyFilters() {
+    if (!mounted) {
+      return;
+    }
+    _applyFilters();
+  }
+
+  void _applyFilters() {
+    if (!mounted) {
+      return;
+    }
+
+    Iterable<GymSet> query = latestSets.where(
+      (set) => !set.hidden && set.exercise != null,
+    );
+
+    final terms = search.toLowerCase().split(' ').where(
+          (term) => term.isNotEmpty,
+        );
+
+    for (final term in terms) {
+      query = query.where(
+        (set) => set.exercise!.name.toLowerCase().contains(term),
+      );
+    }
+
+    if (category != null) {
+      query = query.where(
+        (set) => set.exercise!.category == category,
+      );
+    }
+
+    if (startDate != null) {
+      query = query.where(
+        (set) =>
+            set.created.isAfter(startDate!) ||
+            set.created.isAtSameMomentAs(
+              startDate!,
+            ),
+      );
+    }
+
+    if (endDate != null) {
+      query = query.where(
+        (set) =>
+            set.created.isBefore(endDate!) ||
+            set.created.isAtSameMomentAs(
+              endDate!,
+            ),
+      );
+    }
+
+    if (repsGt.text.isNotEmpty) {
+      final value = double.tryParse(repsGt.text) ?? 0;
+
+      query = query.where(
+        (set) => set.reps > value && !set.exercise!.cardio,
+      );
+    }
+
+    if (repsLt.text.isNotEmpty) {
+      final value = double.tryParse(repsLt.text) ?? 0;
+
+      query = query.where(
+        (set) => set.reps < value && !set.exercise!.cardio,
+      );
+    }
+
+    if (weightGt.text.isNotEmpty) {
+      final value = double.tryParse(weightGt.text) ?? 0;
+
+      query = query.where(
+        (set) => set.weight > value && !set.exercise!.cardio,
+      );
+    }
+
+    if (weightLt.text.isNotEmpty) {
+      final value = double.tryParse(weightLt.text) ?? 0;
+
+      query = query.where(
+        (set) => set.weight < value && !set.exercise!.cardio,
+      );
+    }
+
+    filteredGymSets = query.toList();
+
+    setState(() {});
   }
 
   Widget _getCalendar(List<GymSet> monthlyGymSets) {

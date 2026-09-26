@@ -4,7 +4,7 @@ import 'package:fossfit/settings/settings_page.dart';
 import 'package:fossfit/weight_page.dart';
 import 'package:provider/provider.dart';
 
-class AppSearch extends StatefulWidget {
+class AppSearch extends StatefulWidget implements PreferredSizeWidget {
   final Set<dynamic> selected;
 
   final Function(String) onChange;
@@ -12,7 +12,6 @@ class AppSearch extends StatefulWidget {
   final Function onEdit;
   final Function onDelete;
   final Function onSelect;
-  final Function onShare;
   final Function? onRefresh;
   final Widget? filter;
   final String? confirmText;
@@ -25,11 +24,12 @@ class AppSearch extends StatefulWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onSelect,
-    required this.onShare,
     this.onRefresh,
     this.filter,
     this.confirmText,
   });
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   State<AppSearch> createState() => _AppSearchState();
@@ -176,17 +176,6 @@ class _AppSearchState extends State<AppSearch> {
                             title: const Text('Edit'),
                             onTap: () async {
                               await widget.onEdit();
-                              if (!context.mounted) return;
-                              Navigator.pop(context);
-                            },
-                          ),
-                        ),
-                        PopupMenuItem(
-                          child: ListTile(
-                            leading: const Icon(Icons.share),
-                            title: const Text('Share'),
-                            onTap: () async {
-                              await widget.onShare();
                               if (!context.mounted) return;
                               Navigator.pop(context);
                             },

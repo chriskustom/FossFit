@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/app_shell.dart';
 import 'package:fossfit/constants.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
@@ -20,14 +21,12 @@ class StrengthPage extends StatefulWidget {
   final Exercise exercise;
   final String unit;
   final List<StrengthData> data;
-  final TabController tabCtrl;
 
   const StrengthPage({
     super.key,
     required this.exercise,
     required this.unit,
     required this.data,
-    required this.tabCtrl,
   });
 
   @override
@@ -50,21 +49,11 @@ class _StrengthPageState extends State<StrengthPage> {
   @override
   void initState() {
     super.initState();
-    widget.tabCtrl.addListener(_onTabChanged);
   }
 
   @override
   void dispose() {
-    widget.tabCtrl.removeListener(_onTabChanged);
     super.dispose();
-  }
-
-  void _onTabChanged() {
-    final settings = context.read<SettingsRepository>();
-    if (widget.tabCtrl.index ==
-        settings.getSetting(key: 'tabs').indexOf('GraphsPage')) {
-      setData();
-    }
   }
 
   @override
@@ -74,8 +63,8 @@ class _StrengthPageState extends State<StrengthPage> {
     gymSets = setsRepo.gymsets
         .where((t) => t.exerciseId == widget.exercise.id!)
         .toList();
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
+    return AppShell(
+      showNavBar: false,
       appBar: AppBar(
         title: Text(name),
         leading: IconButton(

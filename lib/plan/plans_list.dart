@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 
 class PlansList extends StatefulWidget {
   final List<Plan>? plans;
-  final GlobalKey<NavigatorState> navKey;
   final Set<int> selected;
   final Function(int) onSelect;
   final String search;
@@ -18,7 +17,6 @@ class PlansList extends StatefulWidget {
   const PlansList({
     super.key,
     required this.plans,
-    required this.navKey,
     required this.selected,
     required this.onSelect,
     required this.search,
@@ -58,7 +56,8 @@ class _PlansListState extends State<PlansList> {
 
     final filteredPlans = widget.plans!.where((plan) {
       final term = widget.search.toLowerCase();
-      return plan.title?.toLowerCase().contains(term) == true || plan.days.toLowerCase().contains(term);
+      return plan.title?.toLowerCase().contains(term) == true ||
+          plan.days.toLowerCase().contains(term);
     }).toList();
 
     if (widget.plans!.isEmpty || filteredPlans.isEmpty) return noneFound;
@@ -81,7 +80,6 @@ class _PlansListState extends State<PlansList> {
             plan: plan,
             weekday: weekday,
             index: index,
-            navigatorKey: widget.navKey,
             selected: widget.selected,
             onSelect: (id) => widget.onSelect(id),
           );
@@ -115,7 +113,6 @@ class _PlansListState extends State<PlansList> {
           plan: plan,
           weekday: weekday,
           index: index,
-          navigatorKey: widget.navKey,
           selected: widget.selected,
           onSelect: (id) => widget.onSelect(id),
         );

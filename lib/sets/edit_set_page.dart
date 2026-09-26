@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
+import 'package:fossfit/app/app_shell.dart';
 import 'package:fossfit/constants.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/gym_sets_repository.dart';
@@ -94,11 +95,11 @@ class _EditSetPageState extends State<EditSetPage> {
       options = names.toList();
     });
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      appBar: buildAppBar(),
+    return AppShell(
       body: buildBody(showBodyWeight),
+      appBar: buildAppBar(),
       floatingActionButton: buildSaveButton(),
+      showNavBar: false,
     );
   }
 

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/animated_fab.dart';
+import 'package:fossfit/app/app_shell.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/models/exercise_model.dart';
@@ -48,8 +49,8 @@ class _AddExercisePageState extends State<AddExercisePage> {
       }
     }
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
+    return AppShell(
+      showNavBar: false,
       appBar: AppBar(
         title: const Text('Add exercise'),
       ),
