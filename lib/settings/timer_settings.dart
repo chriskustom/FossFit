@@ -8,6 +8,7 @@ import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/main.dart';
 import 'package:fossfit/models/constants.dart';
 import 'package:fossfit/models/gym_set_model.dart';
+import 'package:fossfit/services/exercise_services.dart';
 import 'package:fossfit/utils.dart';
 import 'package:provider/provider.dart';
 
@@ -29,9 +30,7 @@ List<Widget> getTimerSettings(
         message: 'Alarm that goes off after completing a set',
         child: ListTile(
           title: const Text('Rest timers'),
-          leading: restTimers
-              ? const Icon(Icons.timer)
-              : const Icon(Icons.timer_outlined),
+          leading: restTimers ? const Icon(Icons.timer) : const Icon(Icons.timer_outlined),
           onTap: () async {
             final newValue = !restTimers;
 
@@ -156,8 +155,7 @@ List<Widget> getTimerSettings(
                         value: Duration(
                           minutes: int.parse(value),
                           seconds: Duration(
-                                milliseconds:
-                                    settings.getInt(key: 'timer_duration'),
+                                milliseconds: settings.getInt(key: 'timer_duration'),
                               ).inSeconds %
                               60,
                         ).inMilliseconds.toString(),
@@ -181,8 +179,7 @@ List<Widget> getTimerSettings(
                         value: Duration(
                           seconds: int.parse(value),
                           minutes: Duration(
-                            milliseconds:
-                                settings.getInt(key: 'timer_duration'),
+                            milliseconds: settings.getInt(key: 'timer_duration'),
                           ).inMinutes.floor(),
                         ).inMilliseconds.toString(),
                       ),
@@ -213,9 +210,7 @@ List<Widget> getTimerSettings(
                 player.play(DeviceFileSource(result.path!));
               },
               icon: const Icon(Icons.music_note),
-              label: alarmSound.isEmpty
-                  ? const Text("Alarm sound")
-                  : Text(alarmSound.split('/').last),
+              label: alarmSound.isEmpty ? const Text("Alarm sound") : Text(alarmSound.split('/').last),
             ),
             if (alarmSound.isNotEmpty)
               TextButton.icon(
@@ -246,15 +241,10 @@ class _TimerSettingsRepository extends State<TimerSettings> {
   late SettingsRepository settings = context.read<SettingsRepository>();
   late GymSetsRepository gymSetRepository = context.read<GymSetsRepository>();
   late final minCtrl = TextEditingController(
-    text: (Duration(milliseconds: settings.getInt(key: 'timer_duration')))
-        .inMinutes
-        .toString(),
+    text: (Duration(milliseconds: settings.getInt(key: 'timer_duration'))).inMinutes.toString(),
   );
   late final secCtrl = TextEditingController(
-    text: ((Duration(milliseconds: settings.getInt(key: 'timer_duration')))
-                .inSeconds %
-            60)
-        .toString(),
+    text: ((Duration(milliseconds: settings.getInt(key: 'timer_duration'))).inSeconds % 60).toString(),
   );
 
   AudioPlayer? player;
@@ -279,10 +269,12 @@ class _TimerSettingsRepository extends State<TimerSettings> {
   }
 
   Future<void> _loadExercisesWithCustomTimers() async {
+    var services = ExerciseServices(context: context);
     final gymSets = gymSetRepository.gymsets
         .where((set) => set.restMs != null)
         .fold<Map<String, GymSet>>({}, (map, set) {
-          map.putIfAbsent(set.exercise!.name, () => set);
+          var exercise = services.getExerciseById(set.exerciseId)!;
+          map.putIfAbsent(exercise.name, () => set);
           return map;
         })
         .values
@@ -322,7 +314,7 @@ class _TimerSettingsRepository extends State<TimerSettings> {
       duration = Duration(minutes: mins, seconds: secs);
     }
     await gymSetRepository.updateGymSet(
-      gymSet.copyWith(duration: duration?.inMilliseconds.toDouble()),
+      gymSet.copyWith(restMs: duration?.inMilliseconds),
     );
 
     // If duration is null (both minutes and seconds are 0), remove from list
@@ -337,7 +329,7 @@ class _TimerSettingsRepository extends State<TimerSettings> {
 
   Future<void> _removeCustomTimer(GymSet gymSet) async {
     await gymSetRepository.updateGymSet(
-      gymSet.copyWith(duration: null),
+      gymSet.copyWith(restMs: null),
     );
 
     setState(() {
@@ -372,20 +364,17 @@ class _TimerSettingsRepository extends State<TimerSettings> {
           Text(
             "These exercises have custom rest durations",
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.color
-                      ?.withAlpha((255 * 0.7).round()),
+                  color: Theme.of(context).textTheme.bodyMedium?.color?.withAlpha((255 * 0.7).round()),
                 ),
           ),
           const SizedBox(height: 16),
           ...setsWithCustomTimers.map((gymSet) {
-            if (minuteControllers[gymSet.id!] == null ||
-                secondControllers[gymSet.id!] == null) return const SizedBox();
+            if (minuteControllers[gymSet.id!] == null || secondControllers[gymSet.id!] == null) return const SizedBox();
             final minController = minuteControllers[gymSet.id!]!;
             final secController = secondControllers[gymSet.id!]!;
 
+            var services = ExerciseServices(context: context);
+            var exercise = services.getExerciseById(gymSet.id!)!;
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: Padding(
@@ -397,7 +386,7 @@ class _TimerSettingsRepository extends State<TimerSettings> {
                       children: [
                         Expanded(
                           child: Text(
-                            gymSet.exercise!.name,
+                            exercise.name,
                             style: Theme.of(context).textTheme.titleMedium,
                           ),
                         ),
@@ -422,8 +411,7 @@ class _TimerSettingsRepository extends State<TimerSettings> {
                             onTap: () => selectAll(minController),
                             onChanged: (value) {
                               final minutes = int.tryParse(value) ?? 0;
-                              final seconds =
-                                  int.tryParse(secController.text) ?? 0;
+                              final seconds = int.tryParse(secController.text) ?? 0;
                               _updateExerciseRestTime(
                                 gymSet,
                                 minutes,
@@ -443,8 +431,7 @@ class _TimerSettingsRepository extends State<TimerSettings> {
                             keyboardType: TextInputType.number,
                             onTap: () => selectAll(secController),
                             onChanged: (value) {
-                              final minutes =
-                                  int.tryParse(minController.text) ?? 0;
+                              final minutes = int.tryParse(minController.text) ?? 0;
                               final seconds = int.tryParse(value) ?? 0;
                               _updateExerciseRestTime(
                                 gymSet,

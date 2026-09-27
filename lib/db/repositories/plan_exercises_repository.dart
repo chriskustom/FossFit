@@ -14,28 +14,18 @@ class PlanExercisesRepository extends ChangeNotifier {
 
   Future<void> loadAll() async {
     final rows = await _db.rawQuery('''
-      SELECT
-        plan_exercises.*,
-
-        exercises.id AS exercise_joined_id,
-        exercises.name AS exercise_name,
-        exercises.cardio AS exercise_cardio,
-        exercises.category AS exercise_category,
-        exercises.image AS exercise_image
+      SELECT *
 
       FROM plan_exercises
 
-      LEFT JOIN exercises
-        ON exercises.id = plan_exercises.exercise_id
-
       ORDER BY
-        plan_exercises.plan_id ASC,
-        plan_exercises.sequence ASC
+        plan_id ASC,
+        sequence ASC
     ''');
 
     _planexercises = rows
         .map(
-          (r) => PlanExercise.fromJoinedMap(r),
+          (r) => PlanExercise.fromMap(r),
         )
         .toList();
 

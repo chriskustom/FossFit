@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:fossfit/db/db_constants.dart';
-import 'package:fossfit/models/plan_exercise_model.dart';
 import 'package:fossfit/models/plan_model.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -69,7 +68,6 @@ class PlansRepository extends ChangeNotifier {
                   'now',
                   'localtime'
                 )
-                AND gs.hidden = 0
               THEN 1
             END
           ) AS todays_count
@@ -184,48 +182,10 @@ class PlansRepository extends ChangeNotifier {
 
   Future<List<Plan>> getPlans() async {
     final rows = await _db.rawQuery('''
-      SELECT
-        plans.id,
-        plans.days,
-        plans.sequence,
-        plans.title,
-
-        plan_exercises.id
-          AS plan_exercise_id,
-        plan_exercises.timers,
-        plan_exercises.enabled,
-        plan_exercises.max_sets,
-        plan_exercises.exercise_id,
-        plan_exercises.warmup_sets,
-        plan_exercises.plan_id,
-        plan_exercises.sequence
-          AS plan_exercise_sequence,
-
-        exercises.id
-          AS exercise_joined_id,
-        exercises.name
-          AS exercise_name,
-        exercises.cardio
-          AS exercise_cardio,
-        exercises.category
-          AS exercise_category,
-        exercises.image
-          AS exercise_image
-
+      SELECT *
       FROM plans
-
-      LEFT JOIN plan_exercises
-        ON plan_exercises.plan_id =
-            plans.id
-        AND plan_exercises.enabled = 1
-
-      LEFT JOIN exercises
-        ON exercises.id =
-            plan_exercises.exercise_id
-
       ORDER BY
-        plans.sequence ASC,
-        plan_exercises.sequence ASC
+        sequence ASC
     ''');
 
     final Map<int, Plan> plans = {};
@@ -239,35 +199,6 @@ class PlansRepository extends ChangeNotifier {
         plan = Plan.fromMap(row);
         plans[planId] = plan;
       }
-
-      if (row['plan_exercise_id'] == null) {
-        continue;
-      }
-
-      final planExercise = PlanExercise.fromJoinedMap({
-        'id': row['plan_exercise_id'],
-        'timers': row['timers'],
-        'enabled': row['enabled'],
-        'max_sets': row['max_sets'],
-        'exercise_id': row['exercise_id'],
-        'warmup_sets': row['warmup_sets'],
-        'plan_id': row['plan_id'],
-        'sequence': row['plan_exercise_sequence'],
-        'exercise_joined_id': row['exercise_joined_id'],
-        'exercise_name': row['exercise_name'],
-        'exercise_cardio': row['exercise_cardio'],
-        'exercise_category': row['exercise_category'],
-        'exercise_image': row['exercise_image'],
-      });
-
-      final exercises = [
-        ...?plan.exercises,
-        planExercise,
-      ];
-
-      plans[planId] = plan.copyWith(
-        exercises: exercises,
-      );
     }
 
     return plans.values.toList();

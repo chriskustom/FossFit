@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:fossfit/constants.dart';
 import 'package:fossfit/db/db_constants.dart';
-import 'package:fossfit/graph/cardio_data.dart';
-import 'package:fossfit/graph/strength_data.dart';
+import 'package:fossfit/models/constants.dart';
 import 'package:fossfit/models/gym_set_model.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -29,24 +27,12 @@ class GymSetsRepository extends ChangeNotifier {
 
   Future<void> loadAll() async {
     final rows = await _db.rawQuery('''
-      SELECT
-        gym_sets.*,
-
-        exercises.id AS exercise_joined_id,
-        exercises.name AS exercise_name,
-        exercises.cardio AS exercise_cardio,
-        exercises.category AS exercise_category,
-        exercises.image AS exercise_image
-
+      SELECT *
       FROM gym_sets
-
-      LEFT JOIN exercises
-        ON exercises.id = gym_sets.exercise_id
-
-      ORDER BY gym_sets.created DESC
+      ORDER BY created DESC
     ''');
 
-    _gymsets = rows.map(GymSet.fromJoinedMap).toList();
+    _gymsets = rows.map(GymSet.fromMap).toList();
     await _loadLatestWorkout();
     notifyListeners();
   }
@@ -54,21 +40,11 @@ class GymSetsRepository extends ChangeNotifier {
   Future<GymSet?> _loadById(int id) async {
     final rows = await _db.rawQuery(
       '''
-      SELECT
-        gym_sets.*,
-
-        exercises.id AS exercise_joined_id,
-        exercises.name AS exercise_name,
-        exercises.cardio AS exercise_cardio,
-        exercises.category AS exercise_category,
-        exercises.image AS exercise_image
+      SELECT *
 
       FROM gym_sets
 
-      LEFT JOIN exercises
-        ON exercises.id = gym_sets.exercise_id
-
-      WHERE gym_sets.id = ?
+      WHERE id = ?
 
       LIMIT 1
       ''',
@@ -79,7 +55,7 @@ class GymSetsRepository extends ChangeNotifier {
       return null;
     }
 
-    return GymSet.fromJoinedMap(rows.first);
+    return GymSet.fromMap(rows.first);
   }
 
   // ---------------------------------------------------------------------------
@@ -219,70 +195,6 @@ class GymSetsRepository extends ChangeNotifier {
     return true;
   }
 
-  Future<bool> hideGymSet(int id) async {
-    final count = await _db.update(
-      TableName.gymsets.name,
-      {
-        'hidden': 1,
-      },
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-
-    if (count <= 0) {
-      return false;
-    }
-
-    final index = _gymsets.indexWhere(
-      (set) => set.id == id,
-    );
-
-    if (index >= 0) {
-      final loadedSet = await _loadById(id);
-
-      _gymsets[index] = loadedSet ??
-          _gymsets[index].copyWith(
-            hidden: true,
-          );
-    }
-
-    notifyListeners();
-
-    return true;
-  }
-
-  Future<bool> unhideGymSet(int id) async {
-    final count = await _db.update(
-      TableName.gymsets.name,
-      {
-        'hidden': 0,
-      },
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-
-    if (count <= 0) {
-      return false;
-    }
-
-    final index = _gymsets.indexWhere(
-      (set) => set.id == id,
-    );
-
-    if (index >= 0) {
-      final loadedSet = await _loadById(id);
-
-      _gymsets[index] = loadedSet ??
-          _gymsets[index].copyWith(
-            hidden: false,
-          );
-    }
-
-    notifyListeners();
-
-    return true;
-  }
-
   Future<void> truncateTable() async {
     await _db.execute(
       'DELETE FROM ${TableName.gymsets.name};',
@@ -349,133 +261,6 @@ class GymSetsRepository extends ChangeNotifier {
       isUtc: true,
     ).toLocal();
   }
-
-  // ---------------------------------------------------------------------------
-  // Cardio
-  // ---------------------------------------------------------------------------
-
-  double getCardioFromRow(
-    Map<String, dynamic> row,
-    CardioMetric metric,
-  ) {
-    switch (metric) {
-      case CardioMetric.pace:
-        final distance = (row['distance_sum'] as num?)?.toDouble() ?? 0;
-        final duration = (row['duration_sum'] as num?)?.toDouble() ?? 0;
-
-        return duration == 0 ? 0 : distance / duration;
-
-      case CardioMetric.distance:
-        return (row['distance_sum'] as num?)?.toDouble() ?? 0;
-
-      case CardioMetric.duration:
-        return (row['duration_sum'] as num?)?.toDouble() ?? 0;
-
-      case CardioMetric.incline:
-        return (row['incline_avg'] as num?)?.toDouble() ?? 0;
-
-      case CardioMetric.inclineAdjustedPace:
-        return (row['incline_adjusted_pace'] as num?)?.toDouble() ?? 0;
-    }
-  }
-
-  Future<List<CardioData>> getCardioData({
-    Period period = Period.day,
-    int exerciseId = 0,
-    CardioMetric metric = CardioMetric.pace,
-    String target = "km",
-    DateTime? start,
-    DateTime? end,
-  }) async {
-    final groupBy = getCreatedSql(period);
-
-    final startSeconds = toUnixSeconds(
-      start ?? DateTime.fromMillisecondsSinceEpoch(0),
-    );
-
-    final endSeconds = toUnixSeconds(
-      end ??
-          DateTime.now().toLocal().add(
-                const Duration(days: 1),
-              ),
-    );
-
-    final results = await _db.rawQuery(
-      """
-      SELECT
-        SUM(distance) AS distance_sum,
-        SUM(duration) AS duration_sum,
-        SUM(distance) / SUM(duration) AS pace,
-        AVG(incline) AS incline_avg,
-
-        SUM(distance) *
-        POW(1.1, AVG(incline)) /
-        SUM(duration) AS incline_adjusted_pace,
-
-        created,
-        unit
-
-      FROM ${TableName.gymsets.name}
-
-      WHERE exercise_id = ?
-        AND hidden = 0
-        AND created >= ?
-        AND created < ?
-
-      GROUP BY $groupBy
-
-      ORDER BY $groupBy DESC
-
-      LIMIT 11
-      """,
-      [
-        exerciseId,
-        startSeconds,
-        endSeconds,
-      ],
-    );
-
-    final list = <CardioData>[];
-
-    for (final result in results.reversed) {
-      var value = getCardioFromRow(
-        result,
-        metric,
-      );
-
-      final unit = result['unit'] as String;
-
-      if (unit == 'km' && target == 'mi') {
-        value /= 1.609;
-      } else if (unit == 'mi' && target == 'km') {
-        value *= 1.609;
-      } else if (unit == 'm' && target == 'km') {
-        value /= 1000;
-      } else if (unit == 'km' && target == 'm') {
-        value *= 1000;
-      } else if (unit == 'm' && target == 'mi') {
-        value /= 1609.34;
-      } else if (unit == 'mi' && target == 'm') {
-        value *= 1609.34;
-      }
-
-      list.add(
-        CardioData(
-          created: fromUnixSeconds(result['created']),
-          value: double.parse(
-            value.toStringAsFixed(2),
-          ),
-          unit: target,
-        ),
-      );
-    }
-
-    return list;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Strength expressions
-  // ---------------------------------------------------------------------------
 
   String getVolumeSql() {
     return 'ROUND(SUM(weight * reps), 2)';
@@ -635,7 +420,6 @@ class GymSetsRepository extends ChangeNotifier {
 
     final where = <String>[
       'exercise_id = ?',
-      'hidden = 0',
     ];
 
     final args = <dynamic>[
@@ -652,8 +436,7 @@ class GymSetsRepository extends ChangeNotifier {
       args.add(toUnixSeconds(end));
     }
 
-    final repsExpression =
-        metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
+    final repsExpression = metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
 
     final sql = '''
       SELECT
@@ -755,9 +538,7 @@ class GymSetsRepository extends ChangeNotifier {
       args.add(toUnixSeconds(end));
     }
 
-    final repsExpression = metric == StrengthMetric.bestReps
-        ? 'MAX(g.reps) AS max_reps'
-        : 'g.reps';
+    final repsExpression = metric == StrengthMetric.bestReps ? 'MAX(g.reps) AS max_reps' : 'g.reps';
 
     final sql = '''
     SELECT
@@ -857,43 +638,6 @@ class GymSetsRepository extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   Future<bool> isBest(GymSet gymSet) async {
-    final rows = await _db.query(
-      'exercises',
-      columns: ['cardio'],
-      where: 'id = ?',
-      whereArgs: [gymSet.exerciseId],
-      limit: 1,
-    );
-
-    final isCardio = rows.first['cardio'] == 1;
-
-    if (isCardio) {
-      final results = await _db.rawQuery(
-        '''
-        SELECT
-          SUM(distance) / SUM(duration) AS pace
-
-        FROM ${TableName.gymsets.name}
-
-        ORDER BY weight DESC, reps DESC
-
-        LIMIT 1
-        ''',
-      );
-
-      if (results.isEmpty) {
-        return false;
-      }
-
-      final best = (results.first['pace'] as num?)?.toDouble();
-
-      if (best == null) {
-        return false;
-      }
-
-      return (gymSet.distance ?? 0.0) / (gymSet.duration ?? 0.0) > best;
-    }
-
     final results = await _db.rawQuery(
       '''
       SELECT
@@ -965,78 +709,6 @@ class GymSetsRepository extends ChangeNotifier {
         ''',
         [exerciseId],
       );
-    } else if (unit == 'km') {
-      await _db.execute(
-        '''
-        UPDATE gym_sets
-        SET
-          weight = weight * 1.609,
-          unit = 'km'
-        WHERE exercise_id = ?
-          AND unit = 'mi';
-        ''',
-        [exerciseId],
-      );
-
-      await _db.execute(
-        '''
-        UPDATE gym_sets
-        SET
-          weight = weight / 1000,
-          unit = 'km'
-        WHERE exercise_id = ?
-          AND unit = 'm';
-        ''',
-        [exerciseId],
-      );
-    } else if (unit == 'mi') {
-      await _db.execute(
-        '''
-        UPDATE gym_sets
-        SET
-          weight = weight / 1.609,
-          unit = 'mi'
-        WHERE exercise_id = ?
-          AND unit = 'km';
-        ''',
-        [exerciseId],
-      );
-
-      await _db.execute(
-        '''
-        UPDATE gym_sets
-        SET
-          weight = weight / 1609.34,
-          unit = 'mi'
-        WHERE exercise_id = ?
-          AND unit = 'm';
-        ''',
-        [exerciseId],
-      );
-    } else if (unit == 'm') {
-      await _db.execute(
-        '''
-        UPDATE gym_sets
-        SET
-          weight = weight * 1000,
-          unit = 'm'
-        WHERE exercise_id = ?
-          AND unit = 'km';
-        ''',
-        [exerciseId],
-      );
-
-      await _db.execute(
-        '''
-        UPDATE gym_sets
-        SET
-          weight = weight * 1609.34,
-          unit = 'm'
-        WHERE exercise_id = ?
-          AND unit = 'mi';
-        ''',
-        [exerciseId],
-      );
     }
 
     // Keep the in-memory cache consistent after conversions.
@@ -1046,13 +718,12 @@ class GymSetsRepository extends ChangeNotifier {
   Future<void> _loadLatestWorkout() async {
     DateTime dayOnly(DateTime d) => DateTime(d.year, d.month, d.day);
     final today = dayOnly(DateTime.now());
-    if (_gymsets.isEmpty) _latestgymsets = [];
-    final mostRecentDay = _gymsets
-        .map((s) => dayOnly(s.created))
-        .where((d) => !d.isAfter(today))
-        .reduce((a, b) => a.isAfter(b) ? a : b);
+    if (_gymsets.isEmpty) {
+      _latestgymsets = [];
+      return;
+    }
+    final mostRecentDay = _gymsets.map((s) => dayOnly(s.created)).where((d) => !d.isAfter(today)).reduce((a, b) => a.isAfter(b) ? a : b);
 
-    _latestgymsets =
-        _gymsets.where((s) => dayOnly(s.created) == mostRecentDay).toList();
+    _latestgymsets = _gymsets.where((s) => dayOnly(s.created) == mostRecentDay).toList();
   }
 }

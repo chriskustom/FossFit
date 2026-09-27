@@ -2,9 +2,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/graph/cardio_data.dart';
-import 'package:fossfit/graph/flex_line.dart';
+import 'package:fossfit/features/graph/flex_line.dart';
 import 'package:fossfit/models/constants.dart';
+import 'package:fossfit/models/gym_set_model.dart';
 import 'package:fossfit/widgets/setting_switch.dart';
 import 'package:provider/provider.dart';
 
@@ -158,20 +158,23 @@ List<Widget> getAppearanceSettings(
                   .toList(),
             ),
             data: [
-              CardioData(
+              StrengthData(
                 created: DateTime.parse('2024-05-19 14:54:17.000'),
                 value: 0.13,
-                unit: 'km',
+                unit: 'kg',
+                reps: 0,
               ),
-              CardioData(
+              StrengthData(
                 created: DateTime.parse('2024-05-19 14:54:17.000'),
                 value: 0.13,
-                unit: 'km',
+                unit: 'kg',
+                reps: 0,
               ),
-              CardioData(
+              StrengthData(
                 created: DateTime.parse('2024-05-19 14:54:17.000'),
                 value: 0.13,
-                unit: 'km',
+                unit: 'kg',
+                reps: 0,
               ),
             ],
           ),

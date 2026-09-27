@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart' as material;
 import 'package:flutter/material.dart';
-import 'package:fossfit/animated_fab.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/models/constants.dart';
 import 'package:fossfit/utils.dart';
+import 'package:fossfit/widgets/animated_fab.dart';
 import 'package:fossfit/widgets/setting_switch.dart';
 import 'package:provider/provider.dart';
 
@@ -42,8 +42,7 @@ class _TabSettingsRepository extends State<TabSettings> {
   }
 
   void setTab(String name, bool enabled) {
-    if (!enabled && tabs.where((tab) => tab.enabled == true).length == 1)
-      return toast('You need at least one tab');
+    if (!enabled && tabs.where((tab) => tab.enabled == true).length == 1) return toast('You need at least one tab');
     final index = tabs.indexWhere((tappedTab) => tappedTab.name == name);
     setState(() {
       tabs[index] = (name: name, enabled: enabled);
@@ -218,10 +217,7 @@ class _TabSettingsRepository extends State<TabSettings> {
           await settings.setSetting(
             category: SettingCategory.tabs,
             key: 'tabs',
-            value: tabs
-                .where((tab) => tab.enabled)
-                .map((tab) => tab.name)
-                .join(','),
+            value: tabs.where((tab) => tab.enabled).map((tab) => tab.name).join(','),
           );
           if (context.mounted) Navigator.of(context).pop();
         },

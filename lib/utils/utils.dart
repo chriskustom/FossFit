@@ -2,6 +2,27 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:collection/collection.dart';
+import 'package:intl/intl.dart';
+
+String formatDateWithOrdinal(DateTime date) {
+  String suffix(int day) {
+    if (day >= 11 && day <= 13) return 'th';
+    switch (day % 10) {
+      case 1:
+        return 'st';
+      case 2:
+        return 'nd';
+      case 3:
+        return 'rd';
+      default:
+        return 'th';
+    }
+  }
+
+  return '${DateFormat('EEE').format(date)}, '
+      '${date.day}${suffix(date.day)} '
+      '${DateFormat('MMM yy').format(date)}';
+}
 
 int generateNotificationId({
   required String entityType,
@@ -57,9 +78,7 @@ extension StringExtensions on String {
     // Capitalize the first letter of each word and join them back together
     return words
         .map(
-          (word) => word.isNotEmpty
-              ? word[0].toUpperCase() + word.substring(1).toLowerCase()
-              : '',
+          (word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1).toLowerCase() : '',
         )
         .join(' ');
   }
@@ -265,8 +284,7 @@ extension StringExtensions on String {
   ///
   /// Returns:
   ///   The enum value of type `T` that matches the string, or `null` if no match is found.
-  T? toEnum<T>(List<T> enumValues) =>
-      enumValues.firstWhereOrNull((e) => e.toString().split('.').last == this);
+  T? toEnum<T>(List<T> enumValues) => enumValues.firstWhereOrNull((e) => e.toString().split('.').last == this);
 
   ///!~~~~~~~~~~~~~~~~~~~~~~~ Hex to Color ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ///## Converts a hexadecimal color string to a [Color] object.
@@ -349,6 +367,5 @@ extension StringExtensions on String {
     return obfuscatedText;
   }
 
-  String truncate(int maxLength) =>
-      (length <= maxLength) ? this : '${substring(0, maxLength)}...';
+  String truncate(int maxLength) => (length <= maxLength) ? this : '${substring(0, maxLength)}...';
 }

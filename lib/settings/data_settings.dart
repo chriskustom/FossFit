@@ -2,12 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:fossfit/db/export_data.dart';
+import 'package:fossfit/db/import_data.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/delete_records_button.dart';
-import 'package:fossfit/export_data.dart';
-import 'package:fossfit/import_data.dart';
 import 'package:fossfit/main.dart';
 import 'package:fossfit/models/constants.dart';
+import 'package:fossfit/widgets/delete_records_button.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';

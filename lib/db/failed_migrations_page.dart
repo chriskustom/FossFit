@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:fossfit/delete_records_button.dart';
-import 'package:fossfit/export_data.dart';
+import 'package:fossfit/db/export_data.dart';
+import 'package:fossfit/widgets/delete_records_button.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 class FailedMigrationsPage extends StatelessWidget {

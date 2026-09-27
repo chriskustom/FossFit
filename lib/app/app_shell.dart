@@ -10,10 +10,9 @@ import 'package:fossfit/models/nav_page.dart';
 import 'package:fossfit/utils/app_haptics.dart';
 import 'package:provider/provider.dart';
 
-ValueNotifier<int?> currentNoteId = ValueNotifier(null);
-ValueNotifier<int?> currentNotebookId = ValueNotifier(null);
-ValueNotifier<int?> currentListId = ValueNotifier(null);
-ValueNotifier<int?> currentGoalId = ValueNotifier(null);
+ValueNotifier<int?> currentSetId = ValueNotifier(null);
+ValueNotifier<int?> currentExerciseId = ValueNotifier(null);
+ValueNotifier<int?> currentPlanId = ValueNotifier(null);
 
 class AppShell extends StatefulWidget {
   final Widget body;
@@ -152,12 +151,12 @@ class _AppShellState extends State<AppShell> {
         items: gymSets,
         enabled: pageOrder.contains('CalendarPage'),
       ),
-      'GraphsPage': NavPage(
-        route: NavRoute.graphs,
-        label: 'Graphs',
-        icon: Icons.insights_rounded,
+      'ExercisesPage': NavPage(
+        route: NavRoute.exercises,
+        label: 'Exercises',
+        icon: Icons.list_alt_rounded,
         items: exercises,
-        enabled: pageOrder.contains('GraphsPage'),
+        enabled: pageOrder.contains('ExercisesPage'),
       ),
       'TimerPage': NavPage(
         route: NavRoute.timer,
@@ -175,8 +174,7 @@ class _AppShellState extends State<AppShell> {
       ),
     };
 
-    final orderedPages =
-        pageOrder.map((k) => allPages[k]).whereType<NavPage>().toList();
+    final orderedPages = pageOrder.map((k) => allPages[k]).whereType<NavPage>().toList();
 
     return orderedPages.where((p) => p.enabled).toList();
   }

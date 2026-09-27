@@ -36,8 +36,7 @@ class DatabaseHelper {
           await db.execute('PRAGMA foreign_keys = ON');
         },
         onCreate: (db, version) async => _onCreate(db, version),
-        onUpgrade: (db, oldVersion, newVersion) async =>
-            _runMigrations(db, oldVersion, newVersion),
+        onUpgrade: (db, oldVersion, newVersion) async => _runMigrations(db, oldVersion, newVersion),
       );
 
   void _onCreate(Database db, int version) async {
@@ -179,11 +178,7 @@ class DatabaseHelper {
       final dbFile = File(dbPath);
       if (!await dbFile.exists()) return false;
 
-      final timestamp = DateTime.now()
-          .toIso8601String()
-          .replaceAll(RegExp(r'[:\-]'), '')
-          .split('.')
-          .first;
+      final timestamp = DateTime.now().toIso8601String().replaceAll(RegExp(r'[:\-]'), '').split('.').first;
       final backupFileName = '${backupPrefix}_$timestamp.db';
       final backupFilePath = join(backupDirPath, backupFileName);
 
@@ -200,14 +195,11 @@ class DatabaseHelper {
         .listSync()
         .whereType<File>()
         .where(
-          (f) =>
-              basename(f.path).startsWith('${backupPrefix}_') &&
-              f.path.endsWith('.db'),
+          (f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'),
         )
         .toList();
 
-    backupFiles
-        .sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    backupFiles.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
 
     for (var i = 2; i < backupFiles.length; i++) {
       try {
@@ -224,16 +216,13 @@ class DatabaseHelper {
         .listSync()
         .whereType<File>()
         .where(
-          (f) =>
-              basename(f.path).startsWith('${backupPrefix}_') &&
-              f.path.endsWith('.db'),
+          (f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'),
         )
         .toList();
 
     if (files.isEmpty) return null;
 
-    files
-        .sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    files.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
 
     return files.first.statSync().modified;
   }
@@ -242,8 +231,7 @@ class DatabaseHelper {
     final backup = repo.getSettingByCategory(category: 'backup', key: 'backup');
     if (backup.isEmpty || backup == '0') return;
 
-    final backupDir =
-        repo.getSettingByCategory(category: 'backup', key: 'directory');
+    final backupDir = repo.getSettingByCategory(category: 'backup', key: 'directory');
     if (backupDir.isEmpty) return;
 
     final lastBackup = _getLastBackupDate(backupDir);

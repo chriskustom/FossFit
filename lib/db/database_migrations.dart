@@ -42,8 +42,6 @@ Future<void> migrateToV2(Database db) async {
     UNION ALL
     SELECT 'formats', 'strength_unit', COALESCE(CAST(strength_unit AS TEXT), '') FROM settings_old
     UNION ALL
-    SELECT 'formats', 'cardio_unit', COALESCE(CAST(cardio_unit AS TEXT), '') FROM settings_old
-    UNION ALL
     SELECT 'formats', 'long_date_format', COALESCE(CAST(long_date_format AS TEXT), '') FROM settings_old
     UNION ALL
     SELECT 'formats', 'short_date_format', COALESCE(CAST(short_date_format AS TEXT), '') FROM settings_old
@@ -56,7 +54,7 @@ Future<void> migrateToV2(Database db) async {
     SELECT 'plans', 'plan_trailing', COALESCE(CAST(substr(plan_trailing, instr(plan_trailing, '.') + 1) AS TEXT), '') FROM settings_old
 
     UNION ALL
-    SELECT 'tabs', 'tabs', COALESCE(CAST(tabs AS TEXT), '') FROM settings_old
+    SELECT 'tabs', 'tabs', COALESCE(REPLACE(CAST(REPLACE(CAST(tabs AS TEXT), 'HistoryPage', 'WorkoutPage') AS TEXT), 'GraphsPage', 'ExercisesPage'), '') FROM settings_old
     UNION ALL
     SELECT 'tabs', 'scrollable_tabs', COALESCE(CAST(scrollable_tabs AS TEXT), '') FROM settings_old
 
@@ -91,31 +89,24 @@ Future<void> migrateToV2(Database db) async {
     UNION ALL
     SELECT 'system', 'explained_permissions', COALESCE(CAST(explained_permissions AS TEXT), '') FROM settings_old;
 ''');
-
     await txn.execute('DROP TABLE settings_old');
   });
+
   await db.transaction((txn) async {
     //Create exercises table
     await txn.execute('''
     CREATE TABLE exercises (
       id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
-      cardio INTEGER NOT NULL CHECK (cardio IN (0, 1)),
       category TEXT NULL,
       image TEXT NULL
     );
   ''');
-    //insert 'Weight' as a default
-    await txn.execute('''
-    INSERT INTO exercises (name, cardio, category, image)
-    VALUES ('Weight', 0, NULL, NULL);
-  ''');
     //Insert all existing user exercises from gym sets
     await txn.execute('''
-    INSERT INTO exercises (name, cardio, category, image)
+    INSERT INTO exercises (name, category, image)
     SELECT
       gs.name,
-      gs.cardio,
       gs.category,
       gs.image
     FROM gym_sets gs
@@ -129,15 +120,13 @@ Future<void> migrateToV2(Database db) async {
   ''');
     //insert any unique exercises from plan exercsies
     await txn.execute('''
-    INSERT INTO exercises (name, cardio, category, image)
+    INSERT INTO exercises (name, category, image)
     SELECT
       pe.exercise,
-      0,
       NULL,
       NULL
     FROM plan_exercises pe
-    WHERE pe.exercise <> 'Weight'
-      AND NOT EXISTS (
+    WHERE NOT EXISTS (
         SELECT 1
         FROM exercises e
         WHERE e.name = pe.exercise
@@ -150,13 +139,12 @@ Future<void> migrateToV2(Database db) async {
         ) ??
         0;
 
-    if (exerciseCount == 1) {
+    if (exerciseCount == 0) {
       final batch = txn.batch();
 
       for (final exercise in defaultExercises) {
         batch.insert('exercises', {
           'name': exercise.$1,
-          'cardio': exercise.$2,
           'category': exercise.$3,
           'image': exercise.$4,
         });
@@ -170,10 +158,6 @@ Future<void> migrateToV2(Database db) async {
           id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
           body_weight REAL NOT NULL DEFAULT 0.0,
           created INTEGER NOT NULL,
-          distance REAL NOT NULL DEFAULT 0.0,
-          duration REAL NOT NULL DEFAULT 0.0,
-          hidden INTEGER NOT NULL DEFAULT 0 CHECK (hidden IN (0, 1)),
-          incline INTEGER NULL,
           exercise_id INTEGER NOT NULL,
           notes TEXT NULL,
           plan_id INTEGER NULL,
@@ -190,10 +174,6 @@ Future<void> migrateToV2(Database db) async {
           id,
           body_weight,
           created,
-          distance,
-          duration,
-          hidden,
-          incline,
           exercise_id,
           notes,
           plan_id,
@@ -206,10 +186,6 @@ Future<void> migrateToV2(Database db) async {
           gs.id,
           gs.body_weight,
           gs.created * 1000,
-          gs.distance,
-          gs.duration,
-          gs.hidden,
-          gs.incline,
           e.id,
           gs.notes,
           gs.plan_id,

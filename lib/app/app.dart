@@ -1,13 +1,13 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fossfit/calendar/calendar_page.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
-import 'package:fossfit/graph/graphs_page.dart';
+import 'package:fossfit/features/calendar/calendar_page.dart';
+import 'package:fossfit/features/exercises/exercises_page.dart';
+import 'package:fossfit/features/plans/plans_page.dart';
+import 'package:fossfit/features/workouts/workout_page.dart';
 import 'package:fossfit/models/constants.dart';
-import 'package:fossfit/plan/plans_page.dart';
 import 'package:fossfit/services/navigation_service.dart';
-import 'package:fossfit/sets/workout_page.dart';
 import 'package:fossfit/settings/settings_page.dart';
 import 'package:fossfit/timer/timer_page.dart';
 import 'package:fossfit/widgets/app_snack_bar.dart';
@@ -66,20 +66,12 @@ class _AppState extends State<App> {
           context,
         );
 
-        final currentBrightness = themeMode == ThemeMode.dark ||
-                (themeMode == ThemeMode.system && brightness == Brightness.dark)
-            ? Brightness.dark
-            : Brightness.light;
+        final currentBrightness = themeMode == ThemeMode.dark || (themeMode == ThemeMode.system && brightness == Brightness.dark) ? Brightness.dark : Brightness.light;
 
         SystemChrome.setSystemUIOverlayStyle(
           SystemUiOverlayStyle(
-            statusBarIconBrightness: currentBrightness == Brightness.dark
-                ? Brightness.light
-                : Brightness.dark,
-            systemNavigationBarIconBrightness:
-                currentBrightness == Brightness.dark
-                    ? Brightness.light
-                    : Brightness.dark,
+            statusBarIconBrightness: currentBrightness == Brightness.dark ? Brightness.light : Brightness.dark,
+            systemNavigationBarIconBrightness: currentBrightness == Brightness.dark ? Brightness.light : Brightness.dark,
             statusBarColor: Colors.transparent,
             systemNavigationBarColor: Colors.transparent,
           ),
@@ -130,8 +122,8 @@ class _AppState extends State<App> {
                   case NavRoute.calendar:
                     page = const CalendarPage();
                     break;
-                  case NavRoute.graphs:
-                    page = const GraphsPage();
+                  case NavRoute.exercises:
+                    page = const ExercisesPage();
                     break;
                   case NavRoute.timer:
                     page = const TimerPage();
@@ -147,8 +139,7 @@ class _AppState extends State<App> {
                     milliseconds: 180,
                   ),
                   pageBuilder: (context, animation, secondaryAnimation) => page,
-                  transitionsBuilder:
-                      (context, animation, secondaryAnimation, child) {
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
                     return FadeTransition(
                       opacity: CurvedAnimation(
                         parent: animation,

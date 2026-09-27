@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:fossfit/constants.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/models/constants.dart';
 import 'package:fossfit/utils.dart';

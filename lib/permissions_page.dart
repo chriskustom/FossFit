@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:fossfit/animated_fab.dart';
 import 'package:fossfit/db/repositories/settings_repository.dart';
 import 'package:fossfit/models/constants.dart';
+import 'package:fossfit/widgets/animated_fab.dart';
 import 'package:fossfit/widgets/setting_switch.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
@@ -67,12 +67,10 @@ class _PermissionsPageState extends State<PermissionsPage> {
                 subtitle: const Text(
                   'Alarms cannot be accurate if this is disabled.',
                 ),
-                onTap: () async =>
-                    await requestPermission(Permission.scheduleExactAlarm),
+                onTap: () async => await requestPermission(Permission.scheduleExactAlarm),
                 trailing: Switch(
                   value: schedule,
-                  onChanged: (_) async =>
-                      await requestPermission(Permission.scheduleExactAlarm),
+                  onChanged: (_) async => await requestPermission(Permission.scheduleExactAlarm),
                 ),
               ),
               ListTile(
@@ -80,12 +78,10 @@ class _PermissionsPageState extends State<PermissionsPage> {
                 subtitle: const Text(
                   'Timer progress is sent to the notification bar',
                 ),
-                onTap: () async =>
-                    await requestPermission(Permission.notification),
+                onTap: () async => await requestPermission(Permission.notification),
                 trailing: Switch(
                   value: notify,
-                  onChanged: (_) async =>
-                      await requestPermission(Permission.notification),
+                  onChanged: (_) async => await requestPermission(Permission.notification),
                 ),
               ),
             ],
@@ -116,9 +112,10 @@ class _PermissionsPageState extends State<PermissionsPage> {
                         Navigator.pop(context);
                         Navigator.pop(context);
                         settings.setSetting(
-                            category: SettingCategory.timers,
-                            key: 'explained_permissions',
-                            value: '1',);
+                          category: SettingCategory.timers,
+                          key: 'explained_permissions',
+                          value: '1',
+                        );
                       },
                     ),
                   ],
@@ -129,9 +126,10 @@ class _PermissionsPageState extends State<PermissionsPage> {
             Navigator.pop(context);
 
             settings.setSetting(
-                category: SettingCategory.timers,
-                key: 'explained_permissions',
-                value: '1',);
+              category: SettingCategory.timers,
+              key: 'explained_permissions',
+              value: '1',
+            );
           }
         },
         label: const Text("Confirm"),
