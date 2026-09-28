@@ -13,15 +13,7 @@ class PlanExercisesRepository extends ChangeNotifier {
   List<PlanExercise> get planexercises => List.unmodifiable(_planexercises);
 
   Future<void> loadAll() async {
-    final rows = await _db.rawQuery('''
-      SELECT *
-
-      FROM plan_exercises
-
-      ORDER BY
-        plan_id ASC,
-        sequence ASC
-    ''');
+    final rows = await _db.query(TableName.planexercises.name, orderBy: 'plan_id ASC, sequence ASC');
 
     _planexercises = rows.map((r) => PlanExercise.fromMap(r)).toList();
 
@@ -45,9 +37,7 @@ class PlanExercisesRepository extends ChangeNotifier {
 
     planExercise.id = id;
 
-    final index = _planexercises.indexWhere(
-      (e) => e.planId == planExercise.planId && e.exerciseId == planExercise.exerciseId,
-    );
+    final index = _planexercises.indexWhere((e) => e.planId == planExercise.planId && e.exerciseId == planExercise.exerciseId);
 
     if (index >= 0) {
       _planexercises[index] = planExercise;
@@ -65,20 +55,13 @@ class PlanExercisesRepository extends ChangeNotifier {
       return false;
     }
 
-    final updated = await _db.update(
-      TableName.planexercises.name,
-      planExercise.toMap(),
-      where: 'plan_id = ? AND exercise_id = ?',
-      whereArgs: [planExercise.planId, planExercise.exerciseId],
-    );
+    final updated = await _db.update(TableName.planexercises.name, planExercise.toMap(), where: 'plan_id = ? AND exercise_id = ?', whereArgs: [planExercise.planId, planExercise.exerciseId]);
 
     if (updated <= 0) {
       return false;
     }
 
-    final index = _planexercises.indexWhere(
-      (e) => e.planId == planExercise.planId && e.exerciseId == planExercise.exerciseId,
-    );
+    final index = _planexercises.indexWhere((e) => e.planId == planExercise.planId && e.exerciseId == planExercise.exerciseId);
 
     if (index >= 0) {
       _planexercises[index] = planExercise;
@@ -92,11 +75,7 @@ class PlanExercisesRepository extends ChangeNotifier {
   }
 
   Future<bool> deletePlanExerciseByIdAndPlanId(int exerciseId, int planId) async {
-    final deleted = await _db.delete(
-      TableName.planexercises.name,
-      where: 'exercise_id = ? AND plan_id = ?',
-      whereArgs: [exerciseId, planId],
-    );
+    final deleted = await _db.delete(TableName.planexercises.name, where: 'exercise_id = ? AND plan_id = ?', whereArgs: [exerciseId, planId]);
 
     if (deleted <= 0) {
       return false;
@@ -128,11 +107,7 @@ class PlanExercisesRepository extends ChangeNotifier {
       return false;
     }
 
-    final deleted = await _db.delete(
-      TableName.planexercises.name,
-      where: 'plan_id IN (${List.filled(ids.length, '?').join(',')})',
-      whereArgs: ids,
-    );
+    final deleted = await _db.delete(TableName.planexercises.name, where: 'plan_id IN (${List.filled(ids.length, '?').join(',')})', whereArgs: ids);
 
     if (deleted <= 0) {
       return false;
@@ -143,11 +118,5 @@ class PlanExercisesRepository extends ChangeNotifier {
     notifyListeners();
 
     return true;
-  }
-
-  Future<void> truncateTable() async {
-    await _db.execute('DELETE FROM plan_exercises;');
-
-    await loadAll();
   }
 }

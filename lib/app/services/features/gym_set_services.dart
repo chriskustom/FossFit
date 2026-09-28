@@ -1,53 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/features/sets/add_edit_set_page.dart';
 import 'package:fossfit/app/utils/utils.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
-import 'package:fossfit/db/repositories/gymsets_repository.dart';
+import 'package:fossfit/db/repositories/gym_set_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class GymSetServices {
   final BuildContext context;
-  late GymSetsRepository gymsetsRepo;
+  late GymSetRepository gymsetsRepo;
   late ExercisesRepository exerciseRepo;
   late ConfigRepository settingsRepo;
   GymSetServices({required this.context}) {
-    gymsetsRepo = context.read<GymSetsRepository>();
+    gymsetsRepo = context.read<GymSetRepository>();
     exerciseRepo = context.read<ExercisesRepository>();
     settingsRepo = context.read<ConfigRepository>();
   }
   List<GymSet> getAllGymSets() => gymsetsRepo.gymsets;
   GymSet? getGymSetById(int id) => gymsetsRepo.getGymSetById(id);
-  // Future<GymSet?> openAddEditPage(BuildContext context, int? gymSetId) async {
-  //   return await showGeneralDialog<GymSet?>(
-  //     context: context,
-  //     barrierLabel: '',
-  //     barrierDismissible: true,
-  //     barrierColor: Colors.black54,
-  //     transitionDuration: const Duration(milliseconds: 200),
-  //     pageBuilder: (context, anim1, anim2) {
-  //       return Align(
-  //         alignment: Alignment.centerRight,
-  //         child: Material(
-  //           child: SizedBox(
-  //             width: MediaQuery.of(context).size.width,
-  //             height: double.infinity,
-  //             child: null, //TODO EDIT SET PAG
-  //           ),
-  //         ),
-  //       );
-  //     },
-  //     transitionBuilder: (context, anim1, anim2, child) {
-  //       final offsetAnimation = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(anim1);
-  //       return SlideTransition(position: offsetAnimation, child: child);
-  //     },
-  //   );
-  // }
+  Future<GymSet?> openAddEditPage(BuildContext context, int? gymSetId) async {
+    return await showGeneralDialog<GymSet?>(
+      context: context,
+      barrierLabel: '',
+      barrierDismissible: true,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (context, anim1, anim2) {
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Material(
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width,
+              height: double.infinity,
+              child: AddEditSetPage(setId: gymSetId),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, anim1, anim2, child) {
+        final offsetAnimation = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(anim1);
+        return SlideTransition(position: offsetAnimation, child: child);
+      },
+    );
+  }
 
-  Future<GymSet?> addGymSet(GymSet? gymSet) async {
+  Future<GymSet?> insertGymSet(GymSet? gymSet) async {
     if (gymSet == null) return null;
     return await gymsetsRepo.insertGymSet(gymSet);
   }
@@ -81,6 +82,8 @@ class GymSetServices {
   Future<bool> isBest(GymSet set) async {
     return await gymsetsRepo.isBest(set);
   }
+
+  List<GymSet> getSetsByExerciseId(int exerciseId) => gymsetsRepo.gymsets.where((e) => e.exerciseId == exerciseId).toList();
 
   Widget getLastGymSetWorkout(List<GymSet> sets) {
     String plural(int s) => s > 1 ? 's' : '';

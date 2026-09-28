@@ -5,5 +5,5 @@
         "source.fixAll": "always",
         "source.organizeImports": "always"
     },
-  "dart.flutterSdkPath": "C:\\Users\\sitcxs4\\Flutter\\flutter\\bin",
+  "dart.flutterSdkPath": "/home/chris/Flutter/flutter/",
 }

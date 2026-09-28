@@ -1,4 +1,4 @@
-package com.example.fossfit
+package com.kustom.fossfit
 
 import io.flutter.embedding.android.FlutterActivity
 

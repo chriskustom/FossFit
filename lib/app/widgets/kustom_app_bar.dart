@@ -16,14 +16,7 @@ class KustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   final List<IconButton>? selectActions;
   final bool showSearch;
 
-  const KustomAppBar({
-    super.key,
-    required this.title,
-    this.actions,
-    this.sorting,
-    this.selectActions,
-    this.showSearch = true,
-  });
+  const KustomAppBar({super.key, required this.title, this.actions, this.sorting, this.selectActions, this.showSearch = true});
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -95,10 +88,7 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
             }),
           )
         : Builder(
-            builder: (context) => IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: AppHaptics.selectWithHaptics(context, () => Scaffold.of(context).openDrawer()),
-            ),
+            builder: (context) => IconButton(icon: const Icon(Icons.menu), onPressed: AppHaptics.selectWithHaptics(context, () => Scaffold.of(context).openDrawer())),
           );
   }
 
@@ -113,12 +103,7 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
               duration: const Duration(milliseconds: 250),
               switchInCurve: Curves.easeInOut,
               switchOutCurve: Curves.easeInOut,
-              child: Text(
-                widget.title,
-                key: const ValueKey("title"),
-                style: Theme.of(context).textTheme.labelLarge,
-                textScaler: TextScaler.linear(1.1),
-              ),
+              child: Text(widget.title, key: const ValueKey("title"), style: Theme.of(context).textTheme.labelLarge, textScaler: TextScaler.linear(1.1)),
             ),
       actions: _isSearching ? [] : _buildMenu(context),
       flexibleSpace: Container(decoration: BoxDecoration(gradient: context.linearGradientLR)),
@@ -145,17 +130,10 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
             opacity: _animController.drive(Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeInOutCubic))),
             child: SizeTransition(
               axis: Axis.horizontal,
-              axisAlignment: -1.0,
-              sizeFactor: _animController.drive(
-                Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeInOutCubic)),
-              ),
+              alignment: AlignmentGeometry.xy(-1, 0),
+              sizeFactor: _animController.drive(Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeInOutCubic))),
               child: SlideTransition(
-                position: _animController.drive(
-                  Tween<Offset>(
-                    begin: const Offset(0.2, 0),
-                    end: Offset.zero,
-                  ).chain(CurveTween(curve: Curves.easeInOutCubic)),
-                ),
+                position: _animController.drive(Tween<Offset>(begin: const Offset(0.2, 0), end: Offset.zero).chain(CurveTween(curve: Curves.easeInOutCubic))),
                 child: TextField(
                   controller: _controller,
                   focusNode: _searchFocus,
@@ -174,10 +152,7 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
                     contentPadding: const EdgeInsets.symmetric(vertical: 15),
                     hintText: 'Search...',
                     border: InputBorder.none,
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: AppHaptics.selectWithHaptics(context, _closeSearch),
-                    ),
+                    suffixIcon: IconButton(icon: const Icon(Icons.close), onPressed: AppHaptics.selectWithHaptics(context, _closeSearch)),
                   ),
                 ),
               ),

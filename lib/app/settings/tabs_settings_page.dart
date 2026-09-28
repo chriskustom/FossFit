@@ -1,9 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
+import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/utils.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
-
-import 'package:fossfit/app/utils/constants.dart';
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class TabsSettingsPage extends StatefulWidget {
@@ -75,17 +74,13 @@ class _TabsSettingsPageState extends State<TabsSettingsPage> {
                         value: enabled,
                         onChanged: (value) {
                           pages[index] = '$pageName|${value == true ? 1 : 0}';
-                          context.read<ConfigRepository>().setSetting(
-                            category: category,
-                            key: 'tabs',
-                            value: pages.join(','),
-                          );
+                          context.read<ConfigRepository>().setSetting(category: category, key: 'tabs', value: pages.join(','));
                         },
                       ),
                     ],
                   );
                 },
-                onReorder: (oldIndex, newIndex) {
+                onReorderItem: (oldIndex, newIndex) {
                   if (oldIndex >= pages.length || newIndex > pages.length) {
                     return;
                   }

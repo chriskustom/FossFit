@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
-import 'package:fossfit/app/services/features/gymset_services.dart';
+import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/widgets/exercise_icon.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
@@ -37,10 +37,7 @@ class WorkoutList extends StatelessWidget {
             alignment: Alignment.center,
             child: _buildSectionDivider(context, date),
           ),
-          content: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: List.generate(sets.length, (index) => _buildListItem(context, sets[index], showImages)),
-          ),
+          content: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: List.generate(sets.length, (index) => _buildListItem(context, sets[index], showImages))),
         );
       },
     );
@@ -74,34 +71,18 @@ class WorkoutList extends StatelessWidget {
     Widget? leading = ExerciseIcon(exercise: exercise!, showImages: showImages);
     final trailing = Text("${_getSetNumber(gymSet)}: $reps REPS @ $weight ${gymSet.unit}");
     final dateFormat = context.read<ConfigRepository>().getSetting(.formats, 'date_format');
-    final subtitle = Text(
-      dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
-    );
+    final subtitle = Text(dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ListTile(
-          dense: true,
-          visualDensity: VisualDensity.compact,
-          leading: leading,
-          title: Text(exercise.name),
-          subtitle: trailing,
-          trailing: subtitle,
-        ),
-      ],
+      children: [ListTile(dense: true, visualDensity: VisualDensity.compact, leading: leading, title: Text(exercise.name), subtitle: trailing, trailing: subtitle)],
     );
   }
 
   String _getSetNumber(GymSet gymSet) {
     final currentDate = gymSet.created.toLocal();
     final sameDayEntries = sets
-        .where(
-          (entry) =>
-              entry.created.toLocal().year == currentDate.year &&
-              entry.created.toLocal().month == currentDate.month &&
-              entry.created.toLocal().day == currentDate.day,
-        )
+        .where((entry) => entry.created.toLocal().year == currentDate.year && entry.created.toLocal().month == currentDate.month && entry.created.toLocal().day == currentDate.day)
         .toList()
         .reversed
         .toList();

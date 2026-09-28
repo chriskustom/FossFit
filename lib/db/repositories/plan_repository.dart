@@ -111,10 +111,4 @@ class PlansRepository extends ChangeNotifier {
 
     return true;
   }
-
-  Future<void> truncateTable() async {
-    await _db.execute('DELETE FROM plans;');
-
-    await loadAll();
-  }
 }

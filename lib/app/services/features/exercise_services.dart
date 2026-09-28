@@ -3,18 +3,18 @@ import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
-import 'package:fossfit/db/repositories/gymsets_repository.dart';
+import 'package:fossfit/db/repositories/gym_set_repository.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
 import 'package:provider/provider.dart';
 
 class ExerciseServices {
   final BuildContext context;
-  late GymSetsRepository gymSetsRepo;
+  late GymSetRepository gymSetsRepo;
   late ExercisesRepository exerciseRepo;
   late PlanExercisesRepository planExercisesRepo;
   late ConfigRepository settingsRepo;
   ExerciseServices({required this.context}) {
-    gymSetsRepo = context.read<GymSetsRepository>();
+    gymSetsRepo = context.read<GymSetRepository>();
     exerciseRepo = context.read<ExercisesRepository>();
     planExercisesRepo = context.read<PlanExercisesRepository>();
     settingsRepo = context.read<ConfigRepository>();
@@ -22,9 +22,7 @@ class ExerciseServices {
 
   List<Exercise> getAllExercises() => exerciseRepo.exercises;
 
-  List<Exercise> getExercisesByPlanId(int planId) => exerciseRepo.exercises
-      .where((e) => planExercisesRepo.getPlanExercisesByPlanId(planId).map((e) => e.exerciseId).contains(e.id))
-      .toList();
+  List<Exercise> getExercisesByPlanId(int planId) => exerciseRepo.exercises.where((e) => planExercisesRepo.getPlanExercisesByPlanId(planId).map((e) => e.exerciseId).contains(e.id)).toList();
   Exercise? getExerciseById(int id) => exerciseRepo.getExerciseById(id);
   // Future<Exercise?> openAddEditPage(BuildContext context, int? exerciseId) async {
   //   return await showGeneralDialog<Exercise?>(

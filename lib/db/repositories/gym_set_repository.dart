@@ -5,13 +5,13 @@ import 'package:sqflite/sqflite.dart';
 
 typedef Rpm = ({String name, double rpm, double weight});
 
-class GymSetsRepository extends ChangeNotifier {
+class GymSetRepository extends ChangeNotifier {
   final Database _db;
 
   List<GymSet> _gymsets = [];
   List<GymSet> _latestgymsets = [];
 
-  GymSetsRepository(this._db);
+  GymSetRepository(this._db);
 
   List<GymSet> get gymsets => List.unmodifiable(_gymsets);
   List<GymSet> get latestgymsets => List.unmodifiable(_latestgymsets);
@@ -21,38 +21,12 @@ class GymSetsRepository extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   Future<void> loadAll() async {
-    final rows = await _db.rawQuery('''
-      SELECT *
-      FROM gym_sets
-      ORDER BY created DESC
-    ''');
+    final rows = await _db.query(TableName.sets.name, orderBy: 'created DESC');
 
     _gymsets = rows.map(GymSet.fromMap).toList();
     await _loadLatestWorkout();
     notifyListeners();
   }
-
-  Future<GymSet?> _loadById(int id) async {
-    final rows = await _db.rawQuery(
-      '''
-      SELECT *
-
-      FROM gym_sets
-
-      WHERE id = ?
-
-      LIMIT 1
-      ''',
-      [id],
-    );
-
-    if (rows.isEmpty) {
-      return null;
-    }
-
-    return GymSet.fromMap(rows.first);
-  }
-
   // ---------------------------------------------------------------------------
   // Getters
   // ---------------------------------------------------------------------------
@@ -66,31 +40,21 @@ class GymSetsRepository extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   Future<GymSet> insertGymSet(GymSet gymSet) async {
-    final id = await _db.insert(TableName.sets.name, gymSet.toMap());
+    gymSet.id = await _db.insert(TableName.sets.name, gymSet.toMap());
 
-    final loadedSet = await _loadById(id);
+    final index = _gymsets.indexWhere((set) => set.id == gymSet.id);
 
-    if (loadedSet == null) {
-      // This should never happen, but keep the repository consistent if it
-      // somehow does.
-      gymSet.id = id;
-
-      _gymsets.insert(0, gymSet);
+    if (index >= 0) {
+      _gymsets[index] = gymSet;
     } else {
-      final index = _gymsets.indexWhere((set) => set.id == id);
-
-      if (index >= 0) {
-        _gymsets[index] = loadedSet;
-      } else {
-        _gymsets.insert(0, loadedSet);
-      }
+      _gymsets.add(gymSet);
     }
 
     _sortByCreated();
 
     notifyListeners();
 
-    return loadedSet ?? gymSet;
+    return gymSet;
   }
 
   Future<bool> updateGymSet(GymSet? gymSet) async {
@@ -104,22 +68,12 @@ class GymSetsRepository extends ChangeNotifier {
       return false;
     }
 
-    // Reload the joined object so the cached model has the same shape as
-    // objects returned by loadAll().
-    final loadedSet = await _loadById(gymSet.id!);
-
     final index = _gymsets.indexWhere((set) => set.id == gymSet.id);
 
-    if (loadedSet != null) {
-      if (index >= 0) {
-        _gymsets[index] = loadedSet;
-      } else {
-        _gymsets.insert(0, loadedSet);
-      }
-    } else if (index >= 0) {
+    if (index >= 0) {
       _gymsets[index] = gymSet;
     } else {
-      _gymsets.insert(0, gymSet);
+      _gymsets.add(gymSet);
     }
 
     _sortByCreated();
@@ -161,12 +115,6 @@ class GymSetsRepository extends ChangeNotifier {
     notifyListeners();
 
     return true;
-  }
-
-  Future<void> truncateTable() async {
-    await _db.execute('DELETE FROM ${TableName.sets.name};');
-
-    await loadAll();
   }
 
   void _sortByCreated() {
@@ -271,10 +219,7 @@ class GymSetsRepository extends ChangeNotifier {
       _latestgymsets = [];
       return;
     }
-    final mostRecentDay = _gymsets
-        .map((s) => dayOnly(s.created))
-        .where((d) => !d.isAfter(today))
-        .reduce((a, b) => a.isAfter(b) ? a : b);
+    final mostRecentDay = _gymsets.map((s) => dayOnly(s.created)).where((d) => !d.isAfter(today)).reduce((a, b) => a.isAfter(b) ? a : b);
 
     _latestgymsets = _gymsets.where((s) => dayOnly(s.created) == mostRecentDay).toList();
   }

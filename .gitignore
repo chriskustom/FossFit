@@ -58,3 +58,5 @@ coverage/
 # install
 install.txt
 .vscode/settings.json
+.vscode/settings.json
+fossfit.keystore

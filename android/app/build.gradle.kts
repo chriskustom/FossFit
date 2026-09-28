@@ -6,37 +6,56 @@ plugins {
 }
 
 android {
-    namespace = "com.example.fossfit"
+    namespace = "com.kustom.fossfit"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true      // ✅ Kotlin DSL syntax
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "17"                           // ✅ Kotlin DSL prefers string
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.fossfit"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        applicationId = "com.kustom.fossfit"
+        minSdk = if (flutter.minSdkVersion < 21) 21 else flutter.minSdkVersion  // Force >= 21 for desugaring
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
-    buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+    signingConfigs {
+        create("localRelease") {
+            keyAlias = "localrelease"
+            keyPassword = "!nt3r4ct1v"
+            storeFile = file(System.getProperty("user.home") + "/fossfit.keystore")
+            storePassword = "!nt3r4ct1v"
         }
     }
+
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("localRelease")
+            ndk {
+                debugSymbolLevel = "NONE"
+            }
+            isMinifyEnabled = false          // ✅ Kotlin DSL
+            isShrinkResources = false        // ✅ Kotlin DSL
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                file("proguard-rules.pro")
+            )
+        }
+    }
+}
+
+dependencies {
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    add("coreLibraryDesugaring", "com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
 flutter {
