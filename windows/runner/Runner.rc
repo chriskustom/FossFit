@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "FossFit" "\0"
+            VALUE "FileDescription", "fossfit" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "FossFit" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2024 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "FossFit.exe" "\0"
-            VALUE "ProductName", "FossFit" "\0"
+            VALUE "InternalName", "fossfit" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "OriginalFilename", "fossfit.exe" "\0"
+            VALUE "ProductName", "fossfit" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

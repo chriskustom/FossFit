@@ -1,113 +1,61 @@
-import 'package:drift/drift.dart';
-import 'package:dynamic_color/dynamic_color.dart';
+//import 'package:ettanotes/services/app_lock/app_lock_manager.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:fossfit/database/database.dart';
-import 'package:fossfit/database/failed_migrations_page.dart';
-import 'package:fossfit/home_page.dart';
-import 'package:fossfit/plan/plan_state.dart';
-import 'package:fossfit/settings/settings_state.dart';
-import 'package:fossfit/timer/timer_state.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:fossfit/app/features/search/global_search_controller.dart';
+import 'package:fossfit/app/services/notifications/notification_service_desktop.dart';
+import 'package:fossfit/app/shell/app.dart';
+import 'package:fossfit/db/database_helper.dart';
+import 'package:fossfit/db/repositories/config_reposity.dart';
+import 'package:fossfit/db/repositories/exercise_repository.dart';
+import 'package:fossfit/db/repositories/gymsets_repository.dart';
+import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
+import 'package:fossfit/db/repositories/plan_repository.dart';
+import 'package:platform_detail/platform_detail.dart';
 import 'package:provider/provider.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
-final rootScaffoldMessenger = GlobalKey<ScaffoldMessengerState>();
-
-Future<void> main() async {
+Future main() async {
+  if (kIsWeb || PlatformDetail.isDesktop) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
   WidgetsFlutterBinding.ensureInitialized();
-
-  Setting setting;
-
+  tz.initializeTimeZones();
   try {
-    setting = await (db.settings.select()..limit(1)).getSingle();
-  } catch (error) {
-    return runApp(FailedMigrationsPage(error: error));
+    final timezoneInfo = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(timezoneInfo.identifier));
+  } catch (_) {
+    tz.setLocalLocation(tz.getLocation('UTC'));
   }
 
-  final state = SettingsState(setting);
-  runApp(appProviders(state));
-}
+  final dbHelper = DatabaseHelper();
+  final Database db = await dbHelper.database;
+  final settingsRepo = ConfigRepository(db);
+  await settingsRepo.loadAll();
+  // Run backup
+  await dbHelper.checkBackup(settingsRepo);
 
-AppDatabase db = AppDatabase();
+  await NotificationService.instance.init();
 
-MethodChannel androidChannel =
-    const MethodChannel("com.kustom.FossFitfork/android");
+  if (!kIsWeb && !PlatformDetail.isDesktop) {
+    await NotificationService.instance.restoreAllNotifications();
+    await NotificationService.instance.getLaunchNotification();
+  }
 
-Widget appProviders(SettingsState state) => MultiProvider(
+  runApp(
+    MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => state),
-        ChangeNotifierProvider(create: (context) => TimerState()),
-        ChangeNotifierProvider(create: (context) => PlanState()),
+        ChangeNotifierProvider<ExercisesRepository>(create: (_) => ExercisesRepository(db)..loadAll()),
+        ChangeNotifierProvider<GymSetsRepository>(create: (_) => GymSetsRepository(db)..loadAll()),
+        ChangeNotifierProvider<PlansRepository>(create: (_) => PlansRepository(db)..loadAll()),
+        ChangeNotifierProvider<PlanExercisesRepository>(create: (_) => PlanExercisesRepository(db)..loadAll()),
+        ChangeNotifierProvider<ConfigRepository>.value(value: settingsRepo),
+        ChangeNotifierProvider(create: (_) => GlobalSearchController()),
       ],
       child: App(),
-    );
-
-class App extends StatelessWidget {
-  const App({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.select<SettingsState, bool>(
-      (settings) => settings.value.systemColors,
-    );
-    final mode = context.select<SettingsState, ThemeMode>(
-      (settings) => ThemeMode.values
-          .byName(settings.value.themeMode.replaceFirst('ThemeMode.', '')),
-    );
-
-    final light = ColorScheme.fromSeed(seedColor: Colors.deepPurple);
-    final dark = ColorScheme.fromSeed(
-      seedColor: Colors.deepPurple,
-      brightness: Brightness.dark,
-    );
-
-    return DynamicColorBuilder(
-      builder: (lightDynamic, darkDynamic) {
-        final settings = context.watch<SettingsState>();
-        final currentBrightness =
-            settings.value.themeMode == 'ThemeMode.dark' ||
-                    (settings.value.themeMode == 'ThemeMode.system' &&
-                        MediaQuery.of(context).platformBrightness ==
-                            Brightness.dark)
-                ? Brightness.dark
-                : Brightness.light;
-
-        SystemChrome.setSystemUIOverlayStyle(
-          SystemUiOverlayStyle(
-            statusBarIconBrightness: currentBrightness == Brightness.dark
-                ? Brightness.light
-                : Brightness.dark,
-            systemNavigationBarIconBrightness:
-                currentBrightness == Brightness.dark
-                    ? Brightness.light
-                    : Brightness.dark,
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: Colors.transparent,
-          ),
-        );
-
-        return MaterialApp(
-          scaffoldMessengerKey: rootScaffoldMessenger,
-          title: 'FossFit',
-          theme: ThemeData(
-            colorScheme: colors ? lightDynamic : light,
-            fontFamily: 'Manrope',
-            useMaterial3: true,
-            inputDecorationTheme: const InputDecorationTheme(
-              floatingLabelBehavior: FloatingLabelBehavior.always,
-            ),
-          ),
-          darkTheme: ThemeData(
-            colorScheme: colors ? darkDynamic : dark,
-            fontFamily: 'Manrope',
-            useMaterial3: true,
-            inputDecorationTheme: const InputDecorationTheme(
-              floatingLabelBehavior: FloatingLabelBehavior.always,
-            ),
-          ),
-          themeMode: mode,
-          home: HomePage(),
-        );
-      },
-    );
-  }
+    ),
+  );
 }
