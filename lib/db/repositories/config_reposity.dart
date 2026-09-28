@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:fossfit/db/models/features/config_model.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/db/db_constants.dart';
+import 'package:fossfit/db/models/features/config_model.dart';
 import 'package:sqflite/sqflite.dart';
 
 class ConfigRepository extends ChangeNotifier {
@@ -34,9 +34,7 @@ class ConfigRepository extends ChangeNotifier {
   String getSetting(ConfigCategory category, String key) => _settingCache[category.name]?[key] ?? '';
 
   List<KeyValue> getSettingsByCategory(ConfigCategory category) {
-    return List.unmodifiable(
-      (_settingCache[category.name] ?? {}).entries.map((kv) => KeyValue(key: kv.key, value: kv.value)).toList(),
-    );
+    return List.unmodifiable((_settingCache[category.name] ?? {}).entries.map((kv) => KeyValue(key: kv.key, value: kv.value)).toList());
   }
 
   List<ConfigSettings> get settingsAsList {
@@ -49,9 +47,9 @@ class ConfigRepository extends ChangeNotifier {
   Future<void> setSetting({required ConfigCategory category, required String key, required String value}) async {
     final success = await db.update(
       tableName,
-      {'category': category, 'key': key, 'value': value},
+      {'category': category.name, 'key': key, 'value': value},
       where: 'category = ? AND key = ?',
-      whereArgs: [category, key],
+      whereArgs: [category.name, key],
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
 

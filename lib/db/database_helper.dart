@@ -84,7 +84,7 @@ class DatabaseHelper {
           name TEXT,
           days TEXT,
           sequence INTEGER,
-          created INTEGER NOT NULL DEFAULT (unixepoch('subsecond') * 1000),
+          created INTEGER NOT NULL DEFAULT (unixepoch('subsecond') * 1000)
       )
       ''');
 
@@ -113,8 +113,8 @@ class DatabaseHelper {
       ''');
 
     await _defaultSettings(db);
-    await _defaultExercises(_database!);
-    await _defaultPlans(_database!);
+    await _defaultExercises(db);
+    await _defaultPlans(db);
     await _runMigrations(db, 0, version);
   }
 
@@ -152,29 +152,24 @@ class DatabaseHelper {
           ('formats','font_size','14'),
           ('formats','date_format','d/M/yy'),
           ('formats','start_of_week','monday'),
-
           ('appearance','haptics','1'),
           ('appearance','theme','system'),
           ('appearance','color','4281559659'),
-
-          ('tabs','tabs','Workout,Plans,Calendar,Exercises,Timer'),
-
+          ('tabs','tabs','Plans|1,Calendar|1,Exercises|1,Timer|1'),
           ('backup','backup','0'),
           ('backup','frequency','14'),
-          ('backup','directory','');
-
-          ('workouts','group_history','0');
-          ('workouts','show_units','0');
-          ('workouts','show_categories','0');
-          ('workouts','show_notes','0');
-          ('workouts','show_bodyweight','0');
-          ('workouts','show_stats','0');
-          ('workouts','show_images','0');
-          
-          ('timers','enabled','0');
-          ('timers','vibrate','0');
-          ('timers','enable_sound','0');
-          ('timers','alarm_sound','0');
+          ('backup','directory',''),
+          ('workouts','group_history','0'),
+          ('workouts','show_units','0'),
+          ('workouts','show_categories','0'),
+          ('workouts','show_notes','0'),
+          ('workouts','show_bodyweight','0'),
+          ('workouts','show_stats','0'),
+          ('workouts','show_images','0'),          
+          ('timers','enabled','0'),
+          ('timers','vibrate','0'),
+          ('timers','enable_sound','0'),
+          ('timers','alarm_sound','0'),
           ('timers','duration','0');
           ''');
   }
@@ -258,11 +253,7 @@ class DatabaseHelper {
 
   Future<void> cleanupOldBackups(String backupDirPath) async {
     final backupDir = Directory(backupDirPath);
-    final backupFiles = backupDir
-        .listSync()
-        .whereType<File>()
-        .where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'))
-        .toList();
+    final backupFiles = backupDir.listSync().whereType<File>().where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db')).toList();
 
     backupFiles.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
 
@@ -277,11 +268,7 @@ class DatabaseHelper {
     final dir = Directory(backupDirPath);
     if (!dir.existsSync()) return null;
 
-    final files = dir
-        .listSync()
-        .whereType<File>()
-        .where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'))
-        .toList();
+    final files = dir.listSync().whereType<File>().where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db')).toList();
 
     if (files.isEmpty) return null;
 

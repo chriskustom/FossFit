@@ -33,7 +33,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
   Widget build(BuildContext context) {
     config = context.watch<ConfigRepository>();
     _lastWorkoutSets = context.watch<GymSetRepository>().latestgymsets;
-
+    print(Colors.deepPurple.toARGB32());
     var showStats = config.isEnabled(.workouts, 'show_stats');
     if (showStats) getStats(_lastWorkoutSets);
     var grouped = config.isEnabled(.workouts, 'group_history');

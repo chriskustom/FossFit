@@ -47,8 +47,8 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
   int? rest;
   Uint8List? image;
   String? category;
-  late String unit;
-  late String name;
+  String? unit;
+  String? name;
   late bool dateSet = false;
 
   late ConfigRepository config;
@@ -66,17 +66,14 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
 
   @override
   void dispose() {
+    super.dispose();
     repsTEC.dispose();
     ormTEC.dispose();
     noteTEC.dispose();
-    categoryTEC.dispose();
-    exerciseNameTEC.dispose();
     weightNode.dispose();
     weightTEC.dispose();
     bodyWeightTEC.dispose();
     repsNode.dispose();
-
-    super.dispose();
   }
 
   @override
@@ -86,6 +83,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     var setServices = GymSetServices(context: context);
     if (widget.setId == null) {
       currentExercise = exerciseRepo.exercises.first;
+      updateFields(null);
     } else {
       gymSet = setServices.getGymSetById(widget.setId!);
       currentExercise = exerciseRepo.exercises.where((e) => e.id == gymSet?.id).first;
@@ -393,6 +391,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
   }
 
   Autocomplete<String> nameAutoCompleteField() {
+    //TODO make like category field
     return Autocomplete<String>(
       optionsBuilder: (textEditingValue) {
         final searchTerms = textEditingValue.text.toLowerCase().split(" ").where((term) => term.isNotEmpty);
@@ -404,7 +403,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
         return opts;
       },
       onSelected: (option) => {},
-      initialValue: TextEditingValue(text: currentExercise.name),
+      initialValue: TextEditingValue(text: name!),
       fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
         exerciseNameTEC = textEditingController;
         return TextFormField(
@@ -415,9 +414,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
             selectAll(textEditingController);
           },
           focusNode: focusNode,
-          onFieldSubmitted: (String value) {
-            onFieldSubmitted();
-          },
+          onFieldSubmitted: (String value) {},
           onChanged: (value) => setState(() {
             name = value;
           }),
@@ -433,24 +430,28 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
 
   //region helpers
 
-  void updateFields(GymSet gymSet) {
+  void updateFields(GymSet? gymSet) {
+    if (gymSet != null) {
+      unit = gymSet.unit ?? currentExercise.defaultUnit!;
+      rest = gymSet.rest ?? currentExercise.defaultRest;
+      if (gymSet.reps != 0) repsTEC.text = toString(gymSet.reps);
+      weightTEC.text = toString(gymSet.weight);
+      setORM();
+      if (gymSet.bodyWeight != 0) bodyWeightTEC.text = toString(gymSet.bodyWeight!);
+      if (currentExercise.category != null && currentExercise.category!.isNotEmpty) {
+        categoryTEC.text = currentExercise.category!;
+      }
+      if (gymSet.note != null && gymSet.note!.isNotEmpty) {
+        noteTEC.text = gymSet.note!;
+      }
+    } else {
+      unit = currentExercise.defaultUnit!;
+      rest = currentExercise.defaultRest;
+    }
     exerciseNameTEC.text = currentExercise.name;
     category = currentExercise.category;
     image = currentExercise.image;
     name = currentExercise.name;
-    unit = gymSet.unit ?? currentExercise.defaultUnit!;
-    rest = gymSet.rest ?? currentExercise.defaultRest;
-
-    if (gymSet.reps != 0) repsTEC.text = toString(gymSet.reps);
-    weightTEC.text = toString(gymSet.weight);
-    setORM();
-    if (gymSet.bodyWeight != 0) bodyWeightTEC.text = toString(gymSet.bodyWeight!);
-    if (currentExercise.category != null && currentExercise.category!.isNotEmpty) {
-      categoryTEC.text = currentExercise.category!;
-    }
-    if (gymSet.note != null && gymSet.note!.isNotEmpty) {
-      noteTEC.text = gymSet.note!;
-    }
   }
 
   void setORM() {
@@ -523,7 +524,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
         AppSnackBar.success("New PB. Well done");
       }
       if (config.isEnabled(.timers, 'rest_timers') && mounted && rest != null) {
-        context.read<TimerState>().startTimer(name, Duration(milliseconds: rest!), config.getSetting(.timers, 'alarm_sound'), config.isEnabled(.timers, 'vibrate'));
+        context.read<TimerState>().startTimer(name!, Duration(milliseconds: rest!), config.getSetting(.timers, 'alarm_sound'), config.isEnabled(.timers, 'vibrate'));
       }
     }
     return gymSet;
