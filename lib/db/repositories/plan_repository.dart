@@ -1,15 +1,8 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fossfit/db/db_constants.dart';
 import 'package:fossfit/db/models/features/plan_model.dart';
 import 'package:sqflite/sqflite.dart';
-
-class PlanCount {
-  final int planId;
-  final int total;
-  final int maxSets;
-
-  PlanCount({required this.planId, required this.total, required this.maxSets});
-}
 
 typedef GymCount = ({int count, String name, int? maxSets, int? restMs, int? warmupSets, bool timers});
 
@@ -26,6 +19,14 @@ class PlansRepository extends ChangeNotifier {
     final result = await _db.query(TableName.plans.name, orderBy: 'sequence asc');
 
     _plans = result.map(Plan.fromMap).toList();
+
+    _plans.sort((a, b) {
+      if (a.sequence == null && b.sequence == null) return 0;
+      if (a.sequence == null) return 1; // Nulls go to end
+      if (b.sequence == null) return -1;
+      return a.sequence!.compareTo(b.sequence!);
+    });
+
     notifyListeners();
   }
 
@@ -50,17 +51,44 @@ class PlansRepository extends ChangeNotifier {
 
     notifyListeners();
 
+    _plans.sort((a, b) {
+      if (a.sequence == null && b.sequence == null) return 0;
+      if (a.sequence == null) return 1; // Nulls go to end
+      if (b.sequence == null) return -1;
+      return a.sequence!.compareTo(b.sequence!);
+    });
     return plan;
   }
 
-  Future<bool> updatePlan(Plan? plan) async {
-    if (plan == null) {
-      return false;
+  Future<bool> reorderPlans(int oldIndex, int newIndex) async {
+    final reordered = List<Plan>.from(_plans);
+
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+
+    final updated = [for (int i = 0; i < reordered.length; i++) reordered[i].copyWith(sequence: i)];
+
+    _plans = updated;
+
+    notifyListeners();
+
+    for (final plan in updated) {
+      await _persistPlan(plan);
     }
 
+    return true;
+  }
+
+  Future<bool> _persistPlan(Plan plan) async {
     final count = await _db.update(TableName.plans.name, plan.toMap(), where: 'id = ?', whereArgs: [plan.id]);
 
-    if (count <= 0) {
+    return count > 0;
+  }
+
+  Future<bool> updatePlan(Plan? plan) async {
+    if (plan == null) return false;
+
+    if (!await _persistPlan(plan)) {
       return false;
     }
 
@@ -71,6 +99,13 @@ class PlansRepository extends ChangeNotifier {
     } else {
       _plans.add(plan);
     }
+
+    _plans.sort((a, b) {
+      if (a.sequence == null && b.sequence == null) return 0;
+      if (a.sequence == null) return 1;
+      if (b.sequence == null) return -1;
+      return a.sequence!.compareTo(b.sequence!);
+    });
 
     notifyListeners();
 
@@ -104,6 +139,12 @@ class PlansRepository extends ChangeNotifier {
 
     _plans.removeWhere((e) => e.id == id);
 
+    _plans.sort((a, b) {
+      if (a.sequence == null && b.sequence == null) return 0;
+      if (a.sequence == null) return 1; // Nulls go to end
+      if (b.sequence == null) return -1;
+      return a.sequence!.compareTo(b.sequence!);
+    });
     notifyListeners();
 
     return true;

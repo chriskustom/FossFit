@@ -1,4 +1,5 @@
 import 'package:fossfit/db/models/base_model.dart';
+import 'package:fossfit/db/models/features/exercise_model.dart';
 
 class PlanExercise extends BaseModel {
   final int planId;
@@ -59,4 +60,10 @@ class PlanExercise extends BaseModel {
       created: DateTime.fromMillisecondsSinceEpoch((map['created']) as int),
     );
   }
+}
+
+class ExercisesInPlan {
+  final PlanExercise planExercise;
+  final Exercise exercise;
+  ExercisesInPlan(this.planExercise, this.exercise);
 }

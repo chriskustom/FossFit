@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
+import 'package:fossfit/app/services/features/plan_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
+import 'package:fossfit/app/widgets/fanimated_fab.dart';
 import 'package:fossfit/db/models/features/plan_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/plan_repository.dart';
@@ -16,7 +18,8 @@ class PlansPage extends StatefulWidget {
 
 class _PlansPageState extends State<PlansPage> {
   late ConfigRepository config;
-  late List<Plan> plans = [];
+  List<Plan>? _displayPlans;
+
   final ScrollController scroll = ScrollController();
   @override
   void initState() {
@@ -27,11 +30,25 @@ class _PlansPageState extends State<PlansPage> {
   Widget build(BuildContext context) {
     config = context.watch<ConfigRepository>();
     var repo = context.watch<PlansRepository>();
-    plans = List.from(repo.plans);
-    return AppShell(title: 'Plans', body: _buildBody());
+
+    final plans = _displayPlans ?? repo.plans;
+    return AppShell(
+      title: 'Plans',
+      body: _buildBody(plans),
+      floatingActionButton: AnimatedFab(
+        onPressed: () async {
+          //TODO Create new plan
+          // var services = GymSetServices(context: context);
+          // await services.insertGymSet(await services.openAddEditPage(context, null));
+        },
+        label: const Text('Add'),
+        icon: const Icon(Icons.add),
+        scroll: scroll,
+      ),
+    );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(List<Plan> plans) {
     final weekday = weekdays[DateTime.now().weekday - 1];
     final exerciseServices = ExerciseServices(context: context);
 
@@ -88,23 +105,14 @@ class _PlansPageState extends State<PlansPage> {
           title: title,
           subtitle: Text(exercises, maxLines: 2, overflow: .ellipsis),
           trailing: ReorderableDragStartListener(index: index, child: const Icon(Icons.drag_handle)),
+          onTap: () async {
+            var services = PlanServices(context: context);
+            await services.openPlanPage(context, plan.id!);
+          },
         );
       },
-      onReorderItem: (int old, int idx) async {
-        if (old < idx) {
-          idx--;
-        }
-
-        final temp = plans[old];
-        plans.removeAt(old);
-        plans.insert(idx, temp);
-
-        final repo = context.read<PlansRepository>();
-        for (int i = 0; i < plans.length; i++) {
-          final plan = plans[i];
-          final updated = plan.copyWith(sequence: i);
-          await repo.updatePlan(updated);
-        }
+      onReorderItem: (oldIndex, newIndex) {
+        context.read<PlansRepository>().reorderPlans(oldIndex, newIndex);
       },
     );
   }
