@@ -1,3 +1,6 @@
+import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fossfit/app/features/calendar/calendar_page.dart';
 import 'package:fossfit/app/features/exercises/exercises_page.dart';
 import 'package:fossfit/app/features/plans/plans_page.dart';
@@ -6,10 +9,9 @@ import 'package:fossfit/app/features/workout/workout_page.dart';
 import 'package:fossfit/app/services/navigation_service.dart';
 import 'package:fossfit/app/settings/settings_page.dart';
 import 'package:fossfit/app/theme/theme.dart';
+import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
-import 'package:fossfit/app/utils/constants.dart';
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class App extends StatefulWidget {
@@ -46,52 +48,85 @@ class _AppState extends State<App> {
             final font = repo.getSetting(.formats, 'font');
             final fontSize = double.tryParse(repo.getSetting(.formats, 'font_size')) ?? 16;
             final seedColour = int.tryParse(repo.getSetting(.appearance, 'color'));
-            return MaterialApp(
-              navigatorKey: NavigationService.navigatorKey,
-              scaffoldMessengerKey: AppSnackBar.messengerKey,
-              theme: AppTheme.light(fontFamily: font, fontSize: fontSize, seedColor: seedColour),
-              darkTheme: AppTheme.dark(fontFamily: font, fontSize: fontSize, seedColor: seedColour),
-              themeMode: mode,
-              home: WorkoutPage(),
-              onGenerateRoute: (settings) {
-                Widget page;
-                final pageName = settings.name == '/' ? '/workout' : settings.name;
-                final navRoute = NavRoute.fromRoute(pageName);
+            final sysColours = repo.isEnabled(.appearance, 'system_colours');
 
-                switch (navRoute) {
-                  case NavRoute.workout:
-                    page = const WorkoutPage();
-                    break;
-                  case NavRoute.plans:
-                    page = const PlansPage();
-                    break;
-                  case NavRoute.exercises:
-                    page = const ExercisesPage();
-                    break;
-                  case NavRoute.calendar:
-                    page = const CalendarPage();
-                    break;
-                  case NavRoute.settings:
-                    page = const SettingsPage();
-                    break;
-                  case NavRoute.timer:
-                    page = const TimerPage();
-                    break;
-                }
-                return PageRouteBuilder(
-                  settings: settings,
-                  transitionDuration: const Duration(milliseconds: 220),
-                  reverseTransitionDuration: const Duration(milliseconds: 180),
-                  pageBuilder: (context, animation, secondaryAnimation) => page,
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(
-                      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-                      child: child,
+            return DynamicColorBuilder(
+              builder: (lightDynamic, darkDynamic) {
+                final currentBrightness =
+                    mode == .dark || (mode == .system && MediaQuery.of(context).platformBrightness == Brightness.dark)
+                    ? Brightness.dark
+                    : Brightness.light;
+
+                SystemChrome.setSystemUIOverlayStyle(
+                  SystemUiOverlayStyle(
+                    statusBarIconBrightness: currentBrightness == Brightness.dark ? Brightness.light : Brightness.dark,
+                    systemNavigationBarIconBrightness: currentBrightness == Brightness.dark
+                        ? Brightness.light
+                        : Brightness.dark,
+                    statusBarColor: Colors.transparent,
+                    systemNavigationBarColor: Colors.transparent,
+                  ),
+                );
+                return MaterialApp(
+                  navigatorKey: NavigationService.navigatorKey,
+                  scaffoldMessengerKey: AppSnackBar.messengerKey,
+                  theme: AppTheme.light(
+                    fontFamily: font,
+                    fontSize: fontSize,
+                    seedColor: seedColour,
+                    sysColours: sysColours,
+                    dynamic: lightDynamic,
+                  ),
+                  darkTheme: AppTheme.dark(
+                    fontFamily: font,
+                    fontSize: fontSize,
+                    seedColor: seedColour,
+                    sysColours: sysColours,
+                    dynamic: darkDynamic,
+                  ),
+                  themeMode: mode,
+                  home: WorkoutPage(),
+                  onGenerateRoute: (settings) {
+                    Widget page;
+                    final pageName = settings.name == '/' ? '/workout' : settings.name;
+                    final navRoute = NavRoute.fromRoute(pageName);
+
+                    switch (navRoute) {
+                      case NavRoute.workout:
+                        page = const WorkoutPage();
+                        break;
+                      case NavRoute.plans:
+                        page = const PlansPage();
+                        break;
+                      case NavRoute.exercises:
+                        page = const ExercisesPage();
+                        break;
+                      case NavRoute.calendar:
+                        page = const CalendarPage();
+                        break;
+                      case NavRoute.settings:
+                        page = const SettingsPage();
+                        break;
+                      case NavRoute.timer:
+                        page = const TimerPage();
+                        break;
+                    }
+                    return PageRouteBuilder(
+                      settings: settings,
+                      transitionDuration: const Duration(milliseconds: 220),
+                      reverseTransitionDuration: const Duration(milliseconds: 180),
+                      pageBuilder: (context, animation, secondaryAnimation) => page,
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        return FadeTransition(
+                          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                          child: child,
+                        );
+                      },
                     );
                   },
+                  supportedLocales: const [Locale('en')],
                 );
               },
-              supportedLocales: const [Locale('en')],
             );
           },
         );

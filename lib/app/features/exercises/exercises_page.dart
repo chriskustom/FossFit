@@ -35,25 +35,34 @@ class _ExercisesPageState extends State<ExercisesPage> {
     var gymSetRepo = context.watch<GymSetRepository>();
     exercises = exRepo.exercises;
     var showImages = config.isEnabled(.workouts, 'show_images');
-    final dateFormat = config.getSetting(.formats, 'date_format');
+    final dateFormat = config.getSetting(.formats, 'short_date_format');
 
     return AppShell(
       title: 'Exercises',
-      body: ListView.builder(
-        controller: _scrollController,
-        itemCount: exercises.length,
-        itemBuilder: (context, index) {
-          var exercise = exercises[index];
-          var lastSet = gymSetRepo.gymsets.where((g) => g.exerciseId == exercise.id).toList();
-          lastSet.sorted((a, b) => b.created.compareTo(a.created));
-          var subtitle = lastSet.isEmpty ? Text('Never completed') : Text(dateFormat == 'timeago' ? timeago.format(lastSet.first.created) : DateFormat("HH:mm a").format(lastSet.first.created));
-          return ListTile(
-            key: Key('${exercise.id}-${exercise.name}'),
-            leading: ExerciseIcon(exercise: exercise, showImages: showImages),
-            title: Text(exercise.name),
-            subtitle: subtitle,
-          );
-        },
+      body: Padding(
+        padding: EdgeInsets.all(8),
+        child: ListView.builder(
+          controller: _scrollController,
+          itemCount: exercises.length,
+          itemBuilder: (context, index) {
+            var exercise = exercises[index];
+            var lastSet = gymSetRepo.gymsets.where((g) => g.exerciseId == exercise.id).toList();
+            lastSet.sorted((a, b) => b.created.compareTo(a.created));
+            var subtitle = lastSet.isEmpty
+                ? Text('Never completed')
+                : Text(
+                    dateFormat == 'timeago'
+                        ? timeago.format(lastSet.first.created)
+                        : DateFormat("HH:mm a").format(lastSet.first.created),
+                  );
+            return ListTile(
+              key: Key('${exercise.id}-${exercise.name}'),
+              leading: ExerciseIcon(exercise: exercise, showImages: showImages),
+              title: Text(exercise.name),
+              subtitle: subtitle,
+            );
+          },
+        ),
       ),
       floatingActionButton: AnimatedFab(
         onPressed: () {

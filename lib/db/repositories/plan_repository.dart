@@ -17,13 +17,10 @@ class PlansRepository extends ChangeNotifier {
   final Database _db;
 
   List<Plan> _plans = [];
-  final List<PlanCount> _planCounts = [];
 
   PlansRepository(this._db);
 
   List<Plan> get plans => List.unmodifiable(_plans);
-
-  List<PlanCount> get planCounts => List.unmodifiable(_planCounts);
 
   Future<void> loadAll() async {
     final result = await _db.query(TableName.plans.name, orderBy: 'sequence asc');

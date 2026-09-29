@@ -37,7 +37,10 @@ class WorkoutList extends StatelessWidget {
             alignment: Alignment.center,
             child: _buildSectionDivider(context, date),
           ),
-          content: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: List.generate(sets.length, (index) => _buildListItem(context, sets[index], showImages))),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: List.generate(sets.length, (index) => _buildListItem(context, sets[index], showImages)),
+          ),
         );
       },
     );
@@ -46,7 +49,7 @@ class WorkoutList extends StatelessWidget {
   //region HELPERS
 
   Widget _buildSectionDivider(BuildContext context, DateTime date) {
-    final format = context.read<ConfigRepository>().getSetting(.formats, 'date_format');
+    final format = context.read<ConfigRepository>().getSetting(.formats, 'short_date_format');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -70,19 +73,35 @@ class WorkoutList extends StatelessWidget {
     final weight = gymSet.weight;
     Widget? leading = ExerciseIcon(exercise: exercise!, showImages: showImages);
     final trailing = Text("${_getSetNumber(gymSet)}: $reps REPS @ $weight ${gymSet.unit}");
-    final dateFormat = context.read<ConfigRepository>().getSetting(.formats, 'date_format');
-    final subtitle = Text(dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created));
+    final dateFormat = context.read<ConfigRepository>().getSetting(.formats, 'short_date_format');
+    final subtitle = Text(
+      dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [ListTile(dense: true, visualDensity: VisualDensity.compact, leading: leading, title: Text(exercise.name), subtitle: trailing, trailing: subtitle)],
+      children: [
+        ListTile(
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          leading: leading,
+          title: Text(exercise.name),
+          subtitle: trailing,
+          trailing: subtitle,
+        ),
+      ],
     );
   }
 
   String _getSetNumber(GymSet gymSet) {
     final currentDate = gymSet.created.toLocal();
     final sameDayEntries = sets
-        .where((entry) => entry.created.toLocal().year == currentDate.year && entry.created.toLocal().month == currentDate.month && entry.created.toLocal().day == currentDate.day)
+        .where(
+          (entry) =>
+              entry.created.toLocal().year == currentDate.year &&
+              entry.created.toLocal().month == currentDate.month &&
+              entry.created.toLocal().day == currentDate.day,
+        )
         .toList()
         .reversed
         .toList();
@@ -102,7 +121,7 @@ class DateHeaderDelegate extends SliverPersistentHeaderDelegate {
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Selector<ConfigRepository, String>(
       selector: (context, settings) {
-        final format = settings.getSetting(.formats, 'date_format');
+        final format = settings.getSetting(.formats, 'short_date_format');
         return format;
       },
       builder: (context, format, child) {

@@ -16,7 +16,7 @@ Future<String> backupDatabaseManually(String initialDir) async {
 
 Future<String> importDatabase(String initialDir) async {
   // Pick a single file
-  final typeGroup = XTypeGroup(label: 'SQLite Database', extensions: ['db']);
+  final typeGroup = XTypeGroup(label: 'SQLite Database', extensions: ['db', 'sqlite']);
 
   final file = await openFile(acceptedTypeGroups: [typeGroup]);
 

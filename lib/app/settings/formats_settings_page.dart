@@ -1,10 +1,10 @@
-import 'package:fossfit/db/repositories/config_reposity.dart';
-import 'package:fossfit/app/utils/utils.dart';
-import 'package:fossfit/app/utils/constants.dart';
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/shell/app_shell.dart';
+import 'package:fossfit/app/utils/constants.dart';
+import 'package:fossfit/app/utils/utils.dart';
+import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:fossfit/app/shell/app_shell.dart';
 
 class FormatsSettingsPage extends StatefulWidget {
   const FormatsSettingsPage({super.key});
@@ -23,7 +23,13 @@ class _FormatsSettingsPageState extends State<FormatsSettingsPage> {
       showNavBar: false,
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16),
-        children: [dateFormat(context), startOfWeek(context), getFont(context), fontSize(context)],
+        children: [
+          _shortDateFormat(context),
+          _longDateFormat(context),
+          startOfWeek(context),
+          getFont(context),
+          fontSize(context),
+        ],
       ),
     );
   }
@@ -112,22 +118,22 @@ class _FormatsSettingsPageState extends State<FormatsSettingsPage> {
     );
   }
 
-  Padding dateFormat(BuildContext ctx) {
+  Padding _shortDateFormat(BuildContext ctx) {
     return Padding(
       padding: const EdgeInsets.all(8),
       child: Selector<ConfigRepository, String>(
-        selector: (_, repo) => repo.getSetting(category, 'date_format'),
+        selector: (_, repo) => repo.getSetting(category, 'short_date_format'),
         builder: (context, savedFormat, _) {
-          final safeFormat = dateFormats.contains(savedFormat) ? savedFormat : null;
+          final safeFormat = shortdateFormats.contains(savedFormat) ? savedFormat : null;
           return ListTile(
-            title: const Text('Date format'),
+            title: const Text('Short date format'),
             subtitle: DropdownButton<String>(
               isExpanded: true,
-              items: buildDateFormatEntries(),
+              items: buildDateFormatEntries(shortdateFormats),
               value: safeFormat,
               onChanged: (value) {
                 if (value == null) return;
-                context.read<ConfigRepository>().setSetting(category: category, key: 'date_format', value: value);
+                context.read<ConfigRepository>().setSetting(category: category, key: 'short_date_format', value: value);
               },
             ),
           );
@@ -136,10 +142,34 @@ class _FormatsSettingsPageState extends State<FormatsSettingsPage> {
     );
   }
 
-  List<DropdownMenuItem<String>> buildDateFormatEntries() {
+  Padding _longDateFormat(BuildContext ctx) {
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Selector<ConfigRepository, String>(
+        selector: (_, repo) => repo.getSetting(category, 'long_date_format'),
+        builder: (context, savedFormat, _) {
+          final safeFormat = longdateFormats.contains(savedFormat) ? savedFormat : null;
+          return ListTile(
+            title: const Text('Long date format'),
+            subtitle: DropdownButton<String>(
+              isExpanded: true,
+              items: buildDateFormatEntries(longdateFormats),
+              value: safeFormat,
+              onChanged: (value) {
+                if (value == null) return;
+                context.read<ConfigRepository>().setSetting(category: category, key: 'long_date_format', value: value);
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  List<DropdownMenuItem<String>> buildDateFormatEntries(List<String> formats) {
     final now = DateTime.now();
 
-    return dateFormats.map((format) {
+    return formats.map((format) {
       return DropdownMenuItem<String>(value: format, child: Text('$format — ${DateFormat(format).format(now)}'));
     }).toList();
   }

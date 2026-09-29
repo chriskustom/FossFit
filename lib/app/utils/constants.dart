@@ -1,10 +1,62 @@
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/utils/sort_option.dart';
 
-const Map<String, Icon> homePageMenu = {'Settings': Icon(Icons.settings), 'About': Icon(Icons.info_outline)};
-
 enum ThreeDialogOptions { save, dismiss, stay }
 
+enum NavRoute {
+  workout("/workout"),
+  exercises('/exercises'),
+  plans('/plans'),
+  calendar('/calendar'),
+  settings('/settings'),
+  timer('/timer');
+
+  const NavRoute(this.route);
+  final String route;
+
+  static NavRoute fromRoute(String? route) {
+    if (route == null) return NavRoute.workout;
+    return NavRoute.values.firstWhere(
+      (e) => e.route == route || route.startsWith(e.route),
+      orElse: () => NavRoute.workout,
+    );
+  }
+
+  bool matches(String? route) => route != null && route.startsWith(this.route);
+
+  static List<String> get allRoutes => NavRoute.values.map((e) => e.route).toList();
+
+  @override
+  String toString() => route;
+}
+
+enum ConfigCategory {
+  appearance('appearance', Icons.color_lens_rounded),
+  backup('backup', Icons.storage_rounded),
+  formats('formats', Icons.text_format_rounded),
+  plans('plans', Icons.today_rounded),
+  tabs('tabs', Icons.tab_rounded),
+  timers('timers', Icons.timer_rounded),
+  workouts('workouts', Icons.fitness_center_rounded);
+
+  const ConfigCategory(this.name, this.icon);
+  final String name;
+  final IconData icon;
+}
+
+enum SortBy { title, date }
+
+enum SortOrder { asc, desc }
+
+enum GroupBy { day, week, task }
+
+const sortOptions = [
+  SortOption(SortBy.title, SortOrder.asc, 'Title (A–Z)', Icons.sort_by_alpha),
+  SortOption(SortBy.title, SortOrder.desc, 'Title (Z–A)', Icons.sort_by_alpha),
+  SortOption(SortBy.date, SortOrder.desc, 'Date (Newest)', Icons.schedule),
+  SortOption(SortBy.date, SortOrder.asc, 'Date (Oldest)', Icons.schedule),
+];
+const Map<String, Icon> homePageMenu = {'Settings': Icon(Icons.settings), 'About': Icon(Icons.info_outline)};
 const double globalElevation = 3.0;
 const List<String> emptyPhrases = [
   'Wow. So empty.',
@@ -68,84 +120,16 @@ const List<String> emptyPhrases = [
   'Pure, uninterrupted quiet.',
   'An untouched expanse.',
 ];
-
-enum NavRoute {
-  workout("workout"),
-  exercises('/exercises'),
-  plans('/plans'),
-  calendar('/calendar'),
-  settings('/settings'),
-  timer('/timer');
-
-  const NavRoute(this.route);
-  final String route;
-
-  static NavRoute fromRoute(String? route) {
-    if (route == null) return NavRoute.workout;
-    return NavRoute.values.firstWhere(
-      (e) => e.route == route || route.startsWith(e.route),
-      orElse: () => NavRoute.workout,
-    );
-  }
-
-  bool matches(String? route) => route != null && route.startsWith(this.route);
-
-  static List<String> get allRoutes => NavRoute.values.map((e) => e.route).toList();
-
-  @override
-  String toString() => route;
-}
-
-enum ConfigCategory {
-  appearance('appearance'),
-  backup('backup'),
-  formats('formats'),
-  plans('plans'),
-  tabs('tabs'),
-  timers('timers'),
-  workouts('workouts');
-
-  const ConfigCategory(this.name);
-  final String name;
-}
-
-enum SortBy { title, date }
-
-enum SortOrder { asc, desc }
-
-enum GroupBy { day, week, task }
-
-const sortOptions = [
-  SortOption(SortBy.title, SortOrder.asc, 'Title (A–Z)', Icons.sort_by_alpha),
-  SortOption(SortBy.title, SortOrder.desc, 'Title (Z–A)', Icons.sort_by_alpha),
-  SortOption(SortBy.date, SortOrder.desc, 'Date (Newest)', Icons.schedule),
-  SortOption(SortBy.date, SortOrder.asc, 'Date (Oldest)', Icons.schedule),
-];
-
-const sortOptions2 = [
-  SortOption(SortBy.title, SortOrder.asc, 'Title (A–Z)', Icons.sort_by_alpha),
-  SortOption(SortBy.title, SortOrder.desc, 'Title (Z–A)', Icons.sort_by_alpha),
-  SortOption(SortBy.date, SortOrder.desc, 'Date (Earliest)', Icons.schedule),
-  SortOption(SortBy.date, SortOrder.asc, 'Date (Latest)', Icons.schedule),
-];
-
-enum EntityType { note, notebook, list, goal }
-
+const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const List<MapEntry<String, String>> unitsList = [
   MapEntry('kg', 'Kilograms (kg)'),
   MapEntry('lb', 'Pounds (lb)'),
   MapEntry('st', 'Stone (st)'),
 ];
+const allTabs = ['Plans', 'Calendar', 'Exercises', 'Timer'];
 
-const List<String> dateFormats = [
+final longdateFormats = [
   'timeago',
-  'd/M/yy',
-  'M/d/yy',
-  'd-M-yy',
-  'M-d-yy',
-  'd.M.yy',
-  'M.d.yy',
-  'dd.MM.yy',
   'dd/MM/yy',
   'dd/MM/yy h:mm a',
   'dd/MM/yy H:mm',
@@ -159,7 +143,10 @@ const List<String> dateFormats = [
   'yyyy.MM.dd H:mm',
   'MMM d (EEE) h:mm a',
   'EEE, dd.MM.yyyy H:mm',
+  'EEE, dd.MM.yyyy H:mm a',
 ];
+
+final shortdateFormats = ['d/M/yy', 'M/d/yy', 'd-M-yy', 'M-d-yy', 'd.M.yy', 'M.d.yy', 'dd.MM.yy'];
 const fonts = [
   'Arial',
   'Lato',

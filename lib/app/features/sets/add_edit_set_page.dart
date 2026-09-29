@@ -81,16 +81,35 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     config = context.watch<ConfigRepository>();
     var exerciseRepo = context.watch<ExercisesRepository>();
     var setServices = GymSetServices(context: context);
-    if (widget.setId == null) {
-      currentExercise = exerciseRepo.exercises.first;
-      updateFields(null);
-    } else {
-      gymSet = setServices.getGymSetById(widget.setId!);
-      currentExercise = exerciseRepo.exercises.where((e) => e.id == gymSet?.id).first;
-      updateFields(gymSet!);
+    gymSet = setServices.getGymSetById(widget.setId ?? 0);
+
+    if (isEditMode) {
+      //set exercuse to gymset exercise
+      currentExercise = exerciseRepo.getExerciseById(gymSet!.exerciseId)!;
+      updateFields(gymSet);
+    }
+    if (!isEditMode && name == null) {
+      //initial load of new set
+      //set exercise to last completed exercise (or first if none completed)
+      var lastSet = setServices.getLastGymSet();
+      var lastExercise = exerciseRepo.getExerciseById(lastSet!.exerciseId);
+      currentExercise = lastExercise ?? exerciseRepo.exercises.first;
+      updateFields(lastSet);
+    }
+    if (!isEditMode && name != null) {
+      //exercise has changed, get details of last gymset from this exercise
+      //get exercise
+      currentExercise = exerciseRepo.getExerciseByName(name!) ?? currentExercise;
+      var lastSet = setServices.getSetsByExerciseId(currentExercise.id!).firstOrNull;
+      updateFields(lastSet);
     }
 
-    return AppShell(title: currentExercise.name, body: buildBody(), actions: [if (widget.setId != null) buildDeleteButton()]);
+    return AppShell(
+      title: currentExercise.name,
+      body: buildBody(),
+      actions: [if (widget.setId != null) buildDeleteButton()],
+      floatingActionButton: buildSaveButton(),
+    );
   }
 
   //region Fields
@@ -107,7 +126,11 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
           title: const Text('Confirm Delete'),
           content: Text('Are you sure you want to delete this set?'),
           actions: [
-            TextButton.icon(label: const Text('Cancel'), icon: const Icon(Icons.close), onPressed: () => Navigator.pop(dialogContext)),
+            TextButton.icon(
+              label: const Text('Cancel'),
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(dialogContext),
+            ),
             TextButton.icon(
               label: const Text('Delete'),
               icon: const Icon(Icons.delete),
@@ -149,7 +172,10 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
                 if (showNotes) ...[notesField(), const SizedBox(height: 8.0)],
                 dateSelector(),
                 if (showImages) ...[const SizedBox(height: 8.0), imageField()],
-                if (name != '') ...[SizedBox(height: 300, child: WorkoutList(sets: getHistory())), const SizedBox(height: 8.0)],
+                if (name != '') ...[
+                  SizedBox(height: 300, child: WorkoutList(sets: getHistory())),
+                  const SizedBox(height: 8.0),
+                ],
               ],
             );
           },
@@ -267,23 +293,29 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
           onSelected: (String selection) {
             category = selection;
           },
-          fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
-            categoryTEC = textEditingController;
-            return TextFormField(
-              controller: textEditingController,
-              focusNode: focusNode,
-              decoration: const InputDecoration(labelText: 'Category'),
-              validator: (value) {
-                if (value == null || value.isEmpty) return 'Required';
-                if (!snapshot.data!.contains(value)) return 'Invlaid';
-                return null;
+          fieldViewBuilder:
+              (
+                BuildContext context,
+                TextEditingController textEditingController,
+                FocusNode focusNode,
+                VoidCallback onFieldSubmitted,
+              ) {
+                categoryTEC = textEditingController;
+                return TextFormField(
+                  controller: textEditingController,
+                  focusNode: focusNode,
+                  decoration: const InputDecoration(labelText: 'Category'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Required';
+                    if (!snapshot.data!.contains(value)) return 'Invlaid';
+                    return null;
+                  },
+                  onChanged: (value) {
+                    if (value.isEmpty || !snapshot.data!.contains(value)) return;
+                    category = value;
+                  },
+                );
               },
-              onChanged: (value) {
-                if (value.isEmpty || !snapshot.data!.contains(value)) return;
-                category = value;
-              },
-            );
-          },
         );
       },
     );
@@ -299,10 +331,18 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
   }
 
   Widget dateSelector() {
-    final lastSet = context.read<GymSetRepository>().gymsets.where((e) => e.exerciseId == currentExercise.id).firstOrNull;
+    final lastSet = context
+        .read<GymSetRepository>()
+        .gymsets
+        .where((e) => e.exerciseId == currentExercise.id)
+        .firstOrNull;
 
     if (lastSet == null) {
-      return const ListTile(title: Text('Created date'), subtitle: Text('No date available'), trailing: Icon(Icons.calendar_today));
+      return const ListTile(
+        title: Text('Created date'),
+        subtitle: Text('No date available'),
+        trailing: Icon(Icons.calendar_today),
+      );
     }
 
     final lastDate = lastSet.created;
@@ -317,10 +357,12 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     created = dateSet ? created : displayDate;
 
     return Selector<ConfigRepository, String>(
-      selector: (context, settings) => settings.getSetting(.formats, 'date_format'),
+      selector: (context, settings) => settings.getSetting(.formats, 'long_date_format'),
       builder: (context, longDateFormat, child) => ListTile(
         title: const Text('Created date'),
-        subtitle: Text(longDateFormat == 'timeago' ? timeago.format(created) : DateFormat(longDateFormat).format(created)),
+        subtitle: Text(
+          longDateFormat == 'timeago' ? timeago.format(created) : DateFormat(longDateFormat).format(created),
+        ),
         trailing: const Icon(Icons.calendar_today),
         onTap: () => selectDate(),
       ),
@@ -346,7 +388,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
       builder: (context, showImages, child) {
         return Column(
           children: [
-            if (image == null)
+            if (image == null || !currentExercise.hasImage())
               TextButton.icon(
                 onPressed: () async {
                   image = await pickImage(context);
@@ -354,7 +396,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
                 label: const Text('Image'),
                 icon: const Icon(Icons.image),
               ),
-            if (image != null) ...[
+            if (image != null && currentExercise.hasImage()) ...[
               const SizedBox(height: 8),
               Tooltip(
                 message: 'Long-press to delete',
@@ -372,7 +414,11 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       image: showImages
-                          ? DecorationImage(image: MemoryImage(image ?? Uint8List(0)), fit: BoxFit.cover, colorFilter: ColorFilter.mode(Color.fromARGB(100, 0, 0, 0), BlendMode.darken))
+                          ? DecorationImage(
+                              image: MemoryImage(image ?? Uint8List(0)),
+                              fit: BoxFit.cover,
+                              colorFilter: ColorFilter.mode(Color.fromARGB(100, 0, 0, 0), BlendMode.darken),
+                            )
                           : null,
                     ),
                   ),
@@ -390,41 +436,90 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     return services.getSetsByExerciseId(currentExercise.id!);
   }
 
-  Autocomplete<String> nameAutoCompleteField() {
-    //TODO make like category field
-    return Autocomplete<String>(
-      optionsBuilder: (textEditingValue) {
-        final searchTerms = textEditingValue.text.toLowerCase().split(" ").where((term) => term.isNotEmpty);
-        Iterable<String> opts = exercises.map((e) => e.name);
-
-        for (final term in searchTerms) {
-          opts = opts.where((option) => option.toLowerCase().contains(term));
-        }
-        return opts;
-      },
-      onSelected: (option) => {},
-      initialValue: TextEditingValue(text: name!),
-      fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
-        exerciseNameTEC = textEditingController;
-        return TextFormField(
-          decoration: const InputDecoration(labelText: 'Name'),
-          controller: textEditingController,
-          textInputAction: TextInputAction.next,
-          onTap: () {
-            selectAll(textEditingController);
+  Widget nameAutoCompleteField() {
+    var repo = context.read<ExercisesRepository>();
+    return FutureBuilder(
+      future: repo.getExerciseNames(),
+      builder: (context, snapshot) {
+        return Autocomplete<String>(
+          initialValue: TextEditingValue(text: currentExercise.name),
+          optionsBuilder: (TextEditingValue textEditingValue) {
+            if (snapshot.data == null) return [];
+            if (textEditingValue.text == '') {
+              return snapshot.data!;
+            }
+            return snapshot.data!.where((String option) {
+              return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+            });
           },
-          focusNode: focusNode,
-          onFieldSubmitted: (String value) {},
-          onChanged: (value) => setState(() {
-            name = value;
-          }),
-          validator: (value) {
-            if (value == null || value.isEmpty) return 'Required';
-            return null;
+          onSelected: (String selection) {
+            setState(() {
+              name = selection;
+              currentExercise = repo.getExerciseByName(selection) ?? currentExercise;
+            });
           },
+          fieldViewBuilder:
+              (
+                BuildContext context,
+                TextEditingController textEditingController,
+                FocusNode focusNode,
+                VoidCallback onFieldSubmitted,
+              ) {
+                exerciseNameTEC = textEditingController;
+                return TextFormField(
+                  controller: textEditingController,
+                  focusNode: focusNode,
+                  decoration: const InputDecoration(labelText: 'Exercise name'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Required';
+                    if (!snapshot.data!.contains(value)) return 'Invlaid';
+                    return null;
+                  },
+                  onChanged: (value) {
+                    if (value.isEmpty || !snapshot.data!.contains(value)) return;
+                    setState(() {
+                      name = value;
+                      currentExercise = repo.getExerciseByName(value) ?? currentExercise;
+                    });
+                  },
+                );
+              },
         );
       },
     );
+    // return Autocomplete<String>(
+    //   optionsBuilder: (textEditingValue) {
+    //     final searchTerms = textEditingValue.text.toLowerCase().split(" ").where((term) => term.isNotEmpty);
+    //     Iterable<String> opts = exercises.map((e) => e.name);
+
+    //     for (final term in searchTerms) {
+    //       opts = opts.where((option) => option.toLowerCase().contains(term));
+    //     }
+    //     return opts;
+    //   },
+    //   onSelected: (option) => {},
+    //   initialValue: TextEditingValue(text: name!),
+    //   fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
+    //     exerciseNameTEC = textEditingController;
+    //     return TextFormField(
+    //       decoration: const InputDecoration(labelText: 'Name'),
+    //       controller: textEditingController,
+    //       textInputAction: TextInputAction.next,
+    //       onTap: () {
+    //         selectAll(textEditingController);
+    //       },
+    //       focusNode: focusNode,
+    //       onFieldSubmitted: (String value) {},
+    //       onChanged: (value) => setState(() {
+    //         name = value;
+    //       }),
+    //       validator: (value) {
+    //         if (value == null || value.isEmpty) return 'Required';
+    //         return null;
+    //       },
+    //     );
+    //   },
+    // );
   }
   //endregion
 
@@ -434,7 +529,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     if (gymSet != null) {
       unit = gymSet.unit ?? currentExercise.defaultUnit!;
       rest = gymSet.rest ?? currentExercise.defaultRest;
-      if (gymSet.reps != 0) repsTEC.text = toString(gymSet.reps);
+      if (gymSet.reps != 0) repsTEC.text = gymSet.reps.toString();
       weightTEC.text = toString(gymSet.weight);
       setORM();
       if (gymSet.bodyWeight != 0) bodyWeightTEC.text = toString(gymSet.bodyWeight!);
@@ -459,14 +554,21 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     final parsedWeight = double.tryParse(weightTEC.text);
     if (parsedReps == null || parsedWeight == null) return;
     if (parsedReps > 0) {
-      ormTEC.text = "${(double.parse(weightTEC.text) / (1.0278 - (0.0278 * double.parse(repsTEC.text)))).toStringAsFixed(2)} $unit";
+      ormTEC.text =
+          "${(double.parse(weightTEC.text) / (1.0278 - (0.0278 * double.parse(repsTEC.text)))).toStringAsFixed(2)} $unit";
     } else {
-      ormTEC.text = "${(double.parse(weightTEC.text) * (1.0278 - (0.0278 * double.parse(repsTEC.text)))).toStringAsFixed(2)} $unit";
+      ormTEC.text =
+          "${(double.parse(weightTEC.text) * (1.0278 - (0.0278 * double.parse(repsTEC.text)))).toStringAsFixed(2)} $unit";
     }
   }
 
   Future<void> selectDate() async {
-    final DateTime? pickedDate = await showDatePicker(context: context, initialDate: created, firstDate: DateTime(2000), lastDate: DateTime(2100));
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: created,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
 
     if (pickedDate != null) {
       selectTime(pickedDate);
@@ -493,7 +595,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     //Add new
     if (widget.setId == null) {
       newGymSet = GymSet(
-        reps: double.tryParse(repsTEC.text) ?? 0.0,
+        reps: int.tryParse(repsTEC.text) ?? 0,
         weight: double.tryParse(weightTEC.text) ?? 0.0,
         unit: unit,
         note: noteTEC.text,
@@ -506,7 +608,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
       isBest = await setServices.isBest(newGymSet);
     } else {
       newGymSet = gymSet!.copyWith(
-        reps: double.tryParse(repsTEC.text) ?? 0.0,
+        reps: int.tryParse(repsTEC.text) ?? 0,
         weight: double.tryParse(weightTEC.text) ?? 0.0,
         unit: unit,
         note: noteTEC.text,
@@ -524,7 +626,12 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
         AppSnackBar.success("New PB. Well done");
       }
       if (config.isEnabled(.timers, 'rest_timers') && mounted && rest != null) {
-        context.read<TimerState>().startTimer(name!, Duration(milliseconds: rest!), config.getSetting(.timers, 'alarm_sound'), config.isEnabled(.timers, 'vibrate'));
+        context.read<TimerState>().startTimer(
+          name!,
+          Duration(milliseconds: rest!),
+          config.getSetting(.timers, 'alarm_sound'),
+          config.isEnabled(.timers, 'vibrate'),
+        );
       }
     }
     return gymSet;

@@ -83,7 +83,10 @@ class GymSetServices {
     return await gymsetsRepo.isBest(set);
   }
 
-  List<GymSet> getSetsByExerciseId(int exerciseId) => gymsetsRepo.gymsets.where((e) => e.exerciseId == exerciseId).toList();
+  GymSet? getLastGymSet() => getAllGymSets().firstOrNull;
+
+  List<GymSet> getSetsByExerciseId(int exerciseId) =>
+      gymsetsRepo.gymsets.where((e) => e.exerciseId == exerciseId).toList();
 
   Widget getLastGymSetWorkout(List<GymSet> sets) {
     String plural(int s) => s > 1 ? 's' : '';
@@ -128,7 +131,7 @@ class GymSetServices {
       }
     }
 
-    var dateFormat = settingsRepo.getSetting(.formats, 'date_format');
+    var dateFormat = settingsRepo.getSetting(.formats, 'short_date_format');
 
     final formattedDate = DateFormat(dateFormat).format(sortedDays.first.date);
 

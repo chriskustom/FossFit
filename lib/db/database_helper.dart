@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:fossfit/app/utils/constants.dart';
+import 'package:fossfit/db/database_migrations.dart';
 import 'package:fossfit/db/db_constants.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:path/path.dart';
@@ -64,10 +65,10 @@ class DatabaseHelper {
           weight REAL NOT NULL DEFAULT 0.0,
           unit TEXT,
           note TEXT,
-          body_weight REAL,
           rest INTEGER,
-          plan_id INTEGER,
+          body_weight REAL,
           exercise_id INTEGER NOT NULL,
+          plan_id INTEGER,
           created INTEGER NOT NULL DEFAULT (unixepoch('subsecond') * 1000),
           FOREIGN KEY (exercise_id) REFERENCES exercises(id)       
           )
@@ -150,12 +151,16 @@ class DatabaseHelper {
       INSERT INTO config (category, "key", value) VALUES
           ('formats','font','Roboto'),
           ('formats','font_size','14'),
-          ('formats','date_format','d/M/yy'),
+          ('formats','short_date_format','d/M/yy'),
+          ('formats','long_date_format','d/M/yy'),
           ('formats','start_of_week','monday'),
           ('appearance','haptics','1'),
           ('appearance','theme','system'),
+          ('appearance','system_colours','1'),
           ('appearance','color','4281559659'),
-          ('tabs','tabs','Plans|1,Calendar|1,Exercises|1,Timer|1'),
+          ('appearance','curve_lines','1'),
+          ('appearance','curve_smoothness','0.1'),
+          ('tabs','tabs','Plans,Calendar,Exercises,Timer'),
           ('backup','backup','0'),
           ('backup','frequency','14'),
           ('backup','directory',''),
@@ -253,7 +258,11 @@ class DatabaseHelper {
 
   Future<void> cleanupOldBackups(String backupDirPath) async {
     final backupDir = Directory(backupDirPath);
-    final backupFiles = backupDir.listSync().whereType<File>().where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db')).toList();
+    final backupFiles = backupDir
+        .listSync()
+        .whereType<File>()
+        .where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'))
+        .toList();
 
     backupFiles.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
 
@@ -268,7 +277,11 @@ class DatabaseHelper {
     final dir = Directory(backupDirPath);
     if (!dir.existsSync()) return null;
 
-    final files = dir.listSync().whereType<File>().where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db')).toList();
+    final files = dir
+        .listSync()
+        .whereType<File>()
+        .where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'))
+        .toList();
 
     if (files.isEmpty) return null;
 
@@ -304,6 +317,7 @@ class DatabaseHelper {
 
   //region import
   Future<String> importDatabase(String importedPath) async {
+    var isSqlite = importedPath.endsWith('sqlite');
     try {
       final dbDir = await getDatabasesPath();
       final targetPath = join(dbDir, dbFileName);
@@ -318,7 +332,8 @@ class DatabaseHelper {
       final importedVersion = await _getUserVersion(importedDb);
       await importedDb.close();
 
-      if (importedVersion > currentVersion) {
+      ///old flexify db. Reset version to allow migrations
+      if (!isSqlite && importedVersion > currentVersion) {
         throw Exception('Backup was created with a newer app version ($importedVersion)');
       }
 
@@ -332,6 +347,13 @@ class DatabaseHelper {
 
       // 3️⃣ Open temp DB with proper version (this triggers migrations)
       final migratedDb = await _openDb(tempPath);
+      if (isSqlite) {
+        await migratedDb.execute('PRAGMA foreign_keys = OFF');
+        await importSqliteFile(migratedDb);
+        await migratedDb.execute('PRAGMA foreign_keys = ON');
+        await migratedDb.execute('PRAGMA user_version = $kDatabaseSchemaVersion;');
+        _defaultSettings(migratedDb);
+      }
       await migratedDb.close();
 
       // 4️⃣ Replace live DB only AFTER successful migration

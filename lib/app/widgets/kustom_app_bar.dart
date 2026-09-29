@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:fossfit/app/features/search/global_search_controller.dart';
 import 'package:fossfit/app/services/app_services.dart';
 import 'package:fossfit/app/settings/settings_page.dart';
-import 'package:fossfit/app/theme/theme.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/fade_route.dart';
 import 'package:fossfit/app/widgets/about_dialog.dart';
@@ -16,7 +15,14 @@ class KustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   final List<IconButton>? selectActions;
   final bool showSearch;
 
-  const KustomAppBar({super.key, required this.title, this.actions, this.sorting, this.selectActions, this.showSearch = true});
+  const KustomAppBar({
+    super.key,
+    required this.title,
+    this.actions,
+    this.sorting,
+    this.selectActions,
+    this.showSearch = true,
+  });
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -87,9 +93,7 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
               Navigator.maybePop(context);
             }),
           )
-        : Builder(
-            builder: (context) => IconButton(icon: const Icon(Icons.menu), onPressed: AppHaptics.selectWithHaptics(context, () => Scaffold.of(context).openDrawer())),
-          );
+        : Icon(Icons.fitness_center_rounded);
   }
 
   @override
@@ -103,10 +107,15 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
               duration: const Duration(milliseconds: 250),
               switchInCurve: Curves.easeInOut,
               switchOutCurve: Curves.easeInOut,
-              child: Text(widget.title, key: const ValueKey("title"), style: Theme.of(context).textTheme.labelLarge, textScaler: TextScaler.linear(1.1)),
+              child: Text(
+                widget.title,
+                key: const ValueKey("title"),
+                style: Theme.of(context).textTheme.labelLarge,
+                textScaler: TextScaler.linear(1.1),
+              ),
             ),
       actions: _isSearching ? [] : _buildMenu(context),
-      flexibleSpace: Container(decoration: BoxDecoration(gradient: context.linearGradientLR)),
+      //flexibleSpace: Container(decoration: BoxDecoration(gradient: context.linearGradientLR)),
     );
   }
 
@@ -131,9 +140,16 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
             child: SizeTransition(
               axis: Axis.horizontal,
               alignment: AlignmentGeometry.xy(-1, 0),
-              sizeFactor: _animController.drive(Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeInOutCubic))),
+              sizeFactor: _animController.drive(
+                Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeInOutCubic)),
+              ),
               child: SlideTransition(
-                position: _animController.drive(Tween<Offset>(begin: const Offset(0.2, 0), end: Offset.zero).chain(CurveTween(curve: Curves.easeInOutCubic))),
+                position: _animController.drive(
+                  Tween<Offset>(
+                    begin: const Offset(0.2, 0),
+                    end: Offset.zero,
+                  ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+                ),
                 child: TextField(
                   controller: _controller,
                   focusNode: _searchFocus,
@@ -152,7 +168,10 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
                     contentPadding: const EdgeInsets.symmetric(vertical: 15),
                     hintText: 'Search...',
                     border: InputBorder.none,
-                    suffixIcon: IconButton(icon: const Icon(Icons.close), onPressed: AppHaptics.selectWithHaptics(context, _closeSearch)),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: AppHaptics.selectWithHaptics(context, _closeSearch),
+                    ),
                   ),
                 ),
               ),

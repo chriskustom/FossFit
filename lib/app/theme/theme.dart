@@ -5,30 +5,22 @@ class AppTheme {
     String? fontFamily,
     double? fontSize,
     int? seedColor,
+    ColorScheme? dynamic,
+    bool sysColours = false,
   }) {
     final colourScheme = ColorScheme.fromSeed(
-      seedColor: seedColor == null
-          ? const Color.fromARGB(255, 209, 1, 199)
-          : Color(seedColor),
+      seedColor: seedColor == null ? const Color.fromARGB(255, 209, 1, 199) : Color(seedColor),
     );
     return ThemeData(
       useMaterial3: true,
-      colorScheme: colourScheme,
-      textTheme: _applyFont(
-        ThemeData.light(useMaterial3: true).textTheme,
-        fontFamily,
-        fontSize,
-      ),
-      appBarTheme: AppBarTheme(
-        backgroundColor: colourScheme.primaryContainer,
-        foregroundColor: colourScheme.onSurface,
-      ),
+      colorScheme: sysColours ? dynamic : colourScheme,
+      textTheme: _applyFont(ThemeData.light(useMaterial3: true).textTheme, fontFamily, fontSize),
+      appBarTheme: AppBarTheme(foregroundColor: colourScheme.onSurface),
       snackBarTheme: const SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
       ),
+      inputDecorationTheme: const InputDecorationTheme(floatingLabelBehavior: FloatingLabelBehavior.always),
     );
   }
 
@@ -36,39 +28,27 @@ class AppTheme {
     String? fontFamily,
     double? fontSize,
     int? seedColor,
+    ColorScheme? dynamic,
+    bool sysColours = false,
   }) {
     final colourScheme = ColorScheme.fromSeed(
-      seedColor: seedColor == null
-          ? const Color.fromARGB(255, 209, 1, 199)
-          : Color(seedColor),
+      seedColor: seedColor == null ? const Color.fromARGB(255, 209, 1, 199) : Color(seedColor),
       brightness: Brightness.dark,
     );
     return ThemeData(
       useMaterial3: true,
-      colorScheme: colourScheme,
-      textTheme: _applyFont(
-        ThemeData.dark(useMaterial3: true).textTheme,
-        fontFamily,
-        fontSize,
-      ),
-      appBarTheme: AppBarTheme(
-        backgroundColor: colourScheme.primaryContainer,
-        foregroundColor: colourScheme.onSurface,
-      ),
+      colorScheme: sysColours ? dynamic : colourScheme,
+      textTheme: _applyFont(ThemeData.dark(useMaterial3: true).textTheme, fontFamily, fontSize),
+      appBarTheme: AppBarTheme(foregroundColor: colourScheme.onSurface),
       snackBarTheme: const SnackBarThemeData(
         behavior: SnackBarBehavior.fixed,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
       ),
+      inputDecorationTheme: const InputDecorationTheme(floatingLabelBehavior: FloatingLabelBehavior.always),
     );
   }
 
-  static TextTheme _applyFont(
-    TextTheme original,
-    String? fontFamily,
-    double? fontSize,
-  ) {
+  static TextTheme _applyFont(TextTheme original, String? fontFamily, double? fontSize) {
     if (fontFamily == null || fontSize == null) return original;
 
     const double materialBase = 14.0;
@@ -76,9 +56,7 @@ class AppTheme {
 
     TextStyle? normalize(TextStyle? style) {
       if (style == null) return null;
-      return style.fontSize == null
-          ? style.copyWith(fontSize: materialBase)
-          : style;
+      return style.fontSize == null ? style.copyWith(fontSize: materialBase) : style;
     }
 
     final normalized = original.copyWith(
@@ -105,18 +83,12 @@ class AppTheme {
 
 extension ThemeX on BuildContext {
   LinearGradient get linearGradientTLBR => LinearGradient(
-    colors: [
-      Theme.of(this).colorScheme.primaryContainer,
-      Theme.of(this).colorScheme.primaryContainer,
-    ],
+    colors: [Theme.of(this).colorScheme.primaryContainer, Theme.of(this).colorScheme.primaryContainer],
     begin: AlignmentGeometry.topLeft,
     end: AlignmentGeometry.bottomRight,
   );
   LinearGradient get linearGradientLR => LinearGradient(
-    colors: [
-      Theme.of(this).colorScheme.primaryContainer,
-      Theme.of(this).colorScheme.primaryContainer /*  */,
-    ],
+    colors: [Theme.of(this).colorScheme.primaryContainer, Theme.of(this).colorScheme.primaryContainer /*  */],
     begin: AlignmentGeometry.centerLeft,
     end: AlignmentGeometry.centerRight,
   );

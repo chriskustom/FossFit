@@ -67,7 +67,9 @@ class CalendarPageState extends State<CalendarPage> {
 
     final allGymSets = gymSets;
 
-    final thisMonthsGymSets = allGymSets.where((t) => t.created.month == monthToFilter && t.created.year == yearToFilter).toList();
+    final thisMonthsGymSets = allGymSets
+        .where((t) => t.created.month == monthToFilter && t.created.year == yearToFilter)
+        .toList();
 
     return AppShell(title: 'Calendar', body: _getCalendar(thisMonthsGymSets));
   }
@@ -83,6 +85,7 @@ class CalendarPageState extends State<CalendarPage> {
     final selectedDate = _selectedDay ?? _focusedDay;
     final selectedSets = monthlyGymSets.where((set) => isSameDay(set.created, selectedDate)).toList();
     final groupHistory = context.watch<ConfigRepository>().isEnabled(.workouts, 'group_history');
+    final startOfWeek = context.watch<ConfigRepository>().getSetting(.formats, 'start_of_week');
     return Column(
       children: [
         _CalendarHeader(
@@ -109,12 +112,14 @@ class CalendarPageState extends State<CalendarPage> {
             lastDay: DateTime(2100, 12, 31),
             focusedDay: _focusedDay,
             headerVisible: false,
-            startingDayOfWeek: StartingDayOfWeek.monday,
+            startingDayOfWeek: StartingDayOfWeek.values.byName(startOfWeek),
             selectedDayPredicate: (day) {
               return isSameDay(_selectedDay!, day);
             },
             rowHeight: 40,
-            daysOfWeekStyle: DaysOfWeekStyle(weekdayStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withAlpha(150))),
+            daysOfWeekStyle: DaysOfWeekStyle(
+              weekdayStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withAlpha(150)),
+            ),
             calendarFormat: CalendarFormat.month,
             rangeSelectionMode: RangeSelectionMode.disabled,
             calendarBuilders: CalendarBuilders(
@@ -124,12 +129,18 @@ class CalendarPageState extends State<CalendarPage> {
                   width: double.infinity,
                   height: 4,
                   margin: EdgeInsets.only(top: 2, left: 18, right: 18),
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 );
               },
             ),
             eventLoader: (day) {
-              final exercise = services.getExerciseSets(monthlyGymSets).where((e) => isSameDay(e.date, day)).firstOrNull;
+              final exercise = services
+                  .getExerciseSets(monthlyGymSets)
+                  .where((e) => isSameDay(e.date, day))
+                  .firstOrNull;
 
               return exercise == null ? <ExerciseSets>[] : [exercise];
             },
@@ -215,7 +226,12 @@ class _CalendarHeader extends StatelessWidget {
             visualDensity: VisualDensity.compact,
             onPressed: onTodayButtonTap,
           ),
-          if (clearButtonVisible) IconButton(icon: const Icon(Icons.clear, size: 20.0), visualDensity: VisualDensity.compact, onPressed: onClearButtonTap),
+          if (clearButtonVisible)
+            IconButton(
+              icon: const Icon(Icons.clear, size: 20.0),
+              visualDensity: VisualDensity.compact,
+              onPressed: onClearButtonTap,
+            ),
           const Spacer(),
           IconButton(icon: const Icon(Icons.chevron_left), onPressed: onLeftArrowTap),
           IconButton(icon: const Icon(Icons.chevron_right), onPressed: onRightArrowTap),

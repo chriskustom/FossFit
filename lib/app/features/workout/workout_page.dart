@@ -33,35 +33,44 @@ class _WorkoutPageState extends State<WorkoutPage> {
   Widget build(BuildContext context) {
     config = context.watch<ConfigRepository>();
     _lastWorkoutSets = context.watch<GymSetRepository>().latestgymsets;
-    print(Colors.deepPurple.toARGB32());
     var showStats = config.isEnabled(.workouts, 'show_stats');
     if (showStats) getStats(_lastWorkoutSets);
     var grouped = config.isEnabled(.workouts, 'group_history');
     return AppShell(
       title: 'Workout',
-      body: Column(
-        children: [
-          if (_lastWorkoutSets.isEmpty) const ListTile(title: Text('No entries yet'), subtitle: Text('Complete some sets to see them here')),
-          if (_lastWorkoutSets.isNotEmpty && showStats)
-            Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-              child: Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: ExpansionTile(
-                  childrenPadding: EdgeInsets.zero,
-                  iconColor: Theme.of(context).colorScheme.onSurface,
-                  leading: Icon(expand.isExpanded ? Icons.analytics_outlined : Icons.fitness_center_rounded, color: Theme.of(context).colorScheme.primary),
-                  title: Text(expand.isExpanded ? 'Stats' : 'Exercises'),
-                  initiallyExpanded: true,
-                  controller: expand,
-                  children: [lastWorkout],
+      body: Padding(
+        padding: EdgeInsets.all(8),
+        child: Column(
+          children: [
+            if (_lastWorkoutSets.isEmpty)
+              const ListTile(title: Text('No entries yet'), subtitle: Text('Complete some sets to see them here')),
+            if (_lastWorkoutSets.isNotEmpty && showStats)
+              Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: ExpansionTile(
+                    childrenPadding: EdgeInsets.zero,
+                    iconColor: Theme.of(context).colorScheme.onSurface,
+                    leading: Icon(
+                      expand.isExpanded ? Icons.analytics_outlined : Icons.fitness_center_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    title: Text(expand.isExpanded ? 'Stats' : 'Exercises'),
+                    initiallyExpanded: true,
+                    controller: expand,
+                    children: [lastWorkout],
+                    onExpansionChanged: (value) {
+                      setState(() {});
+                    },
+                  ),
                 ),
               ),
+            Expanded(
+              child: grouped ? WorkoutGrouped(sets: _lastWorkoutSets) : WorkoutList(sets: _lastWorkoutSets),
             ),
-          Expanded(
-            child: grouped ? WorkoutGrouped(sets: _lastWorkoutSets) : WorkoutList(sets: _lastWorkoutSets),
-          ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: AnimatedFab(
         onPressed: () async {

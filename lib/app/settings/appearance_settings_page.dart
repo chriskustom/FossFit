@@ -1,9 +1,9 @@
-import 'package:fossfit/app/shell/app_shell.dart';
-import 'package:fossfit/db/repositories/config_reposity.dart';
-import 'package:fossfit/app/utils/utils.dart';
-import 'package:fossfit/app/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:fossfit/app/shell/app_shell.dart';
+import 'package:fossfit/app/utils/constants.dart';
+import 'package:fossfit/app/utils/utils.dart';
+import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:provider/provider.dart';
 
 class AppearanceSettings extends StatefulWidget {
@@ -23,6 +23,7 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
 
   @override
   Widget build(BuildContext context) {
+    var sysColours = context.watch<ConfigRepository>().isEnabled(category, 'system_colours');
     return AppShell(
       title: category.name.toTitleCase,
       showSearch: false,
@@ -36,7 +37,8 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
           ),
           SizedBox(height: 8),
           _themeItem(),
-          _colorScheme(),
+          _useSystemColours(),
+          if (!sysColours) _colorScheme(),
           SizedBox(height: 8),
           Divider(),
           Padding(
@@ -101,6 +103,30 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
               pickerAreaHeightPercent: 0.0,
               pickerAreaBorderRadius: BorderRadius.all(Radius.zero),
             ),
+          );
+        },
+      ),
+    );
+  }
+
+  Padding _useSystemColours() {
+    const key = 'system_colours';
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Selector<ConfigRepository, bool>(
+        selector: (_, repo) => repo.isEnabled(category, key),
+        builder: (context, isEnabled, _) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Padding(padding: EdgeInsets.only(left: 8), child: Text('Use system colours')),
+              Switch(
+                value: isEnabled,
+                onChanged: (value) {
+                  context.read<ConfigRepository>().setSetting(category: category, key: key, value: value ? '1' : '0');
+                },
+              ),
+            ],
           );
         },
       ),

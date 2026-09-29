@@ -23,9 +23,9 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   Map<String, Widget> pages = {
-    ConfigCategory.formats.name: FormatsSettingsPage(),
     ConfigCategory.appearance.name: AppearanceSettings(),
     ConfigCategory.backup.name: BackupSettingsPage(),
+    ConfigCategory.formats.name: FormatsSettingsPage(),
     ConfigCategory.tabs.name: TabsSettingsPage(),
     ConfigCategory.timers.name: TimerSettingsPage(),
     ConfigCategory.workouts.name: WorkoutSettingsPage(),
@@ -33,7 +33,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<ConfigRepository>().settingsAsList;
+    var settings = context.watch<ConfigRepository>().settingsAsList;
     return AppShell(
       title: 'Settings',
       showSearch: false,
@@ -42,13 +42,17 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           Expanded(
             child: ListView.builder(
-              padding: EdgeInsets.all(0),
+              padding: EdgeInsets.all(12),
               itemCount: pages.entries.length,
               itemBuilder: (ctx, idx) {
                 final category = pages.keys.elementAt(idx);
                 final page = pages[category]!;
                 final itemSettings = settings.firstWhereOrNull((s) => s.category == category)?.settings ?? [];
                 return ListTile(
+                  leading: Icon(
+                    ConfigCategory.values.byName(category).icon,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                   title: Text(category.toTitleCase),
                   subtitle: Text(
                     itemSettings.map((m) => m.key.toTitleCase).toList().sortedBy((a) => a).join(', ').truncate(50),

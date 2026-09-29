@@ -1,10 +1,9 @@
+import 'package:flutter/material.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
+import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/utils.dart';
 import 'package:fossfit/db/models/features/config_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
-
-import 'package:fossfit/app/utils/constants.dart';
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class WorkoutSettingsPage extends StatefulWidget {
@@ -66,7 +65,10 @@ class _WorkoutSettingsPageState extends State<WorkoutSettingsPage> {
                     key: ValueKey(option),
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Padding(padding: EdgeInsets.only(left: 8), child: Text(option.toTitleCase)),
+                      Padding(
+                        padding: EdgeInsets.only(left: 8),
+                        child: Text(option.toTitleCase, textAlign: .left),
+                      ),
                       Switch(
                         value: enabled,
                         onChanged: (value) {

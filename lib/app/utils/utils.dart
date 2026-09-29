@@ -456,7 +456,7 @@ extension StringExtensions on String {
     if (parsed != null) return parsed;
 
     // Try each format
-    for (final format in dateFormats) {
+    for (final format in [...shortdateFormats, ...longdateFormats]) {
       try {
         parsed = DateFormat(format).parseStrict(input);
         return parsed;

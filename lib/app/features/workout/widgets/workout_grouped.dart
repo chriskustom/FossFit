@@ -20,7 +20,8 @@ class WorkoutGrouped extends StatelessWidget {
     var config = context.read<ConfigRepository>();
     final showImages = config.isEnabled(.workouts, 'show_images');
     final services = GymSetServices(context: context);
-    final sortedDays = List<ExerciseSets>.from(services.getExerciseSets(sets, reversed: true))..sort((a, b) => b.date.compareTo(a.date));
+    final sortedDays = List<ExerciseSets>.from(services.getExerciseSets(sets, reversed: true))
+      ..sort((a, b) => b.date.compareTo(a.date));
     var grouped = services.groupExerciseSetsByDay(sortedDays);
 
     return ListView.builder(
@@ -39,7 +40,10 @@ class WorkoutGrouped extends StatelessWidget {
             alignment: Alignment.center,
             child: _buildSectionDivider(date, sets, context),
           ),
-          content: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: List.generate(sets.length, (index) => workoutChildren(sets[index], context, showImages, config))),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: List.generate(sets.length, (index) => workoutChildren(sets[index], context, showImages, config)),
+          ),
         );
       },
     );
@@ -69,7 +73,10 @@ class WorkoutGrouped extends StatelessWidget {
             const SizedBox(width: 4),
             const Icon(Icons.today, size: 16),
             const SizedBox(width: 4),
-            Text(DateFormat(config.getSetting(.formats, 'date_format')).format(date), style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              DateFormat(config.getSetting(.formats, 'short_date_format')).format(date),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(width: 4),
             const Expanded(child: Divider(thickness: 1)),
           ],
@@ -89,8 +96,10 @@ class WorkoutGrouped extends StatelessWidget {
 
         Widget? leading = ExerciseIcon(exercise: history.exercise, showImages: showImages);
 
-        final dateFormat = config.getSetting(.formats, 'date_format');
-        final trailing = Text(dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created));
+        final dateFormat = config.getSetting(.formats, 'short_date_format');
+        final trailing = Text(
+          dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
+        );
         return ListTile(
           dense: true,
           visualDensity: VisualDensity.comfortable,
@@ -105,7 +114,12 @@ class WorkoutGrouped extends StatelessWidget {
   String _getSetNumber(GymSet gymSet, List<GymSet> today) {
     final currentDate = gymSet.created.toLocal();
     final sameDayEntries = today
-        .where((entry) => entry.created.toLocal().year == currentDate.year && entry.created.toLocal().month == currentDate.month && entry.created.toLocal().day == currentDate.day)
+        .where(
+          (entry) =>
+              entry.created.toLocal().year == currentDate.year &&
+              entry.created.toLocal().month == currentDate.month &&
+              entry.created.toLocal().day == currentDate.day,
+        )
         .toList()
         .reversed
         .toList();

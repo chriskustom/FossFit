@@ -1,7 +1,7 @@
 import 'package:fossfit/db/models/base_model.dart';
 
 class GymSet extends BaseModel {
-  final double reps;
+  final int reps;
   final double weight;
   final String? unit;
   final String? note;
@@ -26,7 +26,7 @@ class GymSet extends BaseModel {
   @override
   GymSet copyWith({
     int? id,
-    double? reps,
+    int? reps,
     double? weight,
     String? unit,
     String? note,
@@ -55,8 +55,8 @@ class GymSet extends BaseModel {
     'reps': reps,
     'weight': weight,
     'unit': unit,
-    'notes': note,
-    'rest_ms': rest,
+    'note': note,
+    'rest': rest,
     'body_weight': bodyWeight,
     'exercise_id': exerciseId,
     'plan_id': planId,
@@ -66,11 +66,11 @@ class GymSet extends BaseModel {
   factory GymSet.fromMap(Map<String, dynamic> map) {
     return GymSet(
       id: map['id'] as int?,
-      reps: map['reps'] as double,
+      reps: map['reps'] as int,
       weight: map['weight'] as double,
       unit: map['unit'] as String,
-      note: map['notes'] as String?,
-      rest: map['rest_ms'] as int?,
+      note: map['note'] as String?,
+      rest: map['rest'] as int?,
       bodyWeight: map['body_weight'] as double?,
       exerciseId: map['exercise_id'] as int,
       planId: map['plan_id'] as int?,

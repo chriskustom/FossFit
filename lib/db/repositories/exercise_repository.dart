@@ -49,6 +49,13 @@ class ExercisesRepository extends ChangeNotifier {
     return categories;
   }
 
+  Future<List<String>> getExerciseNames() async {
+    final rows = await _db.query('exercises', columns: ['name'], distinct: true, orderBy: 'name ASC');
+
+    final categories = rows.map((row) => row['name'] as String).toList();
+    return categories;
+  }
+
   Future<Exercise> addExercise(Exercise exercises) async {
     exercises.id = await _db.insert(TableName.exercises.name, exercises.toMap());
 

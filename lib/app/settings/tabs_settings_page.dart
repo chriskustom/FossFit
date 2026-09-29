@@ -41,60 +41,57 @@ class _TabsSettingsPageState extends State<TabsSettingsPage> {
   Padding __pageOrder() {
     return Padding(
       padding: EdgeInsets.all(8),
-      child: Selector<ConfigRepository, String>(
-        selector: (_, repo) => repo.getSetting(category, 'tabs'),
-        builder: (ctx, pageOrder, _) {
-          return Column(
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Padding(padding: EdgeInsets.only(left: 8), child: Text('Page')),
-                  Padding(padding: EdgeInsets.only(left: 8), child: Text('Enabled')),
-                ],
-              ),
-              Divider(),
-              ReorderableListView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                buildDefaultDragHandles: false,
-                itemCount: pages.length,
-                itemBuilder: (_, index) {
-                  final page = pages[index];
-                  final pageName = page.split('|').first;
-                  final enabled = page.split('|').last == '1';
-                  return Row(
-                    key: ValueKey(pageName),
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                    children: [
-                      ReorderableDragStartListener(index: index, child: Icon(Icons.drag_handle)),
-                      Padding(padding: EdgeInsets.only(left: 8), child: Text(pageName.toTitleCase)),
-                      Switch(
-                        value: enabled,
-                        onChanged: (value) {
-                          pages[index] = '$pageName|${value == true ? 1 : 0}';
-                          context.read<ConfigRepository>().setSetting(category: category, key: 'tabs', value: pages.join(','));
-                        },
-                      ),
-                    ],
-                  );
-                },
-                onReorderItem: (oldIndex, newIndex) {
-                  if (oldIndex >= pages.length || newIndex > pages.length) {
-                    return;
-                  }
-                  setState(() {
-                    if (oldIndex < newIndex) newIndex -= 1;
-                    final item = pages.removeAt(oldIndex);
-                    pages.insert(newIndex, item);
-                  });
-                  context.read<ConfigRepository>().setSetting(category: category, key: 'tabs', value: pages.join(','));
-                },
-              ),
+              Padding(padding: EdgeInsets.only(left: 8), child: Text('Page')),
+              Padding(padding: EdgeInsets.only(left: 8), child: Text('Enabled')),
             ],
-          );
-        },
+          ),
+          Divider(),
+          ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            itemCount: allTabs.length,
+            itemBuilder: (_, index) {
+              final tab = allTabs[index];
+              final enabled = pages.contains(tab);
+              return Row(
+                key: ValueKey(tab),
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                children: [
+                  ReorderableDragStartListener(index: index, child: Icon(Icons.drag_handle)),
+                  Padding(padding: EdgeInsets.only(left: 8), child: Text(tab.toTitleCase)),
+                  Switch(
+                    value: enabled,
+                    onChanged: (value) {
+                      context.read<ConfigRepository>().setSetting(
+                        category: category,
+                        key: 'tabs',
+                        value: pages.join(','),
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
+            onReorderItem: (oldIndex, newIndex) {
+              if (oldIndex >= pages.length || newIndex > pages.length) {
+                return;
+              }
+              setState(() {
+                if (oldIndex < newIndex) newIndex -= 1;
+                final item = pages.removeAt(oldIndex);
+                pages.insert(newIndex, item);
+              });
+              context.read<ConfigRepository>().setSetting(category: category, key: 'tabs', value: pages.join(','));
+            },
+          ),
+        ],
       ),
     );
   }
