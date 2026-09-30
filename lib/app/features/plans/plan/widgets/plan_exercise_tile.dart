@@ -7,8 +7,10 @@ import 'package:fossfit/app/utils/utils.dart';
 import 'package:fossfit/app/widgets/custom_set_indicator.dart';
 import 'package:fossfit/app/widgets/exercise_icon.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
+import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/models/features/plan_exercise_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
+import 'package:fossfit/db/repositories/gym_set_repository.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
 import 'package:provider/provider.dart';
 
@@ -74,34 +76,37 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     widget.notes.text = (lastSets.firstOrNull?.note ?? '');
     widget.unit.text = (lastSets.firstOrNull?.unit ?? widget.exercise.defaultUnit).toString();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Theme(
-          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            tilePadding: const EdgeInsets.all(2),
-            initiallyExpanded: widget.index == 0,
-            controller: widget.expander,
-            textColor: Theme.of(context).colorScheme.primary,
-            trailing: ReorderableDragStartListener(
-              index: widget.index,
-              child: Platform.isAndroid ? const Icon(Icons.drag_handle, size: 32) : const SizedBox.shrink(),
+    return GestureDetector(
+      onLongPress: () => _showExerciseModal(context, planExercise, lastSets),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: const EdgeInsets.all(2),
+              initiallyExpanded: widget.index == 0,
+              controller: widget.expander,
+              textColor: Theme.of(context).colorScheme.primary,
+              trailing: ReorderableDragStartListener(
+                index: widget.index,
+                child: Platform.isAndroid ? const Icon(Icons.drag_handle, size: 32) : const SizedBox.shrink(),
+              ),
+              onExpansionChanged: (open) => widget.onExpansionChanged(open),
+              title: _buildExerciseTitle(widget.exercise, planExercise, completedSets.length, max, showImages),
+              children: [
+                strengthFields(completedSets.length, max),
+                unitSelector(),
+                notesField(),
+                const SizedBox(height: 4),
+                CustomSetIndicator(sets: completedSets, max: max),
+              ],
             ),
-            onExpansionChanged: (open) => widget.onExpansionChanged(open),
-            title: _buildExerciseTitle(widget.exercise, planExercise, completedSets.length, max, showImages),
-            children: [
-              strengthFields(completedSets.length, max),
-              unitSelector(),
-              notesField(),
-              const SizedBox(height: 4),
-              CustomSetIndicator(sets: completedSets, max: max),
-            ],
           ),
-        ),
-        const SizedBox(height: 4),
-      ],
+          const SizedBox(height: 4),
+        ],
+      ),
     );
   }
 
@@ -255,5 +260,101 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     }
 
     return null;
+  }
+
+  final max = TextEditingController();
+  Future<void> _showExerciseModal(BuildContext context, PlanExercise exercise, List<GymSet> sets) async {
+    final peRepo = context.read<PlanExercisesRepository>();
+    final setsRepo = context.read<GymSetRepository>();
+
+    await showModalBottomSheet(
+      useRootNavigator: true,
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.settings),
+                title: const Text('Settings'),
+                onTap: () async {
+                  Navigator.pop(context);
+
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog.adaptive(
+                        title: Text(widget.exercise.name),
+                        content: SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 16),
+                              TextField(
+                                controller: max,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: false),
+                                onTap: () => selectAll(max),
+                                onChanged: (value) async {
+                                  await peRepo.updatePlanExercise(exercise.copyWith(maxSets: int.tryParse(value) ?? 3));
+                                },
+                                decoration: InputDecoration(
+                                  labelText: "Working sets (max: 20)",
+                                  border: const OutlineInputBorder(),
+                                  hintText: exercise.maxSets.toString(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        actions: [
+                          TextButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            label: const Text("OK"),
+                            icon: const Icon(Icons.check),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+              if (sets.isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.edit),
+                  title: const Text('Edit'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final gymSet = sets.first;
+
+                    var services = GymSetServices(context: context);
+                    await services.openAddEditPage(context, gymSet.id);
+                  },
+                ),
+              if (sets.isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.undo),
+                  title: const Text('Undo'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final gymSet = sets.first;
+                    await setsRepo.deleteGymSetById(gymSet.id!);
+
+                    setState(() {});
+                  },
+                ),
+              if (sets.isEmpty)
+                ListTile(
+                  leading: const Icon(Icons.swap_horiz),
+                  title: const Text('Swap'),
+                  onTap: () async {
+                    //TODO FIGURE OUT SWAPPING
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
