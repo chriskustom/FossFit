@@ -6,7 +6,7 @@ import 'package:fossfit/app/services/image_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/utils.dart';
-import 'package:fossfit/app/widgets/fanimated_fab.dart';
+import 'package:fossfit/app/widgets/animated_fab.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';

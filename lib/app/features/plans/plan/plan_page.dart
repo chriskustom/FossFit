@@ -6,7 +6,8 @@ import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/services/features/plan_exercise_services.dart';
 import 'package:fossfit/app/services/features/plan_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
-import 'package:fossfit/app/widgets/fanimated_fab.dart';
+import 'package:fossfit/app/widgets/animated_fab.dart';
+import 'package:fossfit/app/widgets/countdown_timer.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/models/features/plan_exercise_model.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
@@ -54,47 +55,64 @@ class _PlanPageState extends State<PlanPage> {
       showNavBar: false,
       title: plan!.name,
       showSearch: false,
-      body: Padding(
-        padding: EdgeInsets.all(12),
-        child: ReorderableListView.builder(
-          scrollController: scroll,
-          itemCount: planExercises.length,
-          padding: const EdgeInsets.only(bottom: 96, top: 16),
-          itemBuilder: (context, index) {
-            final planExercise = planExercises[index];
-            final exercise = exRepo.getExerciseById(planExercise.exerciseId);
-            return PlanExerciseTile(
-              key: Key(planExercise.id.toString()),
-              exercise: exercise!,
-              planId: widget.planId,
-              index: index,
-              expander: expanders.putIfAbsent(planExercise.id!, ExpansibleController.new),
-              reps: repControllers.putIfAbsent(planExercise.id!, TextEditingController.new),
-              weight: weightControllers.putIfAbsent(planExercise.id!, TextEditingController.new),
-              unit: unitControllers.putIfAbsent(planExercise.id!, TextEditingController.new),
-              notes: noteControllers.putIfAbsent(planExercise.id!, TextEditingController.new),
-              onExpansionChanged: (open) {
-                if (open) {
-                  if (expandedIndex != index) {
-                    expanders.entries.where((c) => c.key != planExercise.id! && c.value.isExpanded).forEach((c) => c.value.collapse());
-                  }
-                  selectedPlanExerciseId = planExercise.id;
-                  selectedExerciseId = planExercise.exerciseId;
-                  expandedIndex = index;
-                  debugPrint(
-                    'Selected Plan Exercise ID - $selectedExerciseId, '
-                    'Selected Exercise - $selectedExerciseId / ${exercise.name}',
+      body: Column(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: ReorderableListView.builder(
+                scrollController: scroll,
+                itemCount: planExercises.length,
+                padding: const EdgeInsets.only(bottom: 96, top: 16),
+                itemBuilder: (context, index) {
+                  final planExercise = planExercises[index];
+                  final exercise = exRepo.getExerciseById(planExercise.exerciseId);
+                  return PlanExerciseTile(
+                    key: Key('${planExercise.id}-${planExercise.exerciseId}'),
+                    exercise: exercise!,
+                    planId: widget.planId,
+                    index: index,
+                    expander: expanders.putIfAbsent(planExercise.id!, ExpansibleController.new),
+                    reps: repControllers.putIfAbsent(planExercise.id!, TextEditingController.new),
+                    weight: weightControllers.putIfAbsent(planExercise.id!, TextEditingController.new),
+                    unit: unitControllers.putIfAbsent(planExercise.id!, TextEditingController.new),
+                    notes: noteControllers.putIfAbsent(planExercise.id!, TextEditingController.new),
+                    onExpansionChanged: (open) {
+                      if (open) {
+                        if (expandedIndex != index) {
+                          expanders.entries.where((c) => c.key != planExercise.id! && c.value.isExpanded).forEach((c) => c.value.collapse());
+                        }
+                        selectedPlanExerciseId = planExercise.id;
+                        selectedExerciseId = planExercise.exerciseId;
+                        expandedIndex = index;
+                        debugPrint(
+                          'Selected Plan Exercise ID - $selectedExerciseId, '
+                          'Selected Exercise - $selectedExerciseId / ${exercise.name}',
+                        );
+                      }
+                      setState(() {});
+                    },
+                    onFieldSubmitted: () async => await save(),
+                    onSwap: () async {
+                      Navigator.pop(context);
+                      var services = PlanExerciseServices(context: context);
+                      var newExerciseId = await services.openSwapExercisePage(context, planExercise.exerciseId, planExercise.planId);
+                      final old = planExRepo.getPlanExerciseByExerciseAndPlan(planExercise.exerciseId, planExercise.planId);
+                      if (old == null) return;
+                      await planExRepo.updatePlanExercise(old.copyWith(exerciseId: newExerciseId));
+                      planExRepo.loadAll();
+                      if (!context.mounted) return;
+                    },
                   );
-                }
-                setState(() {});
-              },
-              onFieldSubmitted: () async => await save(),
-            );
-          },
-          onReorderItem: (oldIndex, newIndex) async {
-            await planExRepo.reorderPlanExercises(widget.planId, oldIndex, newIndex);
-          },
-        ),
+                },
+                onReorderItem: (oldIndex, newIndex) async {
+                  await planExRepo.reorderPlanExercises(widget.planId, oldIndex, newIndex);
+                },
+              ),
+            ),
+          ),
+          Padding(padding: const EdgeInsets.only(left: 8, right: 8, bottom: 18), child: CountdownTimer()),
+        ],
       ),
       floatingActionButton: AnimatedFab(
         onPressed: () async => await save(),

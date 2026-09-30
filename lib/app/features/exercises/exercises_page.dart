@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
+import 'package:fossfit/app/widgets/animated_fab.dart';
 import 'package:fossfit/app/widgets/exercise_icon.dart';
-import 'package:fossfit/app/widgets/fanimated_fab.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
@@ -69,41 +69,46 @@ class _ExercisesPageState extends State<ExercisesPage> {
               ),
             ),
 
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                itemCount: matching.length,
-                itemBuilder: (context, index) {
-                  var exercise = matching[index];
-                  var lastSet = gymSetRepo.gymsets.where((g) => g.exerciseId == exercise.id).toList();
-                  lastSet.sorted((a, b) => b.created.compareTo(a.created));
-                  var subtitle = lastSet.isEmpty
-                      ? Text('Never completed')
-                      : Text(dateFormat == 'timeago' ? timeago.format(lastSet.first.created) : DateFormat(dateFormat).format(lastSet.first.created));
-                  return ListTile(
-                    key: Key('${exercise.id}-${exercise.name}'),
-                    leading: ExerciseIcon(exercise: exercise, showImages: showImages),
-                    title: Text(exercise.name),
-                    subtitle: subtitle,
-                    onTap: () async {
-                      var exServices = ExerciseServices(context: context);
-                      var data = await gymSetRepo.getStrengthData(
-                        target: lastSet.first.unit ?? exercise.defaultUnit ?? 'kg',
-                        exerciseId: exercise.id!,
-                        metric: StrengthMetric.bestWeight,
-                        period: Period.day,
-                        start: null,
-                        end: null,
-                        limit: 20,
-                      );
-                      if (!context.mounted) return;
+            if (matching.isEmpty)
+              _buildNothingFound()
+            else
+              Expanded(
+                child: ListView.builder(
+                  controller: _scrollController,
+                  itemCount: matching.length,
+                  itemBuilder: (context, index) {
+                    var exercise = matching[index];
+                    var lastSet = gymSetRepo.gymsets.where((g) => g.exerciseId == exercise.id).toList();
+                    lastSet.sorted((a, b) => b.created.compareTo(a.created));
+                    var subtitle = lastSet.isEmpty
+                        ? Text('Never completed')
+                        : Text(
+                            'Last completed - ${dateFormat == 'timeago' ? timeago.format(lastSet.first.created) : DateFormat(dateFormat).format(lastSet.first.created)}',
+                          );
+                    return ListTile(
+                      key: Key('${exercise.id}-${exercise.name}'),
+                      leading: ExerciseIcon(exercise: exercise, showImages: showImages),
+                      title: Text(exercise.name),
+                      subtitle: subtitle,
+                      onTap: () async {
+                        var exServices = ExerciseServices(context: context);
+                        var data = await gymSetRepo.getStrengthData(
+                          target: lastSet.first.unit ?? exercise.defaultUnit ?? 'kg',
+                          exerciseId: exercise.id!,
+                          metric: StrengthMetric.bestWeight,
+                          period: Period.day,
+                          start: null,
+                          end: null,
+                          limit: 20,
+                        );
+                        if (!context.mounted) return;
 
-                      await exServices.openExercisePage(context, exercise.id!, data);
-                    },
-                  );
-                },
+                        await exServices.openExercisePage(context, exercise.id!, data);
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -116,6 +121,21 @@ class _ExercisesPageState extends State<ExercisesPage> {
         icon: const Icon(Icons.add),
         scroll: _scrollController,
       ),
+    );
+  }
+
+  Widget _buildNothingFound() {
+    if (search.trim().isEmpty) {
+      return const ListTile(title: Text('Nothing found'));
+    }
+
+    return ListTile(
+      title: const Text('Nothing found'),
+      subtitle: Text('Tap to create $search'),
+      onTap: () async {
+        var services = ExerciseServices(context: context);
+        await services.openAddEditExercisePage(context, null, search);
+      },
     );
   }
 }

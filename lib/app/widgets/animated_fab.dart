@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/db/repositories/config_reposity.dart';
+import 'package:provider/provider.dart';
 
 class AnimatedFab extends StatefulWidget {
   final Function onPressed;
@@ -41,8 +43,10 @@ class _AnimatedFabState extends State<AnimatedFab> {
 
   @override
   Widget build(BuildContext context) {
+    var config = context.watch<ConfigRepository>();
+    var timer = config.isEnabled(.timers, 'enabled');
     return Padding(
-      padding: const EdgeInsets.only(bottom: 0),
+      padding: EdgeInsets.only(bottom: timer ? 70 : 0),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
@@ -51,11 +55,7 @@ class _AnimatedFabState extends State<AnimatedFab> {
         child: FloatingActionButton.extended(
           heroTag: null, //widget.heroTag,
           onPressed: () => widget.onPressed(),
-          label: AnimatedOpacity(
-            duration: const Duration(milliseconds: 200),
-            opacity: extended ? 1.0 : 0.0,
-            child: widget.label,
-          ),
+          label: AnimatedOpacity(duration: const Duration(milliseconds: 200), opacity: extended ? 1.0 : 0.0, child: widget.label),
           icon: Padding(padding: EdgeInsets.only(left: 4), child: widget.icon),
           isExtended: extended,
         ),

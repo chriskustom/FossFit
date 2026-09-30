@@ -8,7 +8,7 @@ class AboutAppDialog {
 
     showAboutDialog(
       context: state.context,
-      applicationIcon: Image.asset('assets/images/icon/icon.png', width: 50, height: 70, fit: BoxFit.contain),
+      applicationIcon: Image.asset('assets/images/icon/ic_launcher.png', width: 50, height: 70, fit: BoxFit.contain),
       applicationName: pi.appName,
       applicationVersion: pi.version,
       children: const [Text('FossFit.. like CrossFit but better.')],

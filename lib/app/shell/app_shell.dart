@@ -154,6 +154,8 @@ class _AppShellState extends State<AppShell> {
         final selectedIndex = bottomNavPages.indexWhere((p) => p.route == NavRoute.fromRoute(currentRoute));
 
         return NavigationBar(
+          elevation: globalElevation,
+          shadowColor: colors.onSurface,
           backgroundColor: colors.surface,
           selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
           onDestinationSelected: (index) {

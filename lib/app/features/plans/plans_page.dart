@@ -3,9 +3,10 @@ import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/plan_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
-import 'package:fossfit/app/widgets/fanimated_fab.dart';
+import 'package:fossfit/app/widgets/animated_fab.dart';
 import 'package:fossfit/db/models/features/plan_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
+import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
 import 'package:fossfit/db/repositories/plan_repository.dart';
 import 'package:provider/provider.dart';
 
@@ -37,7 +38,8 @@ class _PlansPageState extends State<PlansPage> {
       body: _buildBody(plans),
       floatingActionButton: AnimatedFab(
         onPressed: () async {
-          //TODO Create new plan
+          var services = PlanServices(context: context);
+          await services.openAddEdiPlanPage(context, null);
         },
         label: const Text('Add'),
         icon: const Icon(Icons.add),
@@ -49,6 +51,7 @@ class _PlansPageState extends State<PlansPage> {
   Widget _buildBody(List<Plan> plans) {
     final weekday = weekdays[DateTime.now().weekday - 1];
     final exerciseServices = ExerciseServices(context: context);
+    final peRepo = context.watch<PlanExercisesRepository>();
 
     if (plans.isEmpty) return _nonFound();
     return ReorderableListView.builder(
@@ -69,8 +72,15 @@ class _PlansPageState extends State<PlansPage> {
         } else if (plan.days.split(',').length < 7) {
           title = RichText(text: TextSpan(children: _getDayListFormatted(plan.days, weekday)));
         }
-
-        var exercises = exerciseServices.getExercisesByPlanId(plan.id!).map((e) => e.name).join(', ');
+        var exercisesInPlan = peRepo.getPlanExercisesByPlanId(plan.id!);
+        var exercises = exerciseServices.getExercisesByPlanId(plan.id!);
+        final ordered = exercises.toList()
+          ..sort((a, b) {
+            final aIndex = exercisesInPlan.indexWhere((x) => x.exerciseId == a.id);
+            final bIndex = exercisesInPlan.indexWhere((x) => x.exerciseId == b.id);
+            return aIndex.compareTo(bIndex);
+          });
+        var exerciseNames = ordered.map((e) => e.name).join(', ');
         return ListTile(
           key: Key(plan.id.toString()),
           leading: AnimatedSwitcher(
@@ -92,7 +102,7 @@ class _PlansPageState extends State<PlansPage> {
             ),
           ),
           title: title,
-          subtitle: Text(exercises, maxLines: 2, overflow: .ellipsis),
+          subtitle: Text(exerciseNames, maxLines: 2, overflow: .ellipsis),
           trailing: ReorderableDragStartListener(index: index, child: const Icon(Icons.drag_handle)),
           onTap: () async {
             var services = PlanServices(context: context);
@@ -110,21 +120,11 @@ class _PlansPageState extends State<PlansPage> {
     return ListTile(
       title: const Text("No plans found"),
       subtitle: Text("Tap to create "),
-      // onTap: () async { TODO make on serach
-      //   final plan = Plan(
-      //     days: '',
-      //     name: '',
-      //   );
-      //   if (context.mounted)
-      //     await Navigator.push(
-      //       context,
-      //       MaterialPageRoute(
-      //         builder: (context) => EditPlanPage(
-      //           plan: plan,
-      //         ),
-      //       ),
-      //     );
-      // },
+      onTap: () async {
+        Navigator.pop(context);
+        var services = PlanServices(context: context);
+        await services.openAddEdiPlanPage(context, null);
+      },
     );
   }
 

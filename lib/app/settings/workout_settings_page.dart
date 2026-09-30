@@ -42,49 +42,37 @@ class _WorkoutSettingsPageState extends State<WorkoutSettingsPage> {
   Padding _options() {
     return Padding(
       padding: EdgeInsets.all(8),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Padding(padding: EdgeInsets.only(left: 8), child: Text('Page')),
-              Padding(padding: EdgeInsets.only(left: 8), child: Text('Enabled')),
-            ],
-          ),
-          Divider(),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: options.length,
-            itemBuilder: (_, index) {
-              final option = options[index].key;
-              return Selector<ConfigRepository, bool>(
-                selector: (_, repo) => repo.isEnabled(category, option),
-                builder: (ctx, enabled, _) {
-                  return Row(
-                    key: ValueKey(option),
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(left: 8),
-                        child: Text(option.toTitleCase, textAlign: .left),
-                      ),
-                      Transform.scale(
-                        scale: switchScale,
-                        child: Switch.adaptive(
-                          value: enabled,
-                          onChanged: (value) {
-                            context.read<ConfigRepository>().setSetting(category: category, key: option, value: value == true ? '1' : '0');
-                          },
-                        ),
-                      ),
-                    ],
-                  );
-                },
+      child: ListView.builder(
+        shrinkWrap: true,
+        physics: NeverScrollableScrollPhysics(),
+        itemCount: options.length,
+        itemBuilder: (_, index) {
+          final option = options[index].key;
+          return Selector<ConfigRepository, bool>(
+            selector: (_, repo) => repo.isEnabled(category, option),
+            builder: (ctx, enabled, _) {
+              return Row(
+                key: ValueKey(option),
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: Text(option.toTitleCase, textAlign: .left),
+                  ),
+                  Transform.scale(
+                    scale: switchScale,
+                    child: Switch.adaptive(
+                      value: enabled,
+                      onChanged: (value) {
+                        context.read<ConfigRepository>().setSetting(category: category, key: option, value: value == true ? '1' : '0');
+                      },
+                    ),
+                  ),
+                ],
               );
             },
-          ),
-        ],
+          );
+        },
       ),
     );
   }

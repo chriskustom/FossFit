@@ -28,6 +28,7 @@ class PlanExerciseTile extends StatefulWidget {
   final ExpansibleController expander;
   final Function(bool open) onExpansionChanged;
   final Function() onFieldSubmitted;
+  final Function() onSwap;
   const PlanExerciseTile({
     super.key,
     required this.planId,
@@ -40,6 +41,7 @@ class PlanExerciseTile extends StatefulWidget {
     required this.unit,
     required this.exercise,
     required this.onFieldSubmitted,
+    required this.onSwap,
   });
 
   @override
@@ -77,7 +79,7 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     widget.unit.text = (lastSets.firstOrNull?.unit ?? widget.exercise.defaultUnit).toString();
 
     return GestureDetector(
-      onLongPress: () => _showExerciseModal(context, planExercise, lastSets),
+      onLongPress: () => _showExerciseModal(context, planExercise, completedSets),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -343,14 +345,7 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
                     setState(() {});
                   },
                 ),
-              if (sets.isEmpty)
-                ListTile(
-                  leading: const Icon(Icons.swap_horiz),
-                  title: const Text('Swap'),
-                  onTap: () async {
-                    //TODO FIGURE OUT SWAPPING
-                  },
-                ),
+              if (sets.isEmpty) ListTile(leading: const Icon(Icons.swap_horiz), title: const Text('Swap'), onTap: () => widget.onSwap()),
             ],
           ),
         );

@@ -154,7 +154,7 @@ class GymSetServices {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(lastWorkoutText),
+          Text(lastWorkoutText, style: Theme.of(context).textTheme.labelMedium),
           const SizedBox(height: 16),
           const Divider(),
           Text(

@@ -3,7 +3,8 @@ import 'package:fossfit/app/features/workout/widgets/workout_grouped.dart';
 import 'package:fossfit/app/features/workout/widgets/workout_list.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
-import 'package:fossfit/app/widgets/fanimated_fab.dart';
+import 'package:fossfit/app/widgets/animated_fab.dart';
+import 'package:fossfit/app/widgets/countdown_timer.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/gym_set_repository.dart';
@@ -68,6 +69,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
             Expanded(
               child: grouped ? WorkoutGrouped(sets: lastWorkoutSets) : WorkoutList(sets: lastWorkoutSets),
             ),
+            Padding(padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8), child: CountdownTimer()),
           ],
         ),
       ),
