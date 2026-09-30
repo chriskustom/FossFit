@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/db/db_constants.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
+import 'package:fossfit/db/models/features/strength_model.dart';
 import 'package:sqflite/sqflite.dart';
 
 typedef Rpm = ({String name, double rpm, double weight});
@@ -247,5 +249,252 @@ class GymSetRepository extends ChangeNotifier {
     final mostRecentDay = _gymsets.map((s) => dayOnly(s.created)).where((d) => !d.isAfter(today)).reduce((a, b) => a.isAfter(b) ? a : b);
 
     _latestgymsets = _gymsets.where((s) => dayOnly(s.created) == mostRecentDay).toList();
+  }
+
+  //Strength
+  Future<List<StrengthData>> getStrengthData({
+    required String target,
+    required int exerciseId,
+    required StrengthMetric metric,
+    required Period period,
+    required DateTime? start,
+    required DateTime? end,
+    required int limit,
+  }) async {
+    final groupBy = getCreatedSql(period);
+
+    final where = <String>['exercise_id = ?'];
+
+    final args = <dynamic>[exerciseId];
+
+    if (start != null) {
+      where.add('created >= ?');
+      args.add(toUnixSeconds(start));
+    }
+
+    if (end != null) {
+      where.add('created < ?');
+      args.add(toUnixSeconds(end));
+    }
+
+    final repsExpression = metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
+
+    final sql =
+        '''
+      SELECT
+        MAX(weight) AS max_weight,
+
+        ${getVolumeSql()} AS volume,
+
+        ${getOrmSql()} AS orm,
+
+        created,
+
+        $repsExpression,
+
+        unit,
+
+        ${getRelativeSql()} AS relative_strength
+
+      FROM ${TableName.sets.name}
+
+      WHERE ${where.join(' AND ')}
+
+      GROUP BY $groupBy
+
+      ORDER BY $groupBy DESC
+
+      LIMIT ?
+    ''';
+
+    args.add(limit);
+
+    final results = await _db.rawQuery(sql, args);
+
+    final list = <StrengthData>[];
+
+    for (final result in results.reversed) {
+      final unit = result['unit'] as String;
+
+      var value = getStrengthFromRow(result, metric);
+
+      if (unit == 'lb' && target == 'kg') {
+        value *= 0.45359237;
+      } else if (unit == 'kg' && target == 'lb') {
+        value *= 2.20462262;
+      }
+
+      double reps = 0.0;
+
+      try {
+        reps = (result['reps'] as num).toDouble();
+      } catch (_) {}
+
+      list.add(StrengthData(created: fromUnixSeconds(result['created']), value: value, unit: unit, reps: reps));
+    }
+
+    return list;
+  }
+
+  String getCreatedSql(Period groupBy) {
+    switch (groupBy) {
+      case Period.day:
+        return """
+          STRFTIME(
+            '%Y-%m-%d',
+            DATE(created / 1000, 'unixepoch', 'localtime')
+          )
+        """;
+
+      case Period.week:
+        return """
+          STRFTIME(
+            '%Y-%m-%W',
+            DATE(created / 1000, 'unixepoch', 'localtime')
+          )
+        """;
+
+      case Period.month:
+        return """
+          STRFTIME(
+            '%Y-%m',
+            DATE(created / 1000, 'unixepoch', 'localtime')
+          )
+        """;
+
+      case Period.year:
+        return """
+          STRFTIME(
+            '%Y',
+            DATE(created / 1000, 'unixepoch', 'localtime')
+          )
+        """;
+    }
+  }
+
+  String getVolumeSql() {
+    return 'ROUND(SUM(weight * reps), 2)';
+  }
+
+  String getOrmSql() {
+    return '''
+      MAX(
+        CASE
+          WHEN weight >= 0
+            THEN weight / (1.0278 - 0.0278 * reps)
+          ELSE
+            weight * (1.0278 - 0.0278 * reps)
+        END
+      )
+    ''';
+  }
+
+  String getRelativeSql() {
+    return '''
+      MAX(weight) / body_weight
+    ''';
+  }
+
+  double getStrengthFromRow(Map<String, dynamic> row, StrengthMetric metric) {
+    switch (metric) {
+      case StrengthMetric.oneRepMax:
+        return (row['orm'] as num?)?.toDouble() ?? 0;
+
+      case StrengthMetric.volume:
+        return (row['volume'] as num?)?.toDouble() ?? 0;
+
+      case StrengthMetric.relativeStrength:
+        return (row['relative_strength'] as num?)?.toDouble() ?? 0;
+
+      case StrengthMetric.bestWeight:
+        return (row['max_weight'] as num?)?.toDouble() ?? 0;
+
+      case StrengthMetric.bestReps:
+        return (row['max_reps'] as num?)?.toDouble() ?? 0;
+    }
+  }
+
+  Future<GymSet> getOrmEstimate(DateTime date, double value, String name) async {
+    final created = date.millisecondsSinceEpoch;
+
+    final result = await _db.rawQuery(
+      '''
+    SELECT *
+    FROM gymSets
+    WHERE created = ?
+      AND ABS(weight / (1.0278 - 0.0278 * reps) - ?) < 0.001
+      AND name = ?
+    LIMIT 1
+    ''',
+      [created, value, name],
+    );
+
+    if (result.isEmpty) {
+      throw Exception('No matching GymSet found');
+    }
+
+    return GymSet.fromMap(result.first);
+  }
+
+  // ---------------------------------------------------------------------------
+  // RPM
+  // ---------------------------------------------------------------------------
+
+  Future<List<Rpm>> getRpms() async {
+    final results = await _db.rawQuery('''
+    WITH time_diffs AS (
+      SELECT
+        e.name,
+        gs.reps,
+        (
+          (
+            gs.created -
+            LAG(gs.created) OVER (
+              PARTITION BY gs.exercise_id
+              ORDER BY gs.created
+            )
+          ) / 60.0
+        ) AS time_diff,
+        gs.weight
+
+      FROM ${TableName.sets.name} gs
+
+      INNER JOIN exercises e
+        ON e.id = gs.exercise_id
+
+      WHERE gs.created >=
+        strftime('%s', 'now') - 60 * 60 * 24 * 30
+
+        AND e.cardio = 0
+    ),
+
+    reps_per_min AS (
+      SELECT
+        name,
+        (reps / time_diff) AS rpm,
+        weight
+
+      FROM time_diffs
+
+      WHERE time_diff IS NOT NULL
+        AND time_diff <= 5
+    )
+
+    SELECT
+      name,
+      AVG(rpm) AS rpm,
+      weight
+
+    FROM reps_per_min
+
+    WHERE rpm IS NOT NULL
+      AND rpm BETWEEN 0.1 AND 10
+
+    GROUP BY name, weight
+    ''');
+
+    return results
+        .map((result) => (name: result['name'] as String, rpm: (result['rpm'] as num).toDouble(), weight: (result['weight'] as num).toDouble()))
+        .toList();
   }
 }

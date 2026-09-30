@@ -1,6 +1,8 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
+import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/app/widgets/exercise_icon.dart';
 import 'package:fossfit/app/widgets/fanimated_fab.dart';
@@ -36,7 +38,6 @@ class _ExercisesPageState extends State<ExercisesPage> {
     exercises = exRepo.exercises;
     var showImages = config.isEnabled(.workouts, 'show_images');
     final dateFormat = config.getSetting(.formats, 'long_date_format');
-
     return AppShell(
       title: 'Exercises',
       body: Padding(
@@ -56,6 +57,21 @@ class _ExercisesPageState extends State<ExercisesPage> {
               leading: ExerciseIcon(exercise: exercise, showImages: showImages),
               title: Text(exercise.name),
               subtitle: subtitle,
+              onTap: () async {
+                var exServices = ExerciseServices(context: context);
+                var data = await gymSetRepo.getStrengthData(
+                  target: lastSet.first.unit ?? exercise.defaultUnit ?? 'kg',
+                  exerciseId: exercise.id!,
+                  metric: StrengthMetric.bestWeight,
+                  period: Period.day,
+                  start: null,
+                  end: null,
+                  limit: 20,
+                );
+                if (!context.mounted) return;
+
+                await exServices.openExercisePage(context, exercise.id!, data);
+              },
             );
           },
         ),

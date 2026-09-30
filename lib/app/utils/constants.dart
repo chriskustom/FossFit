@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/utils/sort_option.dart';
 
+enum Period { day, week, month, year }
+
+enum StrengthMetric { oneRepMax, volume, bestWeight, relativeStrength, bestReps }
+
+enum GraphSort { dateDesc, dateAsc, name }
+
 enum ThreeDialogOptions { save, dismiss, stay }
 
 enum NavRoute {

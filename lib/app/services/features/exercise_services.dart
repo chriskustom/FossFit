@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/features/exercises/exercise/exercise_page.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
+import 'package:fossfit/db/models/features/strength_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/gym_set_repository.dart';
@@ -22,33 +24,34 @@ class ExerciseServices {
 
   List<Exercise> getAllExercises() => exerciseRepo.exercises;
 
-  List<Exercise> getExercisesByPlanId(int planId) => exerciseRepo.exercises.where((e) => planExercisesRepo.getPlanExercisesByPlanId(planId).map((e) => e.exerciseId).contains(e.id)).toList();
+  List<Exercise> getExercisesByPlanId(int planId) =>
+      exerciseRepo.exercises.where((e) => planExercisesRepo.getPlanExercisesByPlanId(planId).map((e) => e.exerciseId).contains(e.id)).toList();
   Exercise? getExerciseById(int id) => exerciseRepo.getExerciseById(id);
-  // Future<Exercise?> openAddEditPage(BuildContext context, int? exerciseId) async {
-  //   return await showGeneralDialog<Exercise?>(
-  //     context: context,
-  //     barrierLabel: '',
-  //     barrierDismissible: true,
-  //     barrierColor: Colors.black54,
-  //     transitionDuration: const Duration(milliseconds: 200),
-  //     pageBuilder: (context, anim1, anim2) {
-  //       return Align(
-  //         alignment: Alignment.centerRight,
-  //         child: Material(
-  //           child: SizedBox(
-  //             width: MediaQuery.of(context).size.width,
-  //             height: double.infinity,
-  //             child: null, //TODO EDIT EXERCISE PAGE
-  //           ),
-  //         ),
-  //       );
-  //     },
-  //     transitionBuilder: (context, anim1, anim2, child) {
-  //       final offsetAnimation = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(anim1);
-  //       return SlideTransition(position: offsetAnimation, child: child);
-  //     },
-  //   );
-  //}
+  Future<Exercise?> openExercisePage(BuildContext context, int exerciseId, List<StrengthData> data) async {
+    return await showGeneralDialog<Exercise?>(
+      context: context,
+      barrierLabel: '',
+      barrierDismissible: true,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (context, anim1, anim2) {
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Material(
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width,
+              height: double.infinity,
+              child: ExercisePage(exerciseId: exerciseId, initialData: data),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, anim1, anim2, child) {
+        final offsetAnimation = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(anim1);
+        return SlideTransition(position: offsetAnimation, child: child);
+      },
+    );
+  }
 
   Future<Exercise?> addExercise(Exercise? exercise) async {
     if (exercise == null) return null;
