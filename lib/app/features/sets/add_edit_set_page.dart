@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:fossfit/app/features/timer/timer_state.dart';
 import 'package:fossfit/app/features/workout/widgets/workout_list.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
@@ -557,14 +556,6 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
       exerciseServices.updateExercise(currentExercise.copyWith(category: categoryTEC.text, image: image));
       if (isBest) {
         AppSnackBar.success("New PB. Well done");
-      }
-      if (config.isEnabled(.timers, 'rest_timers') && mounted && rest != null) {
-        context.read<TimerState>().startTimer(
-          name!,
-          Duration(milliseconds: rest!),
-          config.getSetting(.timers, 'alarm_sound'),
-          config.isEnabled(.timers, 'vibrate'),
-        );
       }
     }
     return newGymSet;

@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/features/exercises/exercise/graph/flex_line.dart';
 import 'package:fossfit/app/features/workout/widgets/workout_list.dart';
+import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
@@ -49,6 +50,7 @@ class _ExercisePageState extends State<ExercisePage> {
     return AppShell(
       title: exercise!.name,
       showNavBar: false,
+      showSearch: false,
       actions: [
         IconButton(
           onPressed: () async {
@@ -60,12 +62,10 @@ class _ExercisePageState extends State<ExercisePage> {
                 return FractionallySizedBox(
                   heightFactor: 0.75,
                   widthFactor: 0.85,
-                  child: Container(
+                  child: Material(
+                    color: Theme.of(context).colorScheme.surface,
                     clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                    ),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                     child: WorkoutList(sets: gymSets),
                   ),
                 );
@@ -77,20 +77,8 @@ class _ExercisePageState extends State<ExercisePage> {
         ),
         IconButton(
           onPressed: () async {
-            //TODO EDIT EXERCISE
-
-            // String? newName = await Navigator.push(
-            //   context,
-            //   MaterialPageRoute(
-            //     builder: (context) => EditGraphPage(
-            //       exercise: widget.exercise,
-            //     ),
-            //   ),
-            // );
-            // if (mounted && newName != null)
-            //   setState(() {
-            //     name = newName;
-            //   });
+            var services = ExerciseServices(context: context);
+            await services.openAddEditExercisePage(context, exercise!.id, null);
           },
           icon: const Icon(Icons.edit),
           tooltip: "Edit",

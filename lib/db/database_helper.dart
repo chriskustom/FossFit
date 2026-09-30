@@ -174,8 +174,7 @@ class DatabaseHelper {
           ('timers','enabled','0'),
           ('timers','vibrate','0'),
           ('timers','enable_sound','0'),
-          ('timers','alarm_sound',''),
-          ('timers','duration','12000');
+          ('timers','alarm_sound','');
           ''');
   }
 
@@ -258,7 +257,11 @@ class DatabaseHelper {
 
   Future<void> cleanupOldBackups(String backupDirPath) async {
     final backupDir = Directory(backupDirPath);
-    final backupFiles = backupDir.listSync().whereType<File>().where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db')).toList();
+    final backupFiles = backupDir
+        .listSync()
+        .whereType<File>()
+        .where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'))
+        .toList();
 
     backupFiles.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
 

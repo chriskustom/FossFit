@@ -1,10 +1,7 @@
-//import 'package:ettanotes/services/app_lock/app_lock_manager.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:fossfit/app/features/search/global_search_controller.dart';
-import 'package:fossfit/app/features/timer/timer_state.dart';
 import 'package:fossfit/app/services/notifications/notification_service_desktop.dart';
 import 'package:fossfit/app/shell/app.dart';
 import 'package:fossfit/db/database_helper.dart';
@@ -56,8 +53,6 @@ Future main() async {
         ChangeNotifierProvider<PlansRepository>(create: (_) => PlansRepository(db)..loadAll()),
         ChangeNotifierProvider<PlanExercisesRepository>(create: (_) => PlanExercisesRepository(db)..loadAll()),
         ChangeNotifierProvider<ConfigRepository>.value(value: settingsRepo),
-        ChangeNotifierProvider(create: (_) => GlobalSearchController()),
-        ChangeNotifierProvider<TimerState>(create: (_) => TimerState()),
       ],
       child: App(),
     ),

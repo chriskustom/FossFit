@@ -212,25 +212,49 @@ class GymSetRepository extends ChangeNotifier {
     if (unit == 'kg') {
       await _db.execute(
         '''
-        UPDATE gym_sets
-        SET
-          weight = weight * 0.45359237,
-          unit = 'kg'
-        WHERE exercise_id = ?
-          AND unit = 'lb';
-        ''',
+    UPDATE gym_sets
+    SET
+      weight = CASE
+        WHEN unit = 'lb' THEN weight * 0.45359237
+        WHEN unit = 'stone' THEN weight * 6.35029318
+        ELSE weight
+      END,
+      unit = 'kg'
+    WHERE exercise_id = ?
+      AND unit IN ('lb', 'st');
+    ''',
         [exerciseId],
       );
     } else if (unit == 'lb') {
       await _db.execute(
         '''
-        UPDATE gym_sets
-        SET
-          weight = weight * 2.20462262,
-          unit = 'lb'
-        WHERE exercise_id = ?
-          AND unit = 'kg';
-        ''',
+    UPDATE gym_sets
+    SET
+      weight = CASE
+        WHEN unit = 'kg' THEN weight * 2.20462262
+        WHEN unit = 'stone' THEN weight * 14
+        ELSE weight
+      END,
+      unit = 'lb'
+    WHERE exercise_id = ?
+      AND unit IN ('kg', 'st');
+    ''',
+        [exerciseId],
+      );
+    } else if (unit == 'st') {
+      await _db.execute(
+        '''
+    UPDATE gym_sets
+    SET
+      weight = CASE
+        WHEN unit = 'kg' THEN weight * 0.157473044
+        WHEN unit = 'lb' THEN weight * 0.0714285714
+        ELSE weight
+      END,
+      unit = 'st'
+    WHERE exercise_id = ?
+      AND unit IN ('kg', 'lb');
+    ''',
         [exerciseId],
       );
     }

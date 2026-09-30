@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
@@ -66,6 +67,7 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
     titleCtrl.text = isEditMode ? plan!.name : 'Add plan';
     return AppShell(
       showNavBar: false,
+      showSearch: false,
       title: titleCtrl.text,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -177,31 +179,8 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
       title: const Text('Nothing found'),
       subtitle: Text('Tap to create $search'),
       onTap: () async {
-        // final exercise = await Navigator.of(context).push<Exercise>(
-        //   material.MaterialPageRoute(
-        //     builder: (context) => AddExercisePage(
-        //       name: search.trim(),
-        //     ),
-        //   ),
-        // );
-
-        // if (exercise == null || !mounted) {
-        //   return;
-        // }
-
-        // setState(() {
-        //   _planExercises[exercise.id!] = PlanExercise(
-        //     enabled: true,
-        //     timers: true,
-        //     maxSets: 3,
-        //     warmupSets: null,
-        //     exerciseId: exercise.id!,
-        //     exercise: exercise,
-        //   );
-
-        //   search = '';
-        //   searchCtrl.clear();
-        // });
+        var services = ExerciseServices(context: context);
+        await services.openAddEditExercisePage(context, null, search);
       },
     );
   }

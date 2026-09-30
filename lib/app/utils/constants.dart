@@ -14,8 +14,7 @@ enum NavRoute {
   exercises('/exercises'),
   plans('/plans'),
   calendar('/calendar'),
-  settings('/settings'),
-  timer('/timer');
+  settings('/settings');
 
   const NavRoute(this.route);
   final String route;

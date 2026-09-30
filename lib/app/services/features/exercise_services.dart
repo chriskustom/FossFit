@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/features/exercises/exercise/add_edit_exercise.dart';
 import 'package:fossfit/app/features/exercises/exercise/exercise_page.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
@@ -42,6 +43,32 @@ class ExerciseServices {
               width: MediaQuery.of(context).size.width,
               height: double.infinity,
               child: ExercisePage(exerciseId: exerciseId, initialData: data),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, anim1, anim2, child) {
+        final offsetAnimation = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(anim1);
+        return SlideTransition(position: offsetAnimation, child: child);
+      },
+    );
+  }
+
+  Future<Exercise?> openAddEditExercisePage(BuildContext context, int? exerciseId, String? name) async {
+    return await showGeneralDialog<Exercise?>(
+      context: context,
+      barrierLabel: '',
+      barrierDismissible: true,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (context, anim1, anim2) {
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Material(
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width,
+              height: double.infinity,
+              child: AddEditExercise(exerciseId: exerciseId, name: name),
             ),
           ),
         );

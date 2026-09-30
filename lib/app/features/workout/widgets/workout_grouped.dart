@@ -85,7 +85,7 @@ class WorkoutGrouped extends StatelessWidget {
   Widget workoutChildren(ExerciseSets history, BuildContext context, bool showImages, ConfigRepository config) {
     return ExpansionTile(
       childrenPadding: EdgeInsets.all(0),
-      title: Text("${history.exercise.name} (${history.sets.length})"),
+      title: Text("${history.exercise.name} (${history.sets.length})", style: Theme.of(context).textTheme.labelMedium),
       shape: const Border.symmetric(),
       children: history.sets.reversed.toList().map((gymSet) {
         final reps = gymSet.reps;
