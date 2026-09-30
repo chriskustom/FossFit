@@ -17,8 +17,6 @@ class TimerSettingsPage extends StatefulWidget {
 
 class _TimerSettingsPageState extends State<TimerSettingsPage> {
   final ConfigCategory category = .timers;
-  List<KeyValue> options = [];
-  late ConfigRepository config;
   @override
   void initState() {
     super.initState();
@@ -27,38 +25,26 @@ class _TimerSettingsPageState extends State<TimerSettingsPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    options = context.watch<ConfigRepository>().getSettingsByCategory(category);
   }
 
   @override
   Widget build(BuildContext context) {
-    config = context.watch<ConfigRepository>();
-    var pickAlarm = config.isEnabled(category, 'alarm_sound') ? _alarmSound() : SizedBox.shrink();
     return AppShell(
       title: category.name.toTitleCase,
       showSearch: false,
       showNavBar: false,
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        children: [_options(), pickAlarm, _defaultRest()],
-      ),
+      body: ListView(padding: const EdgeInsets.symmetric(vertical: 16), children: [_options(), _alarmSound(), _defaultRest()]),
     );
   }
 
   Padding _options() {
     return Padding(
       padding: EdgeInsets.all(8),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Padding(padding: EdgeInsets.only(left: 8), child: Text('Page')),
-              Padding(padding: EdgeInsets.only(left: 8), child: Text('Enabled')),
-            ],
-          ),
-          Divider(),
-          ListView.builder(
+      child: Selector<ConfigRepository, List<KeyValue>>(
+        selector: (_, config) => config.getSettingsByCategory(category),
+        builder: (context, alloptions, child) {
+          final options = alloptions.where((o) => ['enabled', 'enable_sound', 'vibrate'].contains(o.key)).toList();
+          return ListView.builder(
             shrinkWrap: true,
             physics: NeverScrollableScrollPhysics(),
             itemCount: options.length,
@@ -72,30 +58,29 @@ class _TimerSettingsPageState extends State<TimerSettingsPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Padding(padding: EdgeInsets.only(left: 8), child: Text(option.toTitleCase)),
-                      Switch(
-                        value: enabled,
-                        onChanged: (value) {
-                          context.read<ConfigRepository>().setSetting(
-                            category: category,
-                            key: option,
-                            value: value == true ? '1' : '0',
-                          );
-                        },
+                      Transform.scale(
+                        scale: switchScale,
+                        child: Switch.adaptive(
+                          value: enabled,
+                          onChanged: (value) {
+                            context.read<ConfigRepository>().setSetting(category: category, key: option, value: value == true ? '1' : '0');
+                          },
+                        ),
                       ),
                     ],
                   );
                 },
               );
             },
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  Padding _alarmSound() {
+  Widget _alarmSound() {
     const key = 'alarm_sound';
-
+    if (!context.read<ConfigRepository>().isEnabled(category, 'enable_sound')) return SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.all(8),
       child: Selector<ConfigRepository, String>(
@@ -105,12 +90,7 @@ class _TimerSettingsPageState extends State<TimerSettingsPage> {
             title: Text('Alarm sound'),
             subtitle: Row(
               children: [
-                Expanded(
-                  child: Text(
-                    storedValue.isNotEmpty ? storedValue : 'No folder selected',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+                Expanded(child: Text(storedValue.isNotEmpty ? storedValue : 'No folder selected', overflow: TextOverflow.ellipsis)),
                 IconButton(
                   icon: Icon(Icons.folder),
                   onPressed: () async {
@@ -141,26 +121,30 @@ class _TimerSettingsPageState extends State<TimerSettingsPage> {
       child: Row(
         mainAxisAlignment: .spaceEvenly,
         children: [
-          Padding(
-            padding: EdgeInsets.only(left: 8),
-            child: TextField(
-              controller: minutes,
-              maxLines: 1,
-              decoration: InputDecoration(labelText: 'Minutes', hintText: '3'),
-              onSubmitted: (value) {
-                secondsFocus.requestFocus();
-                setState(() {});
-              },
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(left: 8),
+              child: TextField(
+                controller: minutes,
+                maxLines: 1,
+                decoration: InputDecoration(labelText: 'Minutes', hintText: '3'),
+                onSubmitted: (value) {
+                  secondsFocus.requestFocus();
+                  setState(() {});
+                },
+              ),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.only(left: 8),
-            child: TextField(
-              controller: seconds,
-              focusNode: secondsFocus,
-              maxLines: 1,
-              decoration: InputDecoration(labelText: 'Seconds', hintText: '30'),
-              onSubmitted: (value) {},
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(left: 8),
+              child: TextField(
+                controller: seconds,
+                focusNode: secondsFocus,
+                maxLines: 1,
+                decoration: InputDecoration(labelText: 'Seconds', hintText: '30'),
+                onSubmitted: (value) {},
+              ),
             ),
           ),
         ],

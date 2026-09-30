@@ -69,15 +69,14 @@ class _WorkoutSettingsPageState extends State<WorkoutSettingsPage> {
                         padding: EdgeInsets.only(left: 8),
                         child: Text(option.toTitleCase, textAlign: .left),
                       ),
-                      Switch(
-                        value: enabled,
-                        onChanged: (value) {
-                          context.read<ConfigRepository>().setSetting(
-                            category: category,
-                            key: option,
-                            value: value == true ? '1' : '0',
-                          );
-                        },
+                      Transform.scale(
+                        scale: switchScale,
+                        child: Switch.adaptive(
+                          value: enabled,
+                          onChanged: (value) {
+                            context.read<ConfigRepository>().setSetting(category: category, key: option, value: value == true ? '1' : '0');
+                          },
+                        ),
                       ),
                     ],
                   );

@@ -16,10 +16,7 @@ enum NavRoute {
 
   static NavRoute fromRoute(String? route) {
     if (route == null) return NavRoute.workout;
-    return NavRoute.values.firstWhere(
-      (e) => e.route == route || route.startsWith(e.route),
-      orElse: () => NavRoute.workout,
-    );
+    return NavRoute.values.firstWhere((e) => e.route == route || route.startsWith(e.route), orElse: () => NavRoute.workout);
   }
 
   bool matches(String? route) => route != null && route.startsWith(this.route);
@@ -50,14 +47,19 @@ enum SortOrder { asc, desc }
 
 enum GroupBy { day, week, task }
 
+const double switchScale = 0.85;
+
 const sortOptions = [
   SortOption(SortBy.title, SortOrder.asc, 'Title (A–Z)', Icons.sort_by_alpha),
   SortOption(SortBy.title, SortOrder.desc, 'Title (Z–A)', Icons.sort_by_alpha),
   SortOption(SortBy.date, SortOrder.desc, 'Date (Newest)', Icons.schedule),
   SortOption(SortBy.date, SortOrder.asc, 'Date (Oldest)', Icons.schedule),
 ];
+
 const Map<String, Icon> homePageMenu = {'Settings': Icon(Icons.settings), 'About': Icon(Icons.info_outline)};
+
 const double globalElevation = 3.0;
+
 const List<String> emptyPhrases = [
   'Wow. So empty.',
   'Nothing here.',
@@ -120,15 +122,12 @@ const List<String> emptyPhrases = [
   'Pure, uninterrupted quiet.',
   'An untouched expanse.',
 ];
-const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const List<MapEntry<String, String>> unitsList = [
-  MapEntry('kg', 'Kilograms (kg)'),
-  MapEntry('lb', 'Pounds (lb)'),
-  MapEntry('st', 'Stone (st)'),
-];
-const allTabs = ['Plans', 'Calendar', 'Exercises', 'Timer'];
 
-final longdateFormats = [
+const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const List<MapEntry<String, String>> unitsList = [MapEntry('kg', 'Kilograms (kg)'), MapEntry('lb', 'Pounds (lb)'), MapEntry('st', 'Stone (st)')];
+
+const longdateFormats = [
   'timeago',
   'dd/MM/yy',
   'dd/MM/yy h:mm a',
@@ -146,19 +145,10 @@ final longdateFormats = [
   'EEE, dd.MM.yyyy H:mm a',
 ];
 
-final shortdateFormats = ['d/M/yy', 'M/d/yy', 'd-M-yy', 'M-d-yy', 'd.M.yy', 'M.d.yy', 'dd.MM.yy'];
-const fonts = [
-  'Arial',
-  'Lato',
-  'Lunasima',
-  'Montserrat',
-  'Noto Sans',
-  'Open Sans',
-  'Roboto',
-  'Staatliches',
-  'Times New Roman',
-  'Wolland',
-];
+const shortdateFormats = ['d/M/yy', 'M/d/yy', 'd-M-yy', 'M-d-yy', 'd.M.yy', 'M.d.yy', 'dd.MM.yy'];
+
+const fonts = ['Arial', 'Lato', 'Lunasima', 'Montserrat', 'Noto Sans', 'Open Sans', 'Roboto', 'Staatliches', 'Times New Roman', 'Wolland'];
+
 const defaultExercises = [
   ('Arnold press', 'Shoulders'),
   ('Back extension', 'Back'),

@@ -67,16 +67,9 @@ class CalendarPageState extends State<CalendarPage> {
 
     final allGymSets = gymSets;
 
-    final thisMonthsGymSets = allGymSets
-        .where((t) => t.created.month == monthToFilter && t.created.year == yearToFilter)
-        .toList();
+    final thisMonthsGymSets = allGymSets.where((t) => t.created.month == monthToFilter && t.created.year == yearToFilter).toList();
 
     return AppShell(title: 'Calendar', body: _getCalendar(thisMonthsGymSets));
-  }
-
-  void onEdit(GymSet gymSet) async {
-    var services = GymSetServices(context: context);
-    await services.insertGymSet(await services.openAddEditPage(context, gymSet.id));
   }
 
   Widget _getCalendar(List<GymSet> monthlyGymSets) {
@@ -117,9 +110,7 @@ class CalendarPageState extends State<CalendarPage> {
               return isSameDay(_selectedDay!, day);
             },
             rowHeight: 40,
-            daysOfWeekStyle: DaysOfWeekStyle(
-              weekdayStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withAlpha(150)),
-            ),
+            daysOfWeekStyle: DaysOfWeekStyle(weekdayStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withAlpha(150))),
             calendarFormat: CalendarFormat.month,
             rangeSelectionMode: RangeSelectionMode.disabled,
             calendarBuilders: CalendarBuilders(
@@ -129,18 +120,12 @@ class CalendarPageState extends State<CalendarPage> {
                   width: double.infinity,
                   height: 4,
                   margin: EdgeInsets.only(top: 2, left: 18, right: 18),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface, borderRadius: BorderRadius.circular(2)),
                 );
               },
             ),
             eventLoader: (day) {
-              final exercise = services
-                  .getExerciseSets(monthlyGymSets)
-                  .where((e) => isSameDay(e.date, day))
-                  .firstOrNull;
+              final exercise = services.getExerciseSets(monthlyGymSets).where((e) => isSameDay(e.date, day)).firstOrNull;
 
               return exercise == null ? <ExerciseSets>[] : [exercise];
             },
@@ -227,11 +212,7 @@ class _CalendarHeader extends StatelessWidget {
             onPressed: onTodayButtonTap,
           ),
           if (clearButtonVisible)
-            IconButton(
-              icon: const Icon(Icons.clear, size: 20.0),
-              visualDensity: VisualDensity.compact,
-              onPressed: onClearButtonTap,
-            ),
+            IconButton(icon: const Icon(Icons.clear, size: 20.0), visualDensity: VisualDensity.compact, onPressed: onClearButtonTap),
           const Spacer(),
           IconButton(icon: const Icon(Icons.chevron_left), onPressed: onLeftArrowTap),
           IconButton(icon: const Icon(Icons.chevron_right), onPressed: onRightArrowTap),

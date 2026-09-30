@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/features/plans/plan/widgets/plan_exercise_tile.dart';
+import 'package:fossfit/app/services/features/exercise_services.dart';
+import 'package:fossfit/app/services/features/gym_set_services.dart';
+import 'package:fossfit/app/services/features/plan_exercise_services.dart';
+import 'package:fossfit/app/services/features/plan_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/widgets/fanimated_fab.dart';
-import 'package:fossfit/db/models/features/exercise_model.dart';
+import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/models/features/plan_exercise_model.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
@@ -18,112 +22,137 @@ class PlanPage extends StatefulWidget {
 }
 
 class _PlanPageState extends State<PlanPage> {
-  List<Exercise>? displayExercises;
   List<PlanExercise>? displayPlanExercises;
-  List<ExercisesInPlan>? displayExercisesInPlan;
   final ScrollController scroll = ScrollController();
 
-  final Map<int, ExpansibleController> controllers = {};
+  final Map<int, ExpansibleController> expanders = {};
+  final Map<int, TextEditingController> repControllers = {};
+  final Map<int, TextEditingController> weightControllers = {};
+  final Map<int, TextEditingController> noteControllers = {};
+  final Map<int, TextEditingController> unitControllers = {};
 
-  int? expandedIndex = 0;
+  int expandedIndex = 0;
+  int? selectedPlanExerciseId;
+  int? selectedExerciseId;
   @override
   void initState() {
     super.initState();
   }
 
-  List<ExercisesInPlan> _getPlanExercises(List<PlanExercise> pes, List<Exercise> es) {
-    List<ExercisesInPlan> retval = [];
-    for (var pe in pes) {
-      retval.add(ExercisesInPlan(pe, es.where((e) => e.id == pe.exerciseId).first));
-    }
-    return retval;
-  }
-
   @override
   Widget build(BuildContext context) {
-    var exRepo = context.watch<ExercisesRepository>();
     var planRepo = context.watch<PlansRepository>();
     var planExRepo = context.watch<PlanExercisesRepository>();
+    var exRepo = context.watch<ExercisesRepository>();
     var plan = planRepo.getPlanById(widget.planId);
-    final planExercises = displayPlanExercises ?? planExRepo.getPlanExercisesByPlanId(widget.planId);
-    final exercises = displayExercises ?? exRepo.getExercisesByIds(planExercises.map((e) => e.exerciseId).toList());
-    final exercisesInPlan = displayExercisesInPlan ?? _getPlanExercises(planExercises, exercises);
 
+    final planExercises = displayPlanExercises ?? planExRepo.getPlanExercisesByPlanId(widget.planId);
+    selectedPlanExerciseId = selectedPlanExerciseId ?? planExercises.firstOrNull?.id;
+    selectedExerciseId = selectedExerciseId ?? planExercises.firstOrNull?.exerciseId;
     return AppShell(
-      title: plan!.name != null ? plan.name! : plan.days.replaceAll(',', ', '),
+      showNavBar: false,
+      title: plan!.name,
       body: Padding(
         padding: EdgeInsets.all(12),
         child: ReorderableListView.builder(
           scrollController: scroll,
-          itemCount: exercisesInPlan.length,
+          itemCount: planExercises.length,
           padding: const EdgeInsets.only(bottom: 96, top: 16),
           itemBuilder: (context, index) {
-            final exerciseInPlan = exercisesInPlan[index];
-            controllers.putIfAbsent(exerciseInPlan.planExercise.id!, ExpansibleController.new);
-
+            final planExercise = planExercises[index];
+            final exercise = exRepo.getExerciseById(planExercise.exerciseId);
             return PlanExerciseTile(
-              key: Key(exerciseInPlan.planExercise.id.toString()),
-              exerciseId: exerciseInPlan.exercise.id!,
+              key: Key(planExercise.id.toString()),
+              exercise: exercise!,
               planId: widget.planId,
               index: index,
-              expander: controllers.putIfAbsent(exerciseInPlan.planExercise.id!, ExpansibleController.new),
+              expander: expanders.putIfAbsent(planExercise.id!, ExpansibleController.new),
+              reps: repControllers.putIfAbsent(planExercise.id!, TextEditingController.new),
+              weight: weightControllers.putIfAbsent(planExercise.id!, TextEditingController.new),
+              unit: unitControllers.putIfAbsent(planExercise.id!, TextEditingController.new),
+              notes: noteControllers.putIfAbsent(planExercise.id!, TextEditingController.new),
               onExpansionChanged: (open) {
                 if (open) {
-                  if (expandedIndex != null && expandedIndex != index) {
-                    final previousExercise = planExercises[expandedIndex!];
-
-                    controllers[previousExercise.id]?.collapse();
+                  if (expandedIndex != index) {
+                    expanders.entries.where((c) => c.key != planExercise.id! && c.value.isExpanded).forEach((c) => c.value.collapse());
                   }
-
+                  selectedPlanExerciseId = planExercise.id;
+                  selectedExerciseId = planExercise.exerciseId;
                   expandedIndex = index;
-                } else if (expandedIndex == index) {
-                  expandedIndex = null;
+                  debugPrint(
+                    'Selected Plan Exercise ID - $selectedExerciseId, '
+                    'Selected Exercise - $selectedExerciseId / ${exercise.name}',
+                  );
                 }
-
                 setState(() {});
               },
+              onFieldSubmitted: () async => await save(),
             );
           },
           onReorderItem: (oldIndex, newIndex) async {
-            //TODO FIX THIS
-            final selectedId = planExercises[expandedIndex!].id;
-
-            final expandedId = expandedIndex != null ? planExercises[expandedIndex!].id : null;
-
-            final item = planExercises.removeAt(oldIndex);
-
-            planExercises.insert(newIndex, item);
-
-            for (var i = 0; i < planExercises.length; i++) {
-              await planExRepo.updatePlanExercise(planExercises[i].copyWith(sequence: i));
-            }
-
-            if (!context.mounted) return;
-
-            expandedIndex = planExercises.indexWhere((exercise) => exercise.id == selectedId);
-
-            if (expandedId != null) {
-              final newExpandedIndex = planExercises.indexWhere((exercise) => exercise.id == expandedId);
-
-              expandedIndex = newExpandedIndex == -1 ? null : newExpandedIndex;
-            }
-
-            if (expandedIndex != null && expandedId != null) {
-              controllers[expandedId]?.expand();
-            }
+            await planExRepo.reorderPlanExercises(widget.planId, oldIndex, newIndex);
           },
         ),
       ),
       floatingActionButton: AnimatedFab(
-        onPressed: () async {
-          //TODO Save set
-          // var services = GymSetServices(context: context);
-          // await services.insertGymSet(await services.openAddEditPage(context, null));
-        },
-        label: const Text('Add'),
-        icon: const Icon(Icons.add),
+        onPressed: () async => await save(),
+        label: const Text('Save'),
+        icon: const Icon(Icons.save_rounded),
         scroll: scroll,
       ),
+      actions: [
+        IconButton(
+          onPressed: () async {
+            var services = PlanServices(context: context);
+            await services.openAddEdiPlanPage(context, widget.planId);
+          },
+          icon: Icon(Icons.edit),
+        ),
+      ],
     );
+  }
+
+  Future<bool> save({bool nextExercise = false}) async {
+    if (selectedPlanExerciseId == null || selectedExerciseId == null) return false;
+    final peServices = PlanExerciseServices(context: context);
+    final exServices = ExerciseServices(context: context);
+    final services = GymSetServices(context: context);
+
+    final lastSets = services.getSetsByExerciseId(selectedExerciseId!, limit: 1);
+
+    final reps = int.tryParse(repControllers[selectedPlanExerciseId!]!.text) ?? 0;
+    final weight = double.tryParse(weightControllers[selectedPlanExerciseId!]!.text) ?? 0.0;
+    final unit = unitControllers[selectedPlanExerciseId!]!.text;
+    final note = noteControllers[selectedPlanExerciseId!]!.text;
+
+    final gymSet = GymSet(
+      reps: reps,
+      weight: weight,
+      exerciseId: selectedExerciseId!,
+      note: note,
+      unit: unit,
+      planId: widget.planId,
+      created: DateTime.now(),
+      //copied from last set
+      bodyWeight: lastSets.firstOrNull?.bodyWeight,
+      rest: lastSets.firstOrNull?.rest,
+    );
+    await services.insertGymSet(gymSet);
+
+    final max = peServices.getPlanExerciseById(selectedPlanExerciseId!)?.maxSets ?? exServices.getExerciseById(selectedExerciseId!)?.defaultSets ?? 3;
+    final count = services.getTodaysSetsByExerciseId(selectedExerciseId!, widget.planId).length;
+    if (count == max) {
+      final keys = expanders.keys.toList();
+
+      final index = keys.indexOf(selectedPlanExerciseId!);
+
+      if (index != -1 && index + 1 < keys.length) {
+        final nextKey = keys[index + 1];
+        expanders[nextKey]?.expand();
+        //expandedIndex = index + 1;
+      }
+    }
+    setState(() {});
+    return true;
   }
 }

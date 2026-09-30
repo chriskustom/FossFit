@@ -10,34 +10,12 @@ class GymSet extends BaseModel {
   final int? planId;
   final int exerciseId;
 
-  GymSet({
-    super.id,
-    required this.reps,
-    required this.weight,
-    this.unit,
-    this.note,
-    this.bodyWeight,
-    this.rest,
-    required this.exerciseId,
-    this.planId,
-    super.created,
-  });
+  GymSet({super.id, required this.reps, required this.weight, this.unit, this.note, this.bodyWeight, this.rest, required this.exerciseId, this.planId, super.created});
 
   @override
-  GymSet copyWith({
-    int? id,
-    int? reps,
-    double? weight,
-    String? unit,
-    String? note,
-    double? bodyWeight,
-    int? rest,
-    int? exerciseId,
-    int? planId,
-    DateTime? created,
-  }) {
+  GymSet copyWith({int? id, int? reps, double? weight, String? unit, String? note, double? bodyWeight, int? rest, int? exerciseId, int? planId, DateTime? created}) {
     return GymSet(
-      id: id ?? this.id,
+      id: id ?? super.id,
       reps: reps ?? this.reps,
       weight: weight ?? this.weight,
       unit: unit ?? this.unit,
@@ -46,7 +24,7 @@ class GymSet extends BaseModel {
       bodyWeight: bodyWeight ?? this.bodyWeight,
       exerciseId: exerciseId ?? this.exerciseId,
       planId: planId ?? this.planId,
-      created: created ?? this.created,
+      created: created ?? super.created,
     );
   }
 

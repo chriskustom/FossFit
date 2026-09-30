@@ -4,30 +4,14 @@ import 'package:fossfit/db/models/features/exercise_model.dart';
 class PlanExercise extends BaseModel {
   final int planId;
   final int exerciseId;
-  final int? sequence;
+  final int sequence;
   final int? maxSets;
   final int? rest;
 
-  PlanExercise({
-    super.id,
-    required this.planId,
-    required this.exerciseId,
-    this.sequence,
-    this.maxSets,
-    this.rest,
-    super.created,
-  });
+  PlanExercise({super.id, required this.planId, required this.exerciseId, required this.sequence, this.maxSets, this.rest, super.created});
 
   @override
-  PlanExercise copyWith({
-    int? id,
-    int? planId,
-    int? exerciseId,
-    int? sequence,
-    int? maxSets,
-    int? rest,
-    DateTime? created,
-  }) {
+  PlanExercise copyWith({int? id, int? planId, int? exerciseId, int? sequence, int? maxSets, int? rest, DateTime? created}) {
     return PlanExercise(
       id: id ?? this.id,
       planId: planId ?? this.planId,
@@ -39,22 +23,14 @@ class PlanExercise extends BaseModel {
     );
   }
 
-  Map<String, dynamic> toMap() => {
-    'id': id,
-    'plan_id': planId,
-    'exercise_id': exerciseId,
-    'sequence': sequence,
-    'max_sets': maxSets,
-    'rest': rest,
-    'created': created.millisecondsSinceEpoch,
-  };
+  Map<String, dynamic> toMap() => {'id': id, 'plan_id': planId, 'exercise_id': exerciseId, 'sequence': sequence, 'max_sets': maxSets, 'rest': rest, 'created': created.millisecondsSinceEpoch};
 
   factory PlanExercise.fromMap(Map<String, dynamic> map) {
     return PlanExercise(
       id: map['id'] as int,
       planId: map['plan_id'] as int,
       exerciseId: map['exercise_id'] as int,
-      sequence: map['sequence'] as int?,
+      sequence: map['sequence'] as int,
       maxSets: map['max_sets'] as int?,
       rest: map['rest'] as int?,
       created: DateTime.fromMillisecondsSinceEpoch((map['created']) as int),

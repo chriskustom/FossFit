@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/features/plans/plan/add_edit_plan_page.dart';
 import 'package:fossfit/app/features/plans/plan/plan_page.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/db/models/features/plan_model.dart';
@@ -38,6 +39,32 @@ class PlanServices {
               width: MediaQuery.of(context).size.width,
               height: double.infinity,
               child: PlanPage(planId: planId),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, anim1, anim2, child) {
+        final offsetAnimation = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(anim1);
+        return SlideTransition(position: offsetAnimation, child: child);
+      },
+    );
+  }
+
+  Future<Plan?> openAddEdiPlanPage(BuildContext context, int? planId) async {
+    return await showGeneralDialog<Plan?>(
+      context: context,
+      barrierLabel: '',
+      barrierDismissible: true,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (context, anim1, anim2) {
+        return Align(
+          alignment: Alignment.centerRight,
+          child: Material(
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width,
+              height: double.infinity,
+              child: AddEditPlanPage(planId: planId),
             ),
           ),
         );

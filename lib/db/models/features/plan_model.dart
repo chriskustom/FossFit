@@ -4,16 +4,11 @@ class Plan {
   int? id;
   final String days;
   final int? sequence;
-  final String? name;
+  final String name;
   Plan({this.id, required this.days, this.sequence, required this.name});
 
   Plan copyWith({int? id, String? days, int? sequence, String? name}) {
-    return Plan(
-      id: id ?? this.id,
-      days: days ?? this.days,
-      sequence: sequence ?? this.sequence,
-      name: name ?? this.name,
-    );
+    return Plan(id: id ?? this.id, days: days ?? this.days, sequence: sequence ?? this.sequence, name: name ?? this.name);
   }
 
   Map<String, dynamic> toMap() => {'id': id, 'days': days, 'sequence': sequence, 'name': name};

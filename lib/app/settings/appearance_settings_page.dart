@@ -90,13 +90,7 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
             title: Text('Colour scheme'),
             subtitle: ColorPicker(
               pickerColor: colorScheme,
-              onColorChanged: (color) => {
-                context.read<ConfigRepository>().setSetting(
-                  category: category,
-                  key: 'color',
-                  value: color.toARGB32().toString(),
-                ),
-              },
+              onColorChanged: (color) => {context.read<ConfigRepository>().setSetting(category: category, key: 'color', value: color.toARGB32().toString())},
               labelTypes: [],
               enableAlpha: false,
               paletteType: PaletteType.hsv,
@@ -120,11 +114,14 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Padding(padding: EdgeInsets.only(left: 8), child: Text('Use system colours')),
-              Switch(
-                value: isEnabled,
-                onChanged: (value) {
-                  context.read<ConfigRepository>().setSetting(category: category, key: key, value: value ? '1' : '0');
-                },
+              Transform.scale(
+                scale: switchScale,
+                child: Switch.adaptive(
+                  value: isEnabled,
+                  onChanged: (value) {
+                    context.read<ConfigRepository>().setSetting(category: category, key: key, value: value ? '1' : '0');
+                  },
+                ),
               ),
             ],
           );
@@ -145,11 +142,14 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Padding(padding: EdgeInsets.only(left: 8), child: Text('Enable haptic feedback')),
-              Switch(
-                value: isEnabled,
-                onChanged: (value) {
-                  context.read<ConfigRepository>().setSetting(category: category, key: key, value: value ? '1' : '0');
-                },
+              Transform.scale(
+                scale: switchScale,
+                child: Switch.adaptive(
+                  value: isEnabled,
+                  onChanged: (value) {
+                    context.read<ConfigRepository>().setSetting(category: category, key: key, value: value ? '1' : '0');
+                  },
+                ),
               ),
             ],
           );

@@ -35,7 +35,7 @@ class _ExercisesPageState extends State<ExercisesPage> {
     var gymSetRepo = context.watch<GymSetRepository>();
     exercises = exRepo.exercises;
     var showImages = config.isEnabled(.workouts, 'show_images');
-    final dateFormat = config.getSetting(.formats, 'short_date_format');
+    final dateFormat = config.getSetting(.formats, 'long_date_format');
 
     return AppShell(
       title: 'Exercises',
@@ -50,11 +50,7 @@ class _ExercisesPageState extends State<ExercisesPage> {
             lastSet.sorted((a, b) => b.created.compareTo(a.created));
             var subtitle = lastSet.isEmpty
                 ? Text('Never completed')
-                : Text(
-                    dateFormat == 'timeago'
-                        ? timeago.format(lastSet.first.created)
-                        : DateFormat("HH:mm a").format(lastSet.first.created),
-                  );
+                : Text(dateFormat == 'timeago' ? timeago.format(lastSet.first.created) : DateFormat(dateFormat).format(lastSet.first.created));
             return ListTile(
               key: Key('${exercise.id}-${exercise.name}'),
               leading: ExerciseIcon(exercise: exercise, showImages: showImages),

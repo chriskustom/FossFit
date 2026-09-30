@@ -74,9 +74,7 @@ class WorkoutList extends StatelessWidget {
     Widget? leading = ExerciseIcon(exercise: exercise!, showImages: showImages);
     final trailing = Text("${_getSetNumber(gymSet)}: $reps REPS @ $weight ${gymSet.unit}");
     final dateFormat = context.read<ConfigRepository>().getSetting(.formats, 'short_date_format');
-    final subtitle = Text(
-      dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
-    );
+    final subtitle = Text(dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -88,6 +86,10 @@ class WorkoutList extends StatelessWidget {
           title: Text(exercise.name),
           subtitle: trailing,
           trailing: subtitle,
+          onTap: () async {
+            var services = GymSetServices(context: context);
+            await services.openAddEditPage(context, gymSet.id);
+          },
         ),
       ],
     );

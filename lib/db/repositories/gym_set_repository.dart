@@ -35,6 +35,27 @@ class GymSetRepository extends ChangeNotifier {
     return _gymsets.where((set) => set.id == id).firstOrNull;
   }
 
+  List<GymSet> getTodaysSetsByExerciseId(int exerciseId, int? planId) {
+    final sets = gymsets;
+
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final startOfTomorrow = startOfDay.add(const Duration(days: 1));
+
+    final todays = sets
+        .where(
+          (set) =>
+              (planId == null || set.planId == planId) &&
+              set.exerciseId == exerciseId &&
+              set.created.isAfter(startOfDay) &&
+              set.created.isBefore(startOfTomorrow),
+        )
+        .toList();
+
+    todays.sort((a, b) => a.created.compareTo(b.created));
+
+    return todays;
+  }
   // ---------------------------------------------------------------------------
   // CRUD
   // ---------------------------------------------------------------------------
@@ -52,6 +73,7 @@ class GymSetRepository extends ChangeNotifier {
 
     _sortByCreated();
 
+    await _loadLatestWorkout();
     notifyListeners();
 
     return gymSet;
@@ -78,6 +100,7 @@ class GymSetRepository extends ChangeNotifier {
 
     _sortByCreated();
 
+    await _loadLatestWorkout();
     notifyListeners();
 
     return true;
@@ -98,6 +121,7 @@ class GymSetRepository extends ChangeNotifier {
 
     _gymsets.removeWhere((set) => set.id != null && ids.contains(set.id));
 
+    await _loadLatestWorkout();
     notifyListeners();
 
     return true;
@@ -112,6 +136,7 @@ class GymSetRepository extends ChangeNotifier {
 
     _gymsets.removeWhere((set) => set.id == id);
 
+    await _loadLatestWorkout();
     notifyListeners();
 
     return true;

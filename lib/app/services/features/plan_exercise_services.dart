@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/db/models/features/plan_exercise_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
@@ -17,4 +18,7 @@ class PlanExerciseServices {
     planRepo = context.read<PlansRepository>();
     exerciseRepo = context.read<ExercisesRepository>();
   }
+
+  List<PlanExercise> getAllPlanExercises() => planExerciseRepo.planexercises;
+  PlanExercise? getPlanExerciseById(int id) => planExerciseRepo.getPlanExerciseById(id);
 }

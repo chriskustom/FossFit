@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/services/app_services.dart';
 import 'package:fossfit/app/settings/appearance_settings_page.dart';
@@ -11,8 +10,6 @@ import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/fade_route.dart';
 import 'package:fossfit/app/utils/utils.dart';
-import 'package:fossfit/db/repositories/config_reposity.dart';
-import 'package:provider/provider.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -33,7 +30,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    var settings = context.watch<ConfigRepository>().settingsAsList;
     return AppShell(
       title: 'Settings',
       showSearch: false,
@@ -47,21 +43,10 @@ class _SettingsPageState extends State<SettingsPage> {
               itemBuilder: (ctx, idx) {
                 final category = pages.keys.elementAt(idx);
                 final page = pages[category]!;
-                final itemSettings = settings.firstWhereOrNull((s) => s.category == category)?.settings ?? [];
                 return ListTile(
-                  leading: Icon(
-                    ConfigCategory.values.byName(category).icon,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                  leading: Icon(ConfigCategory.values.byName(category).icon, color: Theme.of(context).colorScheme.primary),
                   title: Text(category.toTitleCase),
-                  subtitle: Text(
-                    itemSettings.map((m) => m.key.toTitleCase).toList().sortedBy((a) => a).join(', ').truncate(50),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onTap: AppHaptics.tapWithHaptics(
-                    context,
-                    () async => await Navigator.push<ConfigCategory>(context, FadeRoute<ConfigCategory>(page: page)),
-                  ),
+                  onTap: AppHaptics.tapWithHaptics(context, () async => await Navigator.push<ConfigCategory>(context, FadeRoute<ConfigCategory>(page: page))),
                 );
               },
             ),

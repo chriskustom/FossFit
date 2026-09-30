@@ -75,11 +75,14 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Padding(padding: EdgeInsets.only(left: 8), child: Text('Enable automatic backup')),
-              Switch(
-                value: isEnabled,
-                onChanged: (value) {
-                  context.read<ConfigRepository>().setSetting(category: category, key: key, value: value ? '1' : '0');
-                },
+              Transform.scale(
+                scale: switchScale,
+                child: Switch.adaptive(
+                  value: isEnabled,
+                  onChanged: (value) {
+                    context.read<ConfigRepository>().setSetting(category: category, key: key, value: value ? '1' : '0');
+                  },
+                ),
               ),
             ],
           );
@@ -100,12 +103,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
             title: Text('Backup Location'),
             subtitle: Row(
               children: [
-                Expanded(
-                  child: Text(
-                    storedValue.isNotEmpty ? storedValue : 'No folder selected',
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+                Expanded(child: Text(storedValue.isNotEmpty ? storedValue : 'No folder selected', overflow: TextOverflow.ellipsis)),
                 IconButton(
                   icon: Icon(Icons.folder),
                   onPressed: () async {
@@ -199,8 +197,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
     final proceed = await showConfirmationDialog(
       context: context,
       title: '⚠️!WARNING!⚠️',
-      content:
-          'This will delete all content; notes, notebooks, lists and goals.\nAll settings will be reset to default.\n\nDo you wish to continue?',
+      content: 'This will delete all content; notes, notebooks, lists and goals.\nAll settings will be reset to default.\n\nDo you wish to continue?',
       confirmStyle: TextButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
       cancelStyle: TextButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
       cancelLabel: 'No, take me home',

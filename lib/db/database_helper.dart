@@ -152,7 +152,7 @@ class DatabaseHelper {
           ('formats','font','Roboto'),
           ('formats','font_size','14'),
           ('formats','short_date_format','d/M/yy'),
-          ('formats','long_date_format','d/M/yy'),
+          ('formats','long_date_format','EEE, dd.MM.yyyy H:mm a'),
           ('formats','start_of_week','monday'),
           ('appearance','haptics','1'),
           ('appearance','theme','system'),
@@ -174,8 +174,8 @@ class DatabaseHelper {
           ('timers','enabled','0'),
           ('timers','vibrate','0'),
           ('timers','enable_sound','0'),
-          ('timers','alarm_sound','0'),
-          ('timers','duration','0');
+          ('timers','alarm_sound',''),
+          ('timers','duration','12000');
           ''');
   }
 
@@ -258,11 +258,7 @@ class DatabaseHelper {
 
   Future<void> cleanupOldBackups(String backupDirPath) async {
     final backupDir = Directory(backupDirPath);
-    final backupFiles = backupDir
-        .listSync()
-        .whereType<File>()
-        .where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'))
-        .toList();
+    final backupFiles = backupDir.listSync().whereType<File>().where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db')).toList();
 
     backupFiles.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
 
@@ -277,11 +273,7 @@ class DatabaseHelper {
     final dir = Directory(backupDirPath);
     if (!dir.existsSync()) return null;
 
-    final files = dir
-        .listSync()
-        .whereType<File>()
-        .where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'))
-        .toList();
+    final files = dir.listSync().whereType<File>().where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db')).toList();
 
     if (files.isEmpty) return null;
 

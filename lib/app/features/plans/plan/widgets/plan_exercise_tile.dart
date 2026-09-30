@@ -7,27 +7,37 @@ import 'package:fossfit/app/utils/utils.dart';
 import 'package:fossfit/app/widgets/custom_set_indicator.dart';
 import 'package:fossfit/app/widgets/exercise_icon.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
-import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/models/features/plan_exercise_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
-import 'package:fossfit/db/repositories/exercise_repository.dart';
-import 'package:fossfit/db/repositories/gym_set_repository.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
 import 'package:provider/provider.dart';
 
 class PlanExerciseTile extends StatefulWidget {
   final int planId;
-  final int exerciseId;
   final int index;
+
+  final TextEditingController notes;
+  final TextEditingController weight;
+  final TextEditingController reps;
+  final TextEditingController unit;
+
+  final Exercise exercise;
+
   final ExpansibleController expander;
   final Function(bool open) onExpansionChanged;
+  final Function() onFieldSubmitted;
   const PlanExerciseTile({
     super.key,
-    required this.exerciseId,
     required this.planId,
     required this.index,
     required this.expander,
     required this.onExpansionChanged,
+    required this.notes,
+    required this.weight,
+    required this.reps,
+    required this.unit,
+    required this.exercise,
+    required this.onFieldSubmitted,
   });
 
   @override
@@ -35,15 +45,9 @@ class PlanExerciseTile extends StatefulWidget {
 }
 
 class _PlanExerciseTileState extends State<PlanExerciseTile> {
-  TextEditingController reps = TextEditingController(text: '0.0');
-  TextEditingController weight = TextEditingController(text: '0.0');
-  TextEditingController notes = TextEditingController();
   String? category;
   String? image;
-  Exercise? currentExercise;
   PlanExercise? currentPlanExercise;
-
-  String unit = 'kg';
   String title = '';
 
   late ConfigRepository config;
@@ -57,18 +61,19 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
   Widget build(BuildContext context) {
     config = context.watch<ConfigRepository>();
     var peRepo = context.watch<PlanExercisesRepository>();
-    var exRepo = context.watch<ExercisesRepository>();
     final services = GymSetServices(context: context);
-    final planExercise = currentPlanExercise ?? peRepo.getPlanExercisesById(widget.exerciseId, widget.planId)!;
-    final exercise = currentExercise ?? exRepo.getExerciseById(widget.exerciseId)!;
-    final max = currentPlanExercise?.maxSets ?? currentExercise?.defaultSets ?? 3;
-    final completedSets = _todaySetsStream(exercise);
+    final planExercise = currentPlanExercise ?? peRepo.getPlanExerciseByExerciseAndPlan(widget.exercise.id!, widget.planId)!;
+
+    final max = planExercise.maxSets ?? widget.exercise.defaultSets ?? 3;
+    final completedSets = services.getTodaysSetsByExerciseId(widget.exercise.id!, widget.planId);
     final showImages = config.isEnabled(.workouts, 'show_images');
-    final lastSets = services.getSetsByExerciseId(exercise.id!);
-    reps.text = (lastSets.firstOrNull?.reps ?? 0).toString();
-    weight.text = (lastSets.firstOrNull?.weight ?? 0.0).toString();
-    notes.text = (lastSets.firstOrNull?.note ?? '');
-    unit = (lastSets.firstOrNull?.unit ?? exercise.defaultUnit).toString();
+    final lastSets = services.getSetsByExerciseId(widget.exercise.id!, limit: max);
+
+    widget.reps.text = (lastSets.firstOrNull?.reps ?? 0).toString();
+    widget.weight.text = (lastSets.firstOrNull?.weight ?? 0.0).toString();
+    widget.notes.text = (lastSets.firstOrNull?.note ?? '');
+    widget.unit.text = (lastSets.firstOrNull?.unit ?? widget.exercise.defaultUnit).toString();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -85,13 +90,13 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
               child: Platform.isAndroid ? const Icon(Icons.drag_handle, size: 32) : const SizedBox.shrink(),
             ),
             onExpansionChanged: (open) => widget.onExpansionChanged(open),
-            title: _buildExerciseTitle(exercise, planExercise, completedSets.length, max, widget.index, showImages),
+            title: _buildExerciseTitle(widget.exercise, planExercise, completedSets.length, max, showImages),
             children: [
-              strengthFields(),
+              strengthFields(completedSets.length, max),
               unitSelector(),
               notesField(),
               const SizedBox(height: 4),
-              CustomSetIndicator(sets: _todaySetsStream(exercise), max: max),
+              CustomSetIndicator(sets: completedSets, max: max),
             ],
           ),
         ),
@@ -100,33 +105,23 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     );
   }
 
-  Widget _buildExerciseTitle(
-    Exercise exercise,
-    PlanExercise planExercise,
-    int count,
-    int max,
-    int index,
-    bool showImages,
-  ) {
+  Widget _buildExerciseTitle(Exercise exercise, PlanExercise planExercise, int completedSets, int max, bool showImages) {
     return Row(
       children: [
         Container(
           width: 24,
           height: 24,
           clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.inversePrimary,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.inversePrimary, borderRadius: BorderRadius.circular(12)),
           child: showImages && exercise.hasImage() == true
               ? Stack(
                   children: [
                     ExerciseIcon(exercise: exercise, showImages: showImages),
-                    if (count == max) Icon(Icons.check, size: 20),
+                    if (completedSets == max) Icon(Icons.check, size: 20),
                   ],
                 )
               : Center(
-                  child: count == max
+                  child: completedSets == max
                       ? Icon(Icons.check, size: 20)
                       : Text(
                           exercise.name[0].toUpperCase(),
@@ -138,35 +133,35 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
         const SizedBox(width: 8),
         Expanded(child: Text(exercise.name, overflow: TextOverflow.ellipsis)),
         const SizedBox(width: 8),
-        if (widget.expander.isExpanded == false) ..._buildBlips(exercise, planExercise),
+        if (widget.expander.isExpanded == false) ..._buildBlips(exercise, planExercise, completedSets),
       ],
     );
   }
 
-  Widget strengthFields() {
+  Widget strengthFields(int done, int max) {
     final screenWidth = MediaQuery.of(context).size.width;
 
     final repsField = TextFormField(
-      controller: reps,
+      controller: widget.reps,
       decoration: const InputDecoration(labelText: 'Reps'),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       textInputAction: TextInputAction.next,
-      onFieldSubmitted: (_) => selectAll(weight),
-      onTap: () => selectAll(reps),
+      onFieldSubmitted: (_) => selectAll(widget.weight),
+      onTap: () => selectAll(widget.reps),
       validator: _requiredNumberValidator,
     );
 
-    final weightField = _weightField(
-      onFieldSubmitted: (_) => {
-        //TODO SAVE
-      },
+    final weightField = TextFormField(
+      controller: widget.weight,
+      decoration: InputDecoration(labelText: 'Weight (${widget.unit.text})'),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      onTap: () => selectAll(widget.weight),
+      onFieldSubmitted: (_) => widget.onFieldSubmitted(),
+      validator: _requiredNumberValidator,
     );
 
     if (screenWidth <= 450) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [repsField, const SizedBox(height: 8), weightField],
-      );
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [repsField, const SizedBox(height: 8), weightField]);
     }
 
     return Row(
@@ -175,17 +170,6 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
         const SizedBox(width: 8),
         Expanded(child: weightField),
       ],
-    );
-  }
-
-  Widget _weightField({required void Function(String) onFieldSubmitted}) {
-    return TextFormField(
-      controller: weight,
-      decoration: InputDecoration(labelText: 'Weight ($unit)'),
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      onTap: () => selectAll(weight),
-      onFieldSubmitted: onFieldSubmitted,
-      validator: _requiredNumberValidator,
     );
   }
 
@@ -202,10 +186,10 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
             labelText: 'Unit',
             labelStyle: TextStyle(overflow: TextOverflow.ellipsis),
           ),
-          initialValue: unit,
+          initialValue: widget.unit.text,
           items: unitsList.map((u) => DropdownMenuItem(value: u.key, child: Text(u.value))).toList(),
           onChanged: (value) {
-            unit = value!;
+            widget.unit.text = value!;
           },
         );
       },
@@ -221,7 +205,7 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
         }
 
         return TextFormField(
-          controller: notes,
+          controller: widget.notes,
           maxLines: 3,
           decoration: const InputDecoration(labelText: 'Notes', border: InputBorder.none),
         );
@@ -229,9 +213,8 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     );
   }
 
-  List<Widget> _buildBlips(Exercise exercise, PlanExercise planExercise) {
+  List<Widget> _buildBlips(Exercise exercise, PlanExercise planExercise, int completedSets) {
     final items = <Widget>[];
-    var completedSets = _todaySetsStream(exercise).length;
 
     var maxSets = planExercise.maxSets ?? exercise.defaultSets ?? 3;
     for (int i = 0; i < maxSets; i++) {
@@ -239,10 +222,7 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
         SizedBox(
           width: 10,
           child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(2),
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: Theme.of(context).colorScheme.outlineVariant),
             height: 4,
             child: AnimatedFractionallySizedBox(
               alignment: Alignment.centerLeft,
@@ -250,10 +230,7 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
               duration: const Duration(milliseconds: 250),
               curve: Curves.ease,
               child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(2),
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: Theme.of(context).colorScheme.primary),
               ),
             ),
           ),
@@ -266,28 +243,6 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     }
 
     return items;
-  }
-
-  List<GymSet> _todaySetsStream(Exercise exercise) {
-    final sets = context.read<GymSetRepository>().gymsets;
-
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
-    final startOfTomorrow = startOfDay.add(const Duration(days: 1));
-
-    final todays = sets
-        .where(
-          (set) =>
-              set.planId == widget.planId &&
-              set.exerciseId == exercise.id &&
-              set.created.isAfter(startOfDay) &&
-              set.created.isBefore(startOfTomorrow),
-        )
-        .toList();
-
-    todays.sort((a, b) => a.created.compareTo(b.created));
-
-    return todays;
   }
 
   String? _requiredNumberValidator(String? value) {

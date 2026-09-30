@@ -17,7 +17,7 @@ class WorkoutPage extends StatefulWidget {
 }
 
 class _WorkoutPageState extends State<WorkoutPage> {
-  late List<GymSet> _lastWorkoutSets;
+  List<GymSet>? _lastWorkoutSets;
   Widget lastWorkout = const SizedBox.shrink();
   final expand = ExpansibleController();
   final scroll = ScrollController();
@@ -32,9 +32,9 @@ class _WorkoutPageState extends State<WorkoutPage> {
   @override
   Widget build(BuildContext context) {
     config = context.watch<ConfigRepository>();
-    _lastWorkoutSets = context.watch<GymSetRepository>().latestgymsets;
+    final lastWorkoutSets = _lastWorkoutSets ?? context.watch<GymSetRepository>().latestgymsets;
     var showStats = config.isEnabled(.workouts, 'show_stats');
-    if (showStats) getStats(_lastWorkoutSets);
+    if (showStats) getStats(lastWorkoutSets);
     var grouped = config.isEnabled(.workouts, 'group_history');
     return AppShell(
       title: 'Workout',
@@ -42,9 +42,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
         padding: EdgeInsets.all(8),
         child: Column(
           children: [
-            if (_lastWorkoutSets.isEmpty)
-              const ListTile(title: Text('No entries yet'), subtitle: Text('Complete some sets to see them here')),
-            if (_lastWorkoutSets.isNotEmpty && showStats)
+            if (lastWorkoutSets.isEmpty) const ListTile(title: Text('No entries yet'), subtitle: Text('Complete some sets to see them here')),
+            if (lastWorkoutSets.isNotEmpty && showStats)
               Theme(
                 data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                 child: Padding(
@@ -67,7 +66,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
                 ),
               ),
             Expanded(
-              child: grouped ? WorkoutGrouped(sets: _lastWorkoutSets) : WorkoutList(sets: _lastWorkoutSets),
+              child: grouped ? WorkoutGrouped(sets: lastWorkoutSets) : WorkoutList(sets: lastWorkoutSets),
             ),
           ],
         ),
@@ -75,7 +74,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
       floatingActionButton: AnimatedFab(
         onPressed: () async {
           var services = GymSetServices(context: context);
-          await services.insertGymSet(await services.openAddEditPage(context, null));
+          await services.openAddEditPage(context, null);
         },
         label: const Text('Add'),
         icon: const Icon(Icons.add),

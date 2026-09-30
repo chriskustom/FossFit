@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/features/sets/add_edit_set_page.dart';
 import 'package:fossfit/app/utils/utils.dart';
@@ -85,8 +86,10 @@ class GymSetServices {
 
   GymSet? getLastGymSet() => getAllGymSets().firstOrNull;
 
-  List<GymSet> getSetsByExerciseId(int exerciseId) =>
-      gymsetsRepo.gymsets.where((e) => e.exerciseId == exerciseId).toList();
+  List<GymSet> getTodaysSetsByExerciseId(int exerciseId, int? planId) => gymsetsRepo.getTodaysSetsByExerciseId(exerciseId, planId);
+
+  List<GymSet> getSetsByExerciseId(int exerciseId, {int limit = 100}) =>
+      gymsetsRepo.gymsets.where((e) => e.exerciseId == exerciseId).take(limit).toList();
 
   Widget getLastGymSetWorkout(List<GymSet> sets) {
     String plural(int s) => s > 1 ? 's' : '';
@@ -147,36 +150,35 @@ class GymSetServices {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: ListTile(
-        title: Text(lastWorkoutText),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            const Divider(),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(lastWorkoutText),
+          const SizedBox(height: 16),
+          const Divider(),
+          Text(
+            '$totalExercises exercise'
+            '${plural(totalExercises)} completed',
+            textAlign: TextAlign.left,
+          ),
+          Text(
+            '$totalSets set'
+            '${plural(totalSets)} completed',
+            textAlign: TextAlign.left,
+          ),
+          Text(
+            '$totalReps rep'
+            '${plural(totalReps)} completed',
+            textAlign: TextAlign.left,
+          ),
+          if (totalWeight > 0)
             Text(
-              '$totalExercises exercise'
-              '${plural(totalExercises)} completed',
+              '${num.parse(totalWeight.toStringAsFixed(3))}'
+              '$weightUnit total lifted',
               textAlign: TextAlign.left,
             ),
-            Text(
-              '$totalSets set'
-              '${plural(totalSets)} completed',
-              textAlign: TextAlign.left,
-            ),
-            Text(
-              '$totalReps rep'
-              '${plural(totalReps)} completed',
-              textAlign: TextAlign.left,
-            ),
-            if (totalWeight > 0)
-              Text(
-                '${num.parse(totalWeight.toStringAsFixed(3))}'
-                '$weightUnit total lifted',
-                textAlign: TextAlign.left,
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }

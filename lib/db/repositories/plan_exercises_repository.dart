@@ -20,17 +20,25 @@ class PlanExercisesRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  PlanExercise? getPlanExercisesById(int id, int planId) {
+  PlanExercise? getPlanExerciseById(int id) {
+    return _planexercises.where((n) => n.id == id).firstOrNull;
+  }
+
+  PlanExercise? getPlanExerciseByExerciseAndPlan(int id, int planId) {
     return _planexercises.where((n) => n.exerciseId == id && n.planId == planId).firstOrNull;
   }
 
   List<PlanExercise> getPlanExercisesByPlanId(int planId) {
     final result = _planexercises.where((n) => n.planId == planId).toList();
 
-    result.sort((a, b) => (a.sequence ?? 0).compareTo(b.sequence ?? 0));
+    result.sort((a, b) {
+      return a.sequence.compareTo(b.sequence);
+    });
 
     return result;
   }
+
+  bool exists(int eId, int pId) => getPlanExerciseByExerciseAndPlan(eId, pId) != null;
 
   Future<PlanExercise> insertPlanExercise(PlanExercise planExercise) async {
     final id = await _db.insert(TableName.planexercises.name, planExercise.toMap());
@@ -45,9 +53,45 @@ class PlanExercisesRepository extends ChangeNotifier {
       _planexercises.add(planExercise);
     }
 
-    notifyListeners();
+    //notifyListeners();
 
     return planExercise;
+  }
+
+  Future<bool> reorderPlanExercises(int planId, int oldIndex, int newIndex) async {
+    final planExercises = _planexercises.where((e) => e.planId == planId).toList()..sort((a, b) => a.sequence.compareTo(b.sequence));
+
+    if (oldIndex < 0 || oldIndex >= planExercises.length || newIndex < 0 || newIndex >= planExercises.length) {
+      return false;
+    }
+
+    final moved = planExercises.removeAt(oldIndex);
+    planExercises.insert(newIndex, moved);
+
+    final updatedPlanExercises = [for (int i = 0; i < planExercises.length; i++) planExercises[i].copyWith(sequence: i)];
+
+    // Update the in-memory global list.
+    final updatedById = {for (final exercise in updatedPlanExercises) exercise.id!: exercise};
+
+    _planexercises = [
+      for (final exercise in _planexercises)
+        if (updatedById.containsKey(exercise.id)) updatedById[exercise.id]! else exercise,
+    ];
+
+    notifyListeners();
+
+    // Persist only this plan's exercises.
+    for (final exercise in updatedPlanExercises) {
+      await _persistPlanExercise(exercise);
+    }
+
+    return true;
+  }
+
+  Future<bool> _persistPlanExercise(PlanExercise planExercise) async {
+    final count = await _db.update(TableName.planexercises.name, planExercise.toMap(), where: 'id = ?', whereArgs: [planExercise.id]);
+
+    return count > 0;
   }
 
   Future<bool> updatePlanExercise(PlanExercise? planExercise) async {
@@ -55,9 +99,7 @@ class PlanExercisesRepository extends ChangeNotifier {
       return false;
     }
 
-    final updated = await _db.update(TableName.planexercises.name, planExercise.toMap(), where: 'plan_id = ? AND exercise_id = ?', whereArgs: [planExercise.planId, planExercise.exerciseId]);
-
-    if (updated <= 0) {
+    if (!await _persistPlanExercise(planExercise)) {
       return false;
     }
 
@@ -83,7 +125,7 @@ class PlanExercisesRepository extends ChangeNotifier {
 
     _planexercises.removeWhere((e) => e.exerciseId == exerciseId && e.planId == planId);
 
-    notifyListeners();
+    //notifyListeners();
 
     return true;
   }
@@ -97,7 +139,7 @@ class PlanExercisesRepository extends ChangeNotifier {
 
     _planexercises.removeWhere((e) => e.planId == planId);
 
-    notifyListeners();
+    //notifyListeners();
 
     return true;
   }
@@ -115,7 +157,7 @@ class PlanExercisesRepository extends ChangeNotifier {
 
     _planexercises.removeWhere((e) => ids.contains(e.planId));
 
-    notifyListeners();
+    //notifyListeners();
 
     return true;
   }

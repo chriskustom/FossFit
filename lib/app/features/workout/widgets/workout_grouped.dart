@@ -20,8 +20,7 @@ class WorkoutGrouped extends StatelessWidget {
     var config = context.read<ConfigRepository>();
     final showImages = config.isEnabled(.workouts, 'show_images');
     final services = GymSetServices(context: context);
-    final sortedDays = List<ExerciseSets>.from(services.getExerciseSets(sets, reversed: true))
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final sortedDays = List<ExerciseSets>.from(services.getExerciseSets(sets, reversed: true))..sort((a, b) => b.date.compareTo(a.date));
     var grouped = services.groupExerciseSetsByDay(sortedDays);
 
     return ListView.builder(
@@ -60,6 +59,7 @@ class WorkoutGrouped extends StatelessWidget {
             return AlertDialog(
               title: Text(formatDateWithOrdinal(date)),
               content: services.getLastGymSetWorkout(day.expand((t) => t.sets).toList()),
+
               actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Close"))],
             );
           },
@@ -73,10 +73,7 @@ class WorkoutGrouped extends StatelessWidget {
             const SizedBox(width: 4),
             const Icon(Icons.today, size: 16),
             const SizedBox(width: 4),
-            Text(
-              DateFormat(config.getSetting(.formats, 'short_date_format')).format(date),
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+            Text(DateFormat(config.getSetting(.formats, 'short_date_format')).format(date), style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(width: 4),
             const Expanded(child: Divider(thickness: 1)),
           ],
@@ -97,15 +94,17 @@ class WorkoutGrouped extends StatelessWidget {
         Widget? leading = ExerciseIcon(exercise: history.exercise, showImages: showImages);
 
         final dateFormat = config.getSetting(.formats, 'short_date_format');
-        final trailing = Text(
-          dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
-        );
+        final trailing = Text(dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created));
         return ListTile(
           dense: true,
           visualDensity: VisualDensity.comfortable,
           leading: leading,
           title: Text("${_getSetNumber(gymSet, history.sets)}: $reps REPS @ $weight ${gymSet.unit}"),
           trailing: trailing,
+          onTap: () async {
+            var services = GymSetServices(context: context);
+            await services.openAddEditPage(context, gymSet.id);
+          },
         );
       }).toList(),
     );

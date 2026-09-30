@@ -38,8 +38,6 @@ class _PlansPageState extends State<PlansPage> {
       floatingActionButton: AnimatedFab(
         onPressed: () async {
           //TODO Create new plan
-          // var services = GymSetServices(context: context);
-          // await services.insertGymSet(await services.openAddEditPage(context, null));
         },
         label: const Text('Add'),
         icon: const Icon(Icons.add),
@@ -60,14 +58,13 @@ class _PlansPageState extends State<PlansPage> {
       itemBuilder: (context, index) {
         final plan = plans[index];
         Widget title = const Text("Daily");
-        if (plan.name?.isNotEmpty == true) {
+        if (plan.name.isNotEmpty == true) {
           final today = plan.days.split(',').contains(weekday);
           title = Text(
-            plan.name!,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              fontWeight: today ? FontWeight.bold : null,
-              decoration: today ? TextDecoration.underline : null,
-            ),
+            plan.name,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: today ? FontWeight.bold : null, decoration: today ? TextDecoration.underline : null),
           );
         } else if (plan.days.split(',').length < 7) {
           title = RichText(text: TextSpan(children: _getDayListFormatted(plan.days, weekday)));
@@ -84,20 +81,12 @@ class _PlansPageState extends State<PlansPage> {
             child: Container(
               width: 24,
               height: 24,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.inversePrimary,
-                borderRadius: BorderRadius.circular(12),
-              ),
+              decoration: BoxDecoration(color: Theme.of(context).colorScheme.inversePrimary, borderRadius: BorderRadius.circular(12)),
               child: Center(
                 child: Text(
-                  plan.name?.isNotEmpty == true ? plan.name![0] : plan.days[0].toUpperCase(),
+                  plan.name.isNotEmpty == true ? plan.name[0] : plan.days[0].toUpperCase(),
                   textAlign: TextAlign.justify,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                  ),
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
                 ),
               ),
             ),
@@ -149,10 +138,7 @@ class _PlansPageState extends State<PlansPage> {
       return [
         TextSpan(
           text: trimmedDay,
-          style: style?.copyWith(
-            fontWeight: isToday ? FontWeight.bold : null,
-            decoration: isToday ? TextDecoration.underline : null,
-          ),
+          style: style?.copyWith(fontWeight: isToday ? FontWeight.bold : null, decoration: isToday ? TextDecoration.underline : null),
         ),
         const TextSpan(text: ', '),
       ];
