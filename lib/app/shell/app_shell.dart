@@ -5,6 +5,7 @@ import 'package:fossfit/app/services/app_services.dart';
 import 'package:fossfit/app/services/notifications/notification_service_mobile.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/nav_page.dart';
+import 'package:fossfit/app/widgets/countdown_timer.dart';
 import 'package:fossfit/app/widgets/kustom_app_bar.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:provider/provider.dart';
@@ -22,6 +23,7 @@ class AppShell extends StatefulWidget {
   final List<IconButton>? selectActions;
   final bool showSearch;
   final bool showNavBar;
+  final bool showTimer;
 
   const AppShell({
     super.key,
@@ -33,6 +35,7 @@ class AppShell extends StatefulWidget {
     this.selectActions,
     this.showSearch = true,
     this.showNavBar = true,
+    this.showTimer = true,
   });
 
   @override
@@ -91,7 +94,10 @@ class _AppShellState extends State<AppShell> {
               },
             ),
             floatingActionButton: widget.floatingActionButton,
-            bottomNavigationBar: widget.showNavBar ? _buildNavigationBar(context, colors) : null,
+            bottomNavigationBar: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [_buildTimer(), widget.showNavBar ? _buildNavigationBar(context, colors) : SizedBox.shrink()],
+            ),
           ),
         ],
       ),
@@ -125,6 +131,9 @@ class _AppShellState extends State<AppShell> {
   //     Navigator.push(context, FadeRoute(page: const SettingsPage()));
   //   });
   // }
+  Widget _buildTimer() {
+    return Padding(padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8), child: CountdownTimer());
+  }
 
   Widget _buildNavigationBar(BuildContext context, ColorScheme colors) {
     return Selector<ConfigRepository, String>(

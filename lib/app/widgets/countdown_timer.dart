@@ -15,120 +15,98 @@ class CountdownTimer extends StatefulWidget {
 }
 
 class _CountdownTimerState extends State<CountdownTimer> {
-  static const String prefsKey = 'timer_duration';
-  Timer? _timer;
-
-  final AudioPlayer _audioPlayer = AudioPlayer();
-
-  String? sound;
-  bool? soundEnabled;
-  bool? vibrate;
-
-  int _durationSeconds = 120;
-  int _remainingSeconds = 120;
-
-  bool _isRunning = false;
-
-  late SharedPreferences prefs;
   @override
-  void initState() {
-    super.initState();
+  Widget build(BuildContext context) {
+    final config = context.watch<ConfigRepository>();
 
-    _initializePrefs();
-  }
+    final enabled = config.isEnabled(.timers, 'enabled');
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _audioPlayer.dispose();
-    super.dispose();
-  }
-
-  Future<void> _initializePrefs() async {
-    try {
-      prefs = await SharedPreferences.getInstance();
-
-      final savedDuration = prefs.getInt(prefsKey) ?? 120;
-
-      if (!mounted) return;
-
-      setState(() {
-        _durationSeconds = savedDuration;
-        _remainingSeconds = savedDuration;
-      });
-    } catch (_) {}
-  }
-
-  void _startTimer() {
-    if (_isRunning || _remainingSeconds <= 0) return;
-
-    setState(() {
-      _isRunning = true;
-    });
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_remainingSeconds <= 1) {
-        timer.cancel();
-
-        setState(() {
-          _remainingSeconds = 0;
-          _isRunning = false;
-        });
-
-        _timerFinished();
-      } else {
-        setState(() {
-          _remainingSeconds--;
-        });
-      }
-    });
-  }
-
-  void _pauseTimer() {
-    _timer?.cancel();
-
-    setState(() {
-      _isRunning = false;
-    });
-  }
-
-  void _resetTimer() {
-    _timer?.cancel();
-
-    setState(() {
-      _remainingSeconds = _durationSeconds;
-      _isRunning = false;
-    });
-  }
-
-  Future<void> _timerFinished() async {
-    // Vibrate
-    if (vibrate == true && await Vibration.hasVibrator()) {
-      Vibration.vibrate(pattern: [0, 500, 200, 500]);
+    if (!enabled) {
+      return const SizedBox.shrink();
     }
 
-    // Play sound
-    if (soundEnabled == true) {
-      if (sound != null) {
-        await _audioPlayer.play(DeviceFileSource(sound!));
-      } else {
-        await _audioPlayer.play(AssetSource('sounds/timer_complete.mp3'));
-      }
+    final controller = context.read<CountdownTimerController>();
+
+    controller.updateSettings(
+      soundEnabled: config.isEnabled(.timers, 'enable_sound'),
+      vibrate: config.isEnabled(.timers, 'vibrate'),
+      sound: config.getSetting(.timers, 'alarm_sound'),
+    );
+
+    return Consumer<CountdownTimerController>(
+      builder: (context, timer, _) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -3)),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                const Divider(height: 1),
+
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Row(
+                    children: [
+                      IconButton.outlined(
+                        onPressed: timer.reset,
+                        icon: const Icon(Icons.restart_alt_rounded),
+                        visualDensity: const VisualDensity(horizontal: 4, vertical: 0),
+                      ),
+
+                      Expanded(
+                        child: Center(
+                          child: InkWell(
+                            onTap: timer.isRunning
+                                ? timer.pause
+                                : timer.remainingSeconds < timer.durationSeconds
+                                ? timer.start
+                                : () => _selectDuration(context, timer),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                _formatTime(timer.remainingSeconds),
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  fontFeatures: [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      IconButton.filledTonal(
+                        visualDensity: const VisualDensity(horizontal: 4, vertical: 0),
+                        onPressed: timer.isRunning ? timer.pause : timer.start,
+                        icon: Icon(timer.isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _selectDuration(BuildContext context, CountdownTimerController timer) async {
+    if (timer.isRunning) {
+      return;
     }
-  }
 
-  String _formatTime() {
-    final minutes = _remainingSeconds ~/ 60;
-    final seconds = _remainingSeconds % 60;
+    final selectedMinutes = timer.durationSeconds ~/ 60;
 
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
-  }
-
-  Future<void> _selectDuration() async {
-    if (_isRunning) return;
-
-    int selectedMinutes = _durationSeconds ~/ 60;
-    int selectedSeconds = _durationSeconds % 60;
+    final selectedSeconds = timer.durationSeconds % 60;
 
     final result = await showDialog<int>(
       context: context,
@@ -137,83 +115,18 @@ class _CountdownTimerState extends State<CountdownTimer> {
       },
     );
 
-    if (result == null || !mounted) return;
+    if (result == null) {
+      return;
+    }
 
-    prefs.setInt(prefsKey, result);
-    setState(() {
-      _durationSeconds = result;
-      _remainingSeconds = result;
-    });
+    await timer.setDuration(result);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    var config = context.watch<ConfigRepository>();
-    var timer = config.isEnabled(.timers, 'enabled');
-    vibrate = config.isEnabled(.timers, 'vibrate');
-    soundEnabled = config.isEnabled(.timers, 'enable_sound');
-    sound = config.getSetting(.timers, 'alarm_sound');
-    return timer
-        ? Container(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -3)),
-              ],
-            ),
-            child: SafeArea(
-              top: false,
-              child: Column(
-                children: [
-                  const Divider(height: 1),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: Row(
-                      children: [
-                        IconButton.outlined(
-                          onPressed: _resetTimer,
-                          icon: const Icon(Icons.restart_alt_rounded),
-                          visualDensity: .compact.copyWith(horizontal: 4),
-                        ),
+  String _formatTime(int seconds) {
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
 
-                        Expanded(
-                          child: Center(
-                            child: InkWell(
-                              onTap: _isRunning
-                                  ? _pauseTimer
-                                  : _remainingSeconds < _durationSeconds
-                                  ? _startTimer
-                                  : _selectDuration,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                                child: Text(
-                                  _formatTime(),
-                                  style: const TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    fontFeatures: [FontFeature.tabularFigures()],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        IconButton.filledTonal(
-                          visualDensity: .compact.copyWith(horizontal: 4),
-                          onPressed: _isRunning ? _pauseTimer : _startTimer,
-                          icon: Icon(_isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-        : SizedBox.shrink();
+    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 }
 
@@ -319,5 +232,158 @@ class _DurationPickerDialogState extends State<_DurationPickerDialog> {
         ),
       ],
     );
+  }
+}
+
+class CountdownTimerController extends ChangeNotifier {
+  static const String prefsKey = 'timer_duration';
+  static const int defaultDurationSeconds = 120;
+
+  Timer? _timer;
+  AudioPlayer? _audioPlayer;
+
+  int _durationSeconds = defaultDurationSeconds;
+  int _remainingSeconds = defaultDurationSeconds;
+  bool _isRunning = false;
+
+  String? _sound;
+  bool _soundEnabled = false;
+  bool _vibrate = false;
+
+  bool _initialized = false;
+
+  int get durationSeconds => _durationSeconds;
+  int get remainingSeconds => _remainingSeconds;
+  bool get isRunning => _isRunning;
+  bool get isInitialized => _initialized;
+
+  String? get sound => _sound;
+  bool get soundEnabled => _soundEnabled;
+  bool get vibrate => _vibrate;
+
+  CountdownTimerController() {
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      _durationSeconds = prefs.getInt(prefsKey) ?? defaultDurationSeconds;
+
+      _remainingSeconds = _durationSeconds;
+      _initialized = true;
+
+      notifyListeners();
+    } catch (_) {
+      _initialized = true;
+      notifyListeners();
+    }
+  }
+
+  void updateSettings({required bool soundEnabled, required bool vibrate, String? sound}) {
+    _soundEnabled = soundEnabled;
+    _vibrate = vibrate;
+    _sound = sound;
+  }
+
+  void start() {
+    if (_isRunning || _remainingSeconds <= 0) {
+      return;
+    }
+
+    _isRunning = true;
+    notifyListeners();
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+  }
+
+  void _tick() {
+    if (_remainingSeconds <= 1) {
+      _remainingSeconds = 0;
+      _isRunning = false;
+
+      _timer?.cancel();
+      _timer = null;
+
+      notifyListeners();
+
+      _timerFinished();
+      return;
+    }
+
+    _remainingSeconds--;
+    notifyListeners();
+  }
+
+  void pause() {
+    _timer?.cancel();
+    _timer = null;
+
+    _isRunning = false;
+    notifyListeners();
+  }
+
+  void reset() {
+    _timer?.cancel();
+    _timer = null;
+
+    _remainingSeconds = _durationSeconds;
+    _isRunning = false;
+
+    notifyListeners();
+  }
+
+  Future<void> setDuration(int seconds) async {
+    if (_isRunning) {
+      return;
+    }
+
+    _durationSeconds = seconds;
+    _remainingSeconds = seconds;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(prefsKey, seconds);
+    } catch (_) {}
+
+    notifyListeners();
+  }
+
+  Future<void> _timerFinished() async {
+    // Vibrate
+    if (_vibrate) {
+      try {
+        final hasVibrator = await Vibration.hasVibrator();
+
+        if (hasVibrator) {
+          await Vibration.vibrate(pattern: [0, 500, 200, 500]);
+        }
+      } catch (_) {}
+    }
+
+    // Play sound
+    if (_soundEnabled) {
+      try {
+        _audioPlayer ??= AudioPlayer();
+
+        if (_sound != null && _sound!.isNotEmpty) {
+          await _audioPlayer!.play(DeviceFileSource(_sound!));
+        } else {
+          await _audioPlayer!.play(AssetSource('sounds/timer_complete.mp3'));
+        }
+      } catch (_) {}
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _timer = null;
+
+    _audioPlayer?.dispose();
+    _audioPlayer = null;
+
+    super.dispose();
   }
 }

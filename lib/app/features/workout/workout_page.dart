@@ -5,7 +5,6 @@ import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/widgets/animated_fab.dart';
 import 'package:fossfit/app/widgets/confirmation_dialog.dart';
-import 'package:fossfit/app/widgets/countdown_timer.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/gym_set_repository.dart';
@@ -45,6 +44,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
     return AppShell(
       title: selectionMode ? '${_selectedItems.length} selected' : 'Workout',
       selectActions: _selectActions(),
+      showTimer: timer,
       body: Padding(
         padding: EdgeInsets.all(8),
         child: Column(
@@ -90,7 +90,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
                       scroll: scroll,
                     ),
             ),
-            Padding(padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8), child: CountdownTimer()),
+            //Padding(padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8), child: CountdownTimer()),
           ],
         ),
       ),

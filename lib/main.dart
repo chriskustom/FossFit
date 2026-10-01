@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:fossfit/app/services/notifications/notification_service_desktop.dart';
 import 'package:fossfit/app/shell/app.dart';
+import 'package:fossfit/app/widgets/countdown_timer.dart';
 import 'package:fossfit/db/database_helper.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
@@ -53,6 +54,7 @@ Future main() async {
         ChangeNotifierProvider<PlansRepository>(create: (_) => PlansRepository(db)..loadAll()),
         ChangeNotifierProvider<PlanExercisesRepository>(create: (_) => PlanExercisesRepository(db)..loadAll()),
         ChangeNotifierProvider<ConfigRepository>.value(value: settingsRepo),
+        ChangeNotifierProvider(create: (_) => CountdownTimerController()),
       ],
       child: App(),
     ),

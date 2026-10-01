@@ -60,6 +60,7 @@ class _PlanPageState extends State<PlanPage> {
     return AppShell(
       showNavBar: false,
       title: planName ?? 'Add Plan',
+      showTimer: timer,
       showSearch: false,
       body: Column(
         children: [
