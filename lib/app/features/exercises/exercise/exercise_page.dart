@@ -83,6 +83,7 @@ class _ExercisePageState extends State<ExercisePage> {
           icon: const Icon(Icons.edit),
           tooltip: "Edit",
         ),
+        buildDeleteButton(),
       ],
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -246,6 +247,50 @@ class _ExercisePageState extends State<ExercisePage> {
     );
   }
 
+  Widget buildDeleteButton() {
+    return IconButton(icon: const Icon(Icons.delete), onPressed: () => showDeleteDialog());
+  }
+
+  Future<void> showDeleteDialog() async {
+    var services = ExerciseServices(context: context);
+    var setServices = GymSetServices(context: context);
+    var exerciseSets = setServices.getSetsByExerciseId(widget.exerciseId);
+
+    var setsExist = exerciseSets.length > 1;
+
+    var text = setsExist
+        ? 'This exercise has sets logged. Deleting this exercise will delete these sets. Do you wish to proceed?'
+        : 'Are you sure you want to delete this exercise?';
+    await showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirm Delete'),
+          content: Text(text),
+          actions: [
+            TextButton.icon(
+              label: const Text('No'),
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(dialogContext),
+            ),
+            TextButton.icon(
+              label: const Text('Yes'),
+              icon: const Icon(Icons.delete),
+              onPressed: () async {
+                Navigator.pop(context);
+                await setServices.deleteMultipleGymSetssByIds(exerciseSets.map((g) => g.id!).toSet().toList());
+                await services.deleteExerciseById(widget.exerciseId);
+                if (mounted) {
+                  Navigator.pop(context);
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void setData() async {
     if (!mounted) return;
     final strengthData = await context.read<GymSetRepository>().getStrengthData(
@@ -284,7 +329,10 @@ class _ExercisePageState extends State<ExercisePage> {
             break;
         }
 
-        return [LineTooltipItem(text, TextStyle(color: Theme.of(context).textTheme.bodyLarge!.color)), if (touchedSpots.length > 1) null];
+        return [
+          LineTooltipItem(text, TextStyle(color: Theme.of(context).textTheme.bodyLarge!.color)),
+          if (touchedSpots.length > 1) null,
+        ];
       },
     );
   }
@@ -316,7 +364,11 @@ class _ExercisePageState extends State<ExercisePage> {
         break;
       case StrengthMetric.relativeStrength:
         gymSet = theseSets
-            .where((tbl) => ((tbl.weight / (tbl.bodyWeight ?? 0.0)) == (row.value) || (tbl.weight / (tbl.bodyWeight ?? 0.0)).isNaN))
+            .where(
+              (tbl) =>
+                  ((tbl.weight / (tbl.bodyWeight ?? 0.0)) == (row.value) ||
+                  (tbl.weight / (tbl.bodyWeight ?? 0.0)).isNaN),
+            )
             .take(1)
             .first;
         break;
@@ -330,7 +382,12 @@ class _ExercisePageState extends State<ExercisePage> {
   }
 
   Future<void> _selectEnd() async {
-    final DateTime? pickedDate = await showDatePicker(context: context, initialDate: end, firstDate: DateTime(2000), lastDate: DateTime(2100));
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: end,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
 
     if (pickedDate == null) return;
 
@@ -341,7 +398,12 @@ class _ExercisePageState extends State<ExercisePage> {
   }
 
   Future<void> _selectStart() async {
-    final DateTime? pickedDate = await showDatePicker(context: context, initialDate: start, firstDate: DateTime(2000), lastDate: DateTime(2100));
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: start,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
 
     if (pickedDate == null) return;
 

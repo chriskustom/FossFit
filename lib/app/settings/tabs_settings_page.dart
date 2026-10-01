@@ -44,35 +44,55 @@ class _TabsSettingsPageState extends State<TabsSettingsPage> {
             itemBuilder: (_, index) {
               final tab = tabs[index];
               final enabled = !tab.startsWith('.');
-              return Padding(
-                key: ValueKey(tab.replaceFirst('.', '')),
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
+              final tabname = tab.replaceFirst('.', '');
+              return ListTile(
+                key: ValueKey(tabname),
+                leading: Transform.scale(
+                  scale: iconScale,
+                  child: Icon(
+                    NavRoute.values.byName(tabname.toLowerCase()).icon,
+                    color: enabled ? Theme.of(context).colorScheme.primary : null,
+                  ),
+                ),
+                title: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Text(tab.replaceFirst('.', '').toTitleCase),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Transform.scale(
                       scale: switchScale,
                       child: Switch.adaptive(
                         value: enabled,
                         onChanged: (on) {
-                          final reordered = List<String>.from(tabs);
+                          final enabledTabs = List<String>.from(tabs);
+                          final prefix = on ? '' : '.';
+                          enabledTabs[index] = '$prefix$tabname';
 
-                          reordered[index] = on ? tab.replaceFirst('.', '') : '.${tab.replaceFirst('.', '')}';
-
-                          context.read<ConfigRepository>().setSetting(category: category, key: 'tabs', value: reordered.join(','));
+                          context.read<ConfigRepository>().setSetting(
+                            category: category,
+                            key: 'tabs',
+                            value: enabledTabs.join(','),
+                          );
                         },
                       ),
                     ),
-                    Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Padding(padding: const EdgeInsets.only(left: 8), child: Text(tab.replaceFirst('.', '').toTitleCase)),
-                          ReorderableDragStartListener(index: index, child: const Icon(Icons.drag_handle)),
-                        ],
-                      ),
-                    ),
+                    SizedBox(width: 12),
+                    ReorderableDragStartListener(index: index, child: const Icon(Icons.drag_handle)),
                   ],
                 ),
+                onTap: () {
+                  final enabledTabs = List<String>.from(tabs);
+                  final prefix = enabled ? '.' : '';
+                  enabledTabs[index] = '$prefix$tabname';
+
+                  context.read<ConfigRepository>().setSetting(
+                    category: category,
+                    key: 'tabs',
+                    value: enabledTabs.join(','),
+                  );
+                },
               );
             },
             onReorderItem: (oldIndex, newIndex) {

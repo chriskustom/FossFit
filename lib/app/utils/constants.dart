@@ -10,18 +10,22 @@ enum GraphSort { dateDesc, dateAsc, name }
 enum ThreeDialogOptions { save, dismiss, stay }
 
 enum NavRoute {
-  workout("/workout"),
-  exercises('/exercises'),
-  plans('/plans'),
-  calendar('/calendar'),
-  settings('/settings');
+  workout("/workout", Icons.fitness_center_rounded),
+  exercises('/exercises', Icons.list_alt_rounded),
+  plans('/plans', Icons.format_list_numbered),
+  calendar('/calendar', Icons.calendar_month_rounded),
+  settings('/settings', Icons.settings);
 
-  const NavRoute(this.route);
+  const NavRoute(this.route, this.icon);
   final String route;
+  final IconData icon;
 
   static NavRoute fromRoute(String? route) {
     if (route == null) return NavRoute.workout;
-    return NavRoute.values.firstWhere((e) => e.route == route || route.startsWith(e.route), orElse: () => NavRoute.workout);
+    return NavRoute.values.firstWhere(
+      (e) => e.route == route || route.startsWith(e.route),
+      orElse: () => NavRoute.workout,
+    );
   }
 
   bool matches(String? route) => route != null && route.startsWith(this.route);
@@ -53,6 +57,7 @@ enum SortOrder { asc, desc }
 enum GroupBy { day, week, task }
 
 const double switchScale = 0.85;
+const double iconScale = 0.85;
 
 const sortOptions = [
   SortOption(SortBy.title, SortOrder.asc, 'Title (A–Z)', Icons.sort_by_alpha),
@@ -63,7 +68,7 @@ const sortOptions = [
 
 const Map<String, Icon> homePageMenu = {'Settings': Icon(Icons.settings), 'About': Icon(Icons.info_outline)};
 
-const double globalElevation = 3.0;
+const double globalElevation = 5.0;
 
 const List<String> emptyPhrases = [
   'Wow. So empty.',
@@ -130,7 +135,11 @@ const List<String> emptyPhrases = [
 
 const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-const List<MapEntry<String, String>> unitsList = [MapEntry('kg', 'Kilograms (kg)'), MapEntry('lb', 'Pounds (lb)'), MapEntry('st', 'Stone (st)')];
+const List<MapEntry<String, String>> unitsList = [
+  MapEntry('kg', 'Kilograms (kg)'),
+  MapEntry('lb', 'Pounds (lb)'),
+  MapEntry('st', 'Stone (st)'),
+];
 
 const longdateFormats = [
   'timeago',
@@ -152,7 +161,18 @@ const longdateFormats = [
 
 const shortdateFormats = ['d/M/yy', 'M/d/yy', 'd-M-yy', 'M-d-yy', 'd.M.yy', 'M.d.yy', 'dd.MM.yy'];
 
-const fonts = ['Arial', 'Lato', 'Lunasima', 'Montserrat', 'Noto Sans', 'Open Sans', 'Roboto', 'Staatliches', 'Times New Roman', 'Wolland'];
+const fonts = [
+  'Arial',
+  'Lato',
+  'Lunasima',
+  'Montserrat',
+  'Noto Sans',
+  'Open Sans',
+  'Roboto',
+  'Staatliches',
+  'Times New Roman',
+  'Wolland',
+];
 
 const defaultExercises = [
   ('Arnold press', 'Shoulders'),

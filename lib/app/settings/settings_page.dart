@@ -44,9 +44,18 @@ class _SettingsPageState extends State<SettingsPage> {
                 final category = pages.keys.elementAt(idx);
                 final page = pages[category]!;
                 return ListTile(
-                  leading: Icon(ConfigCategory.values.byName(category).icon, color: Theme.of(context).colorScheme.primary),
+                  leading: Transform.scale(
+                    scale: iconScale,
+                    child: Icon(
+                      ConfigCategory.values.byName(category).icon,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
                   title: Text(category.toTitleCase),
-                  onTap: AppHaptics.tapWithHaptics(context, () async => await Navigator.push<ConfigCategory>(context, FadeRoute<ConfigCategory>(page: page))),
+                  onTap: AppHaptics.tapWithHaptics(
+                    context,
+                    () async => await Navigator.push<ConfigCategory>(context, FadeRoute<ConfigCategory>(page: page)),
+                  ),
                 );
               },
             ),

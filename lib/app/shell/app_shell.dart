@@ -82,9 +82,9 @@ class _AppShellState extends State<AppShell> {
                 return ConstrainedBox(
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(
-                      context,
-                    ).copyWith(dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad}),
+                    behavior: ScrollConfiguration.of(context).copyWith(
+                      dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad},
+                    ),
                     child: widget.body,
                   ),
                 );
@@ -133,22 +133,14 @@ class _AppShellState extends State<AppShell> {
         final pageOrder = tabs.split(',').where((t) => !t.startsWith('.'));
 
         final allPages = <String, NavPage>{
-          'Plans': NavPage(route: NavRoute.plans, label: 'Plans', icon: Icons.format_list_numbered, enabled: pageOrder.contains('Plans')),
-          'Calendar': NavPage(
-            route: NavRoute.calendar,
-            label: 'Calendar',
-            icon: Icons.calendar_month_rounded,
-            enabled: pageOrder.contains('Calendar'),
-          ),
-          'Exercises': NavPage(route: NavRoute.exercises, label: 'Exercises', icon: Icons.list_alt_rounded, enabled: pageOrder.contains('Exercises')),
+          'Plans': NavPage(route: NavRoute.plans, label: 'Plans', enabled: pageOrder.contains('Plans')),
+          'Calendar': NavPage(route: NavRoute.calendar, label: 'Calendar', enabled: pageOrder.contains('Calendar')),
+          'Exercises': NavPage(route: NavRoute.exercises, label: 'Exercises', enabled: pageOrder.contains('Exercises')),
         };
 
         final orderedPages = pageOrder.map((k) => allPages[k]).whereType<NavPage>().toList();
 
-        final bottomNavPages = [
-          NavPage(route: NavRoute.workout, label: 'Workout', icon: Icons.fitness_center_rounded, enabled: true),
-          ...orderedPages,
-        ];
+        final bottomNavPages = [NavPage(route: NavRoute.workout, label: 'Workout', enabled: true), ...orderedPages];
 
         final currentRoute = ModalRoute.of(context)?.settings.name;
         final selectedIndex = bottomNavPages.indexWhere((p) => p.route == NavRoute.fromRoute(currentRoute));
@@ -163,7 +155,7 @@ class _AppShellState extends State<AppShell> {
             _navigateIfNeeded(bottomNavPages[index].route);
           },
           destinations: bottomNavPages.map((page) {
-            return NavigationDestination(icon: Icon(page.icon), label: page.label);
+            return NavigationDestination(icon: Icon(page.route.icon), label: page.label);
           }).toList(),
         );
       },

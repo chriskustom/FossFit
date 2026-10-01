@@ -93,7 +93,7 @@ class _ExercisesPageState extends State<ExercisesPage> {
                       onTap: () async {
                         var exServices = ExerciseServices(context: context);
                         var data = await gymSetRepo.getStrengthData(
-                          target: lastSet.first.unit ?? exercise.defaultUnit ?? 'kg',
+                          target: lastSet.firstOrNull?.unit ?? exercise.defaultUnit ?? 'kg',
                           exerciseId: exercise.id!,
                           metric: StrengthMetric.bestWeight,
                           period: Period.day,

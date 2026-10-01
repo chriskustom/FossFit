@@ -136,12 +136,15 @@ class DatabaseHelper {
   //region reset
   Future<void> resetApp() async {
     if (_database == null) return;
-
-    await _database!.execute('DELETE FROM exercises;');
-    await _database!.execute('DELETE FROM sets;');
-    await _database!.execute('DELETE FROM plans;');
-    await _database!.execute('DELETE FROM plan_exercises;');
-    await _database!.execute('DELETE FROM config;');
+    await _database!.execute('PRAGMA foreign_keys = OFF');
+    await _database!.transaction(((txn) async {
+      await txn.execute('DELETE FROM sets;');
+      await txn.execute('DELETE FROM plans;');
+      await txn.execute('DELETE FROM plan_exercises;');
+      await txn.execute('DELETE FROM exercises;');
+      await txn.execute('DELETE FROM config;');
+    }));
+    await _database!.execute('PRAGMA foreign_keys = ON');
     await _defaultSettings(_database!);
     await _defaultExercises(_database!);
   }
@@ -149,7 +152,7 @@ class DatabaseHelper {
   Future<void> _defaultSettings(Database db) async {
     await db.execute('''
       INSERT INTO config (category, "key", value) VALUES
-          ('formats','font','Roboto'),
+          ('formats','font','Lato'),
           ('formats','font_size','14'),
           ('formats','short_date_format','d/M/yy'),
           ('formats','long_date_format','EEE, dd.MM.yyyy H:mm a'),
@@ -160,7 +163,7 @@ class DatabaseHelper {
           ('appearance','color','4281559659'),
           ('appearance','curve_lines','1'),
           ('appearance','curve_smoothness','0.1'),
-          ('tabs','tabs','Plans,Calendar,Exercises,Timer'),
+          ('tabs','tabs','Plans,Calendar,Exercises'),
           ('backup','backup','0'),
           ('backup','frequency','14'),
           ('backup','directory',''),
@@ -276,7 +279,11 @@ class DatabaseHelper {
     final dir = Directory(backupDirPath);
     if (!dir.existsSync()) return null;
 
-    final files = dir.listSync().whereType<File>().where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db')).toList();
+    final files = dir
+        .listSync()
+        .whereType<File>()
+        .where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'))
+        .toList();
 
     if (files.isEmpty) return null;
 

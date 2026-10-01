@@ -3,7 +3,6 @@ enum TableName {
   sets('sets'),
   plans('plans'),
   planexercises('plan_exercises'),
-  timer('timer'),
   config('config');
 
   const TableName(this.name);

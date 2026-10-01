@@ -1,16 +1,18 @@
+import 'dart:io';
+
+import 'package:file_selector/file_selector.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:fossfit/app/services/app_services.dart';
 import 'package:fossfit/app/services/file_services.dart';
+import 'package:fossfit/app/shell/app_shell.dart';
+import 'package:fossfit/app/utils/constants.dart';
+import 'package:fossfit/app/utils/utils.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/app/widgets/confirmation_dialog.dart';
 import 'package:fossfit/db/database_helper.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
-import 'package:fossfit/app/utils/utils.dart';
-import 'package:fossfit/app/utils/constants.dart';
-import 'package:fossfit/app/services/app_services.dart';
-import 'package:file_selector/file_selector.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:fossfit/app/shell/app_shell.dart';
 
 class BackupSettingsPage extends StatefulWidget {
   const BackupSettingsPage({super.key});
@@ -38,7 +40,10 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
             child: Padding(
               padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
               child: ListTile(
-                leading: Icon(Icons.warning, color: Colors.redAccent),
+                leading: Transform.scale(
+                  scale: iconScale,
+                  child: Icon(Icons.warning, color: Colors.redAccent),
+                ),
                 title: Text('Reset'),
                 subtitle: Text('Delete everything. Requires restart'),
                 onTap: AppHaptics.alertWithHaptics(context, () async => _resetApp()),
@@ -67,24 +72,28 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
     const key = 'backup';
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(4),
       child: Selector<ConfigRepository, bool>(
         selector: (_, repo) => repo.isEnabled(category, key),
         builder: (context, isEnabled, _) {
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Padding(padding: EdgeInsets.only(left: 8), child: Text('Enable automatic backup')),
-              Transform.scale(
-                scale: switchScale,
-                child: Switch.adaptive(
-                  value: isEnabled,
-                  onChanged: (value) {
-                    context.read<ConfigRepository>().setSetting(category: category, key: key, value: value ? '1' : '0');
-                  },
-                ),
+          return ListTile(
+            leading: Transform.scale(
+              scale: iconScale,
+              child: Icon(Icons.repeat_rounded, color: isEnabled ? Theme.of(context).colorScheme.primary : null),
+            ),
+            title: Padding(padding: EdgeInsets.only(left: 8), child: Text('Enable automatic backup')),
+            trailing: Transform.scale(
+              scale: switchScale,
+              child: Switch.adaptive(
+                value: isEnabled,
+                onChanged: (value) {
+                  context.read<ConfigRepository>().setSetting(category: category, key: key, value: value ? '1' : '0');
+                },
               ),
-            ],
+            ),
+            onTap: () {
+              context.read<ConfigRepository>().setSetting(category: category, key: key, value: !isEnabled ? '1' : '0');
+            },
           );
         },
       ),
@@ -95,29 +104,29 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
     const key = 'directory';
 
     return Padding(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(4),
       child: Selector<ConfigRepository, String>(
         selector: (_, repo) => repo.getSetting(category, key),
         builder: (context, storedValue, _) {
           return ListTile(
-            title: Text('Backup Location'),
-            subtitle: Row(
-              children: [
-                Expanded(child: Text(storedValue.isNotEmpty ? storedValue : 'No folder selected', overflow: TextOverflow.ellipsis)),
-                IconButton(
-                  icon: Icon(Icons.folder),
-                  onPressed: () async {
-                    final repo = context.read<ConfigRepository>();
-                    final String? path = await getDirectoryPath();
-                    if (path != null && path.isNotEmpty) {
-                      if (!mounted) return;
-
-                      await repo.setSetting(category: category, key: key, value: path);
-                    }
-                  },
-                ),
-              ],
+            leading: Transform.scale(
+              scale: iconScale,
+              child: Icon(Icons.folder, color: Theme.of(context).colorScheme.primary),
             ),
+            title: Text('Backup Location'),
+            subtitle: Text(
+              storedValue.isNotEmpty ? storedValue : 'No folder selected',
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: () async {
+              final repo = context.read<ConfigRepository>();
+              final String? path = await getDirectoryPath();
+              if (path != null && path.isNotEmpty) {
+                if (!mounted) return;
+
+                await repo.setSetting(category: category, key: key, value: path);
+              }
+            },
           );
         },
       ),
@@ -127,16 +136,22 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
   Padding _backupFrequency() {
     const key = 'frequency';
     return Padding(
-      padding: EdgeInsets.all(8),
+      padding: EdgeInsets.all(4),
       child: Selector<ConfigRepository, String>(
         selector: (_, repo) => repo.getSetting(category, key),
-        builder: (ctx, theme, _) {
+        builder: (ctx, frequency, _) {
           return ListTile(
-            contentPadding: .all(8),
+            leading: Transform.scale(
+              scale: iconScale,
+              child: Icon(Icons.replay_5_rounded, color: Theme.of(context).colorScheme.primary),
+            ),
             title: Text('Frequency'),
-            subtitle: DropdownButtonFormField<String>(
+            subtitle: DropdownButton<String>(
+              value: frequency,
               isExpanded: true,
-              initialValue: theme,
+              isDense: true,
+              underline: const SizedBox.shrink(),
+              padding: EdgeInsets.zero,
               onChanged: (value) {
                 context.read<ConfigRepository>().setSetting(category: category, key: key, value: value!);
               },
@@ -154,11 +169,15 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
 
   Padding _backupNow() {
     return Padding(
-      padding: EdgeInsets.all(8),
+      padding: EdgeInsets.all(4),
       child: Selector<ConfigRepository, String>(
         selector: (_, repo) => repo.getSetting(category, 'directory'),
         builder: (ctx, dir, _) {
           return ListTile(
+            leading: Transform.scale(
+              scale: iconScale,
+              child: Icon(Icons.download_rounded, color: Theme.of(context).colorScheme.primary),
+            ),
             title: Text('Backup now'),
             subtitle: Text('Manually create backup of database'),
             onTap: AppHaptics.tapWithHaptics(context, () async {
@@ -173,11 +192,15 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
 
   Padding _importDatabase() {
     return Padding(
-      padding: EdgeInsets.all(8),
+      padding: EdgeInsets.all(4),
       child: Selector<ConfigRepository, String>(
         selector: (_, repo) => repo.getSetting(category, 'directory'),
         builder: (ctx, dir, _) {
           return ListTile(
+            leading: Transform.scale(
+              scale: iconScale,
+              child: Icon(Icons.upload_rounded, color: Theme.of(context).colorScheme.primary),
+            ),
             title: Text('Restore backup'),
             subtitle: Text('Restore previous database. Requires restart'),
             onTap: AppHaptics.tapWithHaptics(context, () async {
@@ -185,7 +208,11 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
               AppSnackBar.success(result);
 
               await Future.delayed(const Duration(milliseconds: 2000));
-              SystemNavigator.pop(animated: true);
+              if (Platform.isWindows) {
+                exit(0);
+              } else {
+                SystemNavigator.pop(animated: true);
+              }
             }),
           );
         },
@@ -197,7 +224,8 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
     final proceed = await showConfirmationDialog(
       context: context,
       title: '⚠️!WARNING!⚠️',
-      content: 'This will delete all content; notes, notebooks, lists and goals.\nAll settings will be reset to default.\n\nDo you wish to continue?',
+      content:
+          'This will delete all content; notes, notebooks, lists and goals.\nAll settings will be reset to default.\n\nDo you wish to continue?',
       confirmStyle: TextButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
       cancelStyle: TextButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
       cancelLabel: 'No, take me home',
@@ -212,7 +240,10 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
     AppSnackBar.success('App reset complete');
 
     await Future.delayed(const Duration(milliseconds: 2000));
-
-    SystemNavigator.pop(animated: true);
+    if (Platform.isWindows) {
+      exit(0);
+    } else {
+      SystemNavigator.pop(animated: true);
+    }
   }
 }

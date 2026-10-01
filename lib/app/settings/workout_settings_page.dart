@@ -51,24 +51,38 @@ class _WorkoutSettingsPageState extends State<WorkoutSettingsPage> {
           return Selector<ConfigRepository, bool>(
             selector: (_, repo) => repo.isEnabled(category, option),
             builder: (ctx, enabled, _) {
-              return Row(
-                key: ValueKey(option),
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.only(left: 8),
-                    child: Text(option.toTitleCase, textAlign: .left),
+              return ListTile(
+                leading: Transform.scale(
+                  scale: iconScale,
+                  child: Icon(
+                    icons.where((i) => i.$1 == option).first.$2,
+                    color: enabled ? Theme.of(context).colorScheme.primary : null,
                   ),
-                  Transform.scale(
-                    scale: switchScale,
-                    child: Switch.adaptive(
-                      value: enabled,
-                      onChanged: (value) {
-                        context.read<ConfigRepository>().setSetting(category: category, key: option, value: value == true ? '1' : '0');
-                      },
-                    ),
+                ),
+                title: Padding(
+                  padding: EdgeInsets.only(left: 8),
+                  child: Text(option.toTitleCase, textAlign: .left),
+                ),
+                trailing: Transform.scale(
+                  scale: switchScale,
+                  child: Switch.adaptive(
+                    value: enabled,
+                    onChanged: (value) {
+                      context.read<ConfigRepository>().setSetting(
+                        category: category,
+                        key: option,
+                        value: value == true ? '1' : '0',
+                      );
+                    },
                   ),
-                ],
+                ),
+                onTap: () {
+                  context.read<ConfigRepository>().setSetting(
+                    category: category,
+                    key: option,
+                    value: !enabled == true ? '1' : '0',
+                  );
+                },
               );
             },
           );
@@ -76,4 +90,14 @@ class _WorkoutSettingsPageState extends State<WorkoutSettingsPage> {
       ),
     );
   }
+
+  var icons = [
+    ('show_images', Icons.image_rounded),
+    ('show_stats', Icons.analytics_outlined),
+    ('show_bodyweight', Icons.monitor_weight_rounded),
+    ('show_notes', Icons.notes_rounded),
+    ('show_categories', Icons.category_rounded),
+    ('show_units', Icons.scale_rounded),
+    ('group_history', Icons.featured_play_list_rounded),
+  ];
 }

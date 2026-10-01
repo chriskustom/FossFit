@@ -10,6 +10,7 @@ import 'package:fossfit/app/widgets/animated_fab.dart';
 import 'package:fossfit/app/widgets/countdown_timer.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/models/features/plan_exercise_model.dart';
+import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
 import 'package:fossfit/db/repositories/plan_repository.dart';
@@ -43,10 +44,12 @@ class _PlanPageState extends State<PlanPage> {
 
   @override
   Widget build(BuildContext context) {
+    var config = context.watch<ConfigRepository>();
     var planRepo = context.watch<PlansRepository>();
     var planExRepo = context.watch<PlanExercisesRepository>();
     var exRepo = context.watch<ExercisesRepository>();
     var plan = planRepo.getPlanById(widget.planId);
+    var timer = config.isEnabled(.timers, 'enabled');
 
     final planExercises = displayPlanExercises ?? planExRepo.getPlanExercisesByPlanId(widget.planId);
     selectedPlanExerciseId = selectedPlanExerciseId ?? planExercises.firstOrNull?.id;
@@ -80,7 +83,9 @@ class _PlanPageState extends State<PlanPage> {
                     onExpansionChanged: (open) {
                       if (open) {
                         if (expandedIndex != index) {
-                          expanders.entries.where((c) => c.key != planExercise.id! && c.value.isExpanded).forEach((c) => c.value.collapse());
+                          expanders.entries
+                              .where((c) => c.key != planExercise.id! && c.value.isExpanded)
+                              .forEach((c) => c.value.collapse());
                         }
                         selectedPlanExerciseId = planExercise.id;
                         selectedExerciseId = planExercise.exerciseId;
@@ -96,8 +101,15 @@ class _PlanPageState extends State<PlanPage> {
                     onSwap: () async {
                       Navigator.pop(context);
                       var services = PlanExerciseServices(context: context);
-                      var newExerciseId = await services.openSwapExercisePage(context, planExercise.exerciseId, planExercise.planId);
-                      final old = planExRepo.getPlanExerciseByExerciseAndPlan(planExercise.exerciseId, planExercise.planId);
+                      var newExerciseId = await services.openSwapExercisePage(
+                        context,
+                        planExercise.exerciseId,
+                        planExercise.planId,
+                      );
+                      final old = planExRepo.getPlanExerciseByExerciseAndPlan(
+                        planExercise.exerciseId,
+                        planExercise.planId,
+                      );
                       if (old == null) return;
                       await planExRepo.updatePlanExercise(old.copyWith(exerciseId: newExerciseId));
                       planExRepo.loadAll();
@@ -119,6 +131,7 @@ class _PlanPageState extends State<PlanPage> {
         label: const Text('Save'),
         icon: const Icon(Icons.save_rounded),
         scroll: scroll,
+        height: timer ? 60 : 0,
       ),
       actions: [
         IconButton(tooltip: 'History', icon: const Icon(Icons.history), onPressed: _showHistory),
@@ -185,7 +198,10 @@ class _PlanPageState extends State<PlanPage> {
     );
     await services.insertGymSet(gymSet);
 
-    final max = peServices.getPlanExerciseById(selectedPlanExerciseId!)?.maxSets ?? exServices.getExerciseById(selectedExerciseId!)?.defaultSets ?? 3;
+    final max =
+        peServices.getPlanExerciseById(selectedPlanExerciseId!)?.maxSets ??
+        exServices.getExerciseById(selectedExerciseId!)?.defaultSets ??
+        3;
     final count = services.getTodaysSetsByExerciseId(selectedExerciseId!, widget.planId).length;
     if (count == max) {
       final keys = expanders.keys.toList();

@@ -4,6 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vibration/vibration.dart';
 
 class CountdownTimer extends StatefulWidget {
@@ -14,6 +15,7 @@ class CountdownTimer extends StatefulWidget {
 }
 
 class _CountdownTimerState extends State<CountdownTimer> {
+  static const String prefsKey = 'timer_duration';
   Timer? _timer;
 
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -21,34 +23,18 @@ class _CountdownTimerState extends State<CountdownTimer> {
   String? sound;
   bool? soundEnabled;
   bool? vibrate;
-  int? duration;
-  late ConfigRepository config;
+
   int _durationSeconds = 120;
   int _remainingSeconds = 120;
 
   bool _isRunning = false;
-  bool _configInitialized = false;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    if (!_configInitialized) {
-      final config = context.read<ConfigRepository>();
-
-      _durationSeconds = config.getInt(.timers, 'duration');
-      _remainingSeconds = _durationSeconds;
-
-      _configInitialized = true;
-    }
-  }
-
+  late SharedPreferences prefs;
   @override
   void initState() {
     super.initState();
 
-    _durationSeconds = config.getInt(.timers, 'duration');
-    _remainingSeconds = _durationSeconds;
+    _initializePrefs();
   }
 
   @override
@@ -56,6 +42,21 @@ class _CountdownTimerState extends State<CountdownTimer> {
     _timer?.cancel();
     _audioPlayer.dispose();
     super.dispose();
+  }
+
+  Future<void> _initializePrefs() async {
+    try {
+      prefs = await SharedPreferences.getInstance();
+
+      final savedDuration = prefs.getInt(prefsKey) ?? 120;
+
+      if (!mounted) return;
+
+      setState(() {
+        _durationSeconds = savedDuration;
+        _remainingSeconds = savedDuration;
+      });
+    } catch (_) {}
   }
 
   void _startTimer() {
@@ -138,7 +139,7 @@ class _CountdownTimerState extends State<CountdownTimer> {
 
     if (result == null || !mounted) return;
 
-    context.read<ConfigRepository>().setSetting(category: .timers, key: 'duration', value: result.toString());
+    prefs.setInt(prefsKey, result);
     setState(() {
       _durationSeconds = result;
       _remainingSeconds = result;
@@ -152,41 +153,61 @@ class _CountdownTimerState extends State<CountdownTimer> {
     vibrate = config.isEnabled(.timers, 'vibrate');
     soundEnabled = config.isEnabled(.timers, 'enable_sound');
     sound = config.getSetting(.timers, 'alarm_sound');
-    _durationSeconds = config.getInt(.timers, 'duration');
     return timer
         ? Container(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -3))],
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -3)),
+              ],
             ),
             child: SafeArea(
               top: false,
               child: Column(
                 children: [
-                  const Divider(),
-                  Row(
-                    mainAxisSize: .min,
-                    children: [
-                      IconButton.outlined(onPressed: _resetTimer, icon: const Icon(Icons.restart_alt_rounded)),
-                      const SizedBox(width: 50),
-                      GestureDetector(
-                        onTap: _selectDuration,
-                        child: Column(
-                          children: [
-                            Text(
-                              _formatTime(),
-                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, fontFeatures: [FontFeature.tabularFigures()]),
-                            ),
-                          ],
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Row(
+                      children: [
+                        IconButton.outlined(
+                          onPressed: _resetTimer,
+                          icon: const Icon(Icons.restart_alt_rounded),
+                          visualDensity: .compact.copyWith(horizontal: 4),
                         ),
-                      ),
-                      const SizedBox(width: 50),
-                      IconButton.filledTonal(
-                        onPressed: _isRunning ? _pauseTimer : _startTimer,
-                        icon: Icon(_isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded),
-                      ),
-                    ],
+
+                        Expanded(
+                          child: Center(
+                            child: InkWell(
+                              onTap: _isRunning
+                                  ? _pauseTimer
+                                  : _remainingSeconds < _durationSeconds
+                                  ? _startTimer
+                                  : _selectDuration,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                                child: Text(
+                                  _formatTime(),
+                                  style: const TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    fontFeatures: [FontFeature.tabularFigures()],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        IconButton.filledTonal(
+                          visualDensity: .compact.copyWith(horizontal: 4),
+                          onPressed: _isRunning ? _pauseTimer : _startTimer,
+                          icon: Icon(_isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -236,7 +257,10 @@ class _DurationPickerDialogState extends State<_DurationPickerDialog> {
 
               DropdownButton<int>(
                 value: _minutes,
-                items: List.generate(61, (index) => DropdownMenuItem(value: index, child: Text(index.toString().padLeft(2, '0')))),
+                items: List.generate(
+                  61,
+                  (index) => DropdownMenuItem(value: index, child: Text(index.toString().padLeft(2, '0'))),
+                ),
                 onChanged: (value) {
                   if (value == null) return;
 
@@ -263,7 +287,10 @@ class _DurationPickerDialogState extends State<_DurationPickerDialog> {
 
               DropdownButton<int>(
                 value: _seconds,
-                items: List.generate(60, (index) => DropdownMenuItem(value: index, child: Text(index.toString().padLeft(2, '0')))),
+                items: List.generate(
+                  60,
+                  (index) => DropdownMenuItem(value: index, child: Text(index.toString().padLeft(2, '0'))),
+                ),
                 onChanged: (value) {
                   if (value == null) return;
 

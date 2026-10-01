@@ -37,13 +37,15 @@ class _WorkoutPageState extends State<WorkoutPage> {
     var showStats = config.isEnabled(.workouts, 'show_stats');
     if (showStats) getStats(lastWorkoutSets);
     var grouped = config.isEnabled(.workouts, 'group_history');
+    var timer = config.isEnabled(.timers, 'enabled');
     return AppShell(
       title: 'Workout',
       body: Padding(
         padding: EdgeInsets.all(8),
         child: Column(
           children: [
-            if (lastWorkoutSets.isEmpty) const ListTile(title: Text('No entries yet'), subtitle: Text('Complete some sets to see them here')),
+            if (lastWorkoutSets.isEmpty)
+              const ListTile(title: Text('No entries yet'), subtitle: Text('Complete some sets to see them here')),
             if (lastWorkoutSets.isNotEmpty && showStats)
               Theme(
                 data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -81,6 +83,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
         label: const Text('Add'),
         icon: const Icon(Icons.add),
         scroll: scroll,
+        height: timer ? 60 : 0,
       ),
     );
   }
