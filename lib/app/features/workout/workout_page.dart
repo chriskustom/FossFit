@@ -4,6 +4,7 @@ import 'package:fossfit/app/features/workout/widgets/workout_list.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/widgets/animated_fab.dart';
+import 'package:fossfit/app/widgets/confirmation_dialog.dart';
 import 'package:fossfit/app/widgets/countdown_timer.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
@@ -25,6 +26,9 @@ class _WorkoutPageState extends State<WorkoutPage> {
   final Set<int> selectedSets = {};
 
   late ConfigRepository config;
+
+  final Set<GymSet> _selectedItems = {};
+  bool get selectionMode => _selectedItems.isNotEmpty;
   @override
   void initState() {
     super.initState();
@@ -39,7 +43,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
     var grouped = config.isEnabled(.workouts, 'group_history');
     var timer = config.isEnabled(.timers, 'enabled');
     return AppShell(
-      title: 'Workout',
+      title: selectionMode ? '${_selectedItems.length} selected' : 'Workout',
+      selectActions: _selectActions(),
       body: Padding(
         padding: EdgeInsets.all(8),
         child: Column(
@@ -69,7 +74,21 @@ class _WorkoutPageState extends State<WorkoutPage> {
                 ),
               ),
             Expanded(
-              child: grouped ? WorkoutGrouped(sets: lastWorkoutSets) : WorkoutList(sets: lastWorkoutSets),
+              child: grouped
+                  ? WorkoutGrouped(
+                      sets: lastWorkoutSets,
+                      selectedItems: _selectedItems,
+                      selectionMode: selectionMode,
+                      toggleSelection: (set) => _toggleSelection(set),
+                      scroll: scroll,
+                    )
+                  : WorkoutList(
+                      sets: lastWorkoutSets,
+                      selectedItems: _selectedItems,
+                      selectionMode: selectionMode,
+                      toggleSelection: (set) => _toggleSelection(set),
+                      scroll: scroll,
+                    ),
             ),
             Padding(padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8), child: CountdownTimer()),
           ],
@@ -96,5 +115,53 @@ class _WorkoutPageState extends State<WorkoutPage> {
         lastWorkout = lw;
       });
     } catch (_) {}
+  }
+
+  void _toggleSelection(GymSet set) {
+    setState(() {
+      _selectedItems.contains(set) ? _selectedItems.remove(set) : _selectedItems.add(set);
+    });
+  }
+
+  List<IconButton> _selectActions() {
+    final setServices = GymSetServices(context: context);
+    final sets = setServices.getAllGymSets();
+    List<IconButton> buttons = [];
+    if (_selectedItems.isNotEmpty) {
+      buttons.add(
+        IconButton(
+          onPressed: () {
+            setState(() {
+              if (_selectedItems.length == sets.length) {
+                _selectedItems.clear();
+              } else {
+                _selectedItems.addAll(sets);
+              }
+            });
+          },
+          icon: Icon(_selectedItems.length == sets.length ? Icons.deselect : Icons.select_all),
+        ),
+      );
+
+      buttons.addAll([
+        IconButton(
+          onPressed: () async {
+            final confirmed = await showConfirmationDialog(
+              context: context,
+              title: "Delete?",
+              content: "Are you sure?",
+              barrierDismissible: true,
+            );
+
+            if (!mounted || confirmed == null || !confirmed) return;
+            await setServices.deleteMultipleGymSetssByIds(_selectedItems.map((i) => i.id!).toList());
+            setState(() => _selectedItems.clear());
+          },
+          icon: const Icon(Icons.delete),
+        ),
+      ]);
+    }
+    setState(() {});
+    return buttons;
   }
 }

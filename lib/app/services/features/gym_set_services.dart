@@ -63,6 +63,10 @@ class GymSetServices {
     return await gymsetsRepo.updateGymSet(gymset);
   }
 
+  Future<void> decoupleSetsFromPlan(List<int> ids) async {
+    return await gymsetsRepo.decoupleSetsFromPlan(ids);
+  }
+
   Future<bool> deleteGymSetById(int id) async {
     if (id <= 0) return false;
     final result = await gymsetsRepo.deleteGymSetById(id);
@@ -86,10 +90,13 @@ class GymSetServices {
 
   GymSet? getLastGymSet() => getAllGymSets().firstOrNull;
 
-  List<GymSet> getTodaysSetsByExerciseId(int exerciseId, int? planId) => gymsetsRepo.getTodaysSetsByExerciseId(exerciseId, planId);
+  List<GymSet> getTodaysSetsByExerciseId(int exerciseId, int? planId) =>
+      gymsetsRepo.getTodaysSetsByExerciseId(exerciseId, planId);
 
   List<GymSet> getSetsByExerciseId(int exerciseId, {int limit = 100}) =>
       gymsetsRepo.gymsets.where((e) => e.exerciseId == exerciseId).take(limit).toList();
+  List<GymSet> getSetsByPlanId(int planId, {int limit = 100}) =>
+      gymsetsRepo.gymsets.where((e) => e.planId == planId).take(limit).toList();
 
   Widget getLastGymSetWorkout(List<GymSet> sets) {
     String plural(int s) => s > 1 ? 's' : '';
@@ -154,8 +161,9 @@ class GymSetServices {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 8),
           Text(lastWorkoutText, style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           const Divider(),
           Text(
             '$totalExercises exercise'

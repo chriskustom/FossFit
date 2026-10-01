@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:fossfit/app/features/workout/widgets/workout_list.dart';
+import 'package:fossfit/app/features/workout/widgets/workout_peek.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/services/image_services.dart';
@@ -10,6 +10,7 @@ import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/utils.dart';
 import 'package:fossfit/app/widgets/animated_fab.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
+import 'package:fossfit/app/widgets/confirmation_dialog.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
@@ -118,33 +119,25 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
 
   Future<void> showDeleteDialog() async {
     var services = GymSetServices(context: context);
-    await showDialog(
+
+    final proceed = await showConfirmationDialog(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Confirm Delete'),
-          content: Text('Are you sure you want to delete this set?'),
-          actions: [
-            TextButton.icon(
-              label: const Text('Cancel'),
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.pop(dialogContext),
-            ),
-            TextButton.icon(
-              label: const Text('Delete'),
-              icon: const Icon(Icons.delete),
-              onPressed: () async {
-                Navigator.pop(context);
-                await services.deleteGymSetById(widget.setId!);
-                if (mounted) {
-                  Navigator.pop(context);
-                }
-              },
-            ),
-          ],
-        );
-      },
+      title: 'Confirm delete',
+      content: 'Are you sure you want to delete this set?',
+      confirmStyle: TextButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+      cancelStyle: TextButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+      cancelLabel: 'No',
+      confirmLabel: 'Delete',
+      barrierDismissible: true,
     );
+
+    if (proceed == null || !proceed || !mounted) return;
+
+    Navigator.pop(context);
+    await services.deleteGymSetById(widget.setId!);
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   Widget buildBody() {
@@ -173,7 +166,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
                 dateSelector(),
                 if (showImages) ...[const SizedBox(height: 8.0), imageField()],
                 if (name != '') ...[
-                  SizedBox(height: 300, child: WorkoutList(sets: getHistory())),
+                  SizedBox(height: 300, child: WorkoutPeek(sets: getHistory())),
                   const SizedBox(height: 8.0),
                 ],
               ],

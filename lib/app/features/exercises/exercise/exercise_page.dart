@@ -1,11 +1,12 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/features/exercises/exercise/graph/flex_line.dart';
-import 'package:fossfit/app/features/workout/widgets/workout_list.dart';
+import 'package:fossfit/app/features/workout/widgets/workout_peek.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
+import 'package:fossfit/app/widgets/confirmation_dialog.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/models/features/strength_model.dart';
@@ -38,6 +39,8 @@ class _ExercisePageState extends State<ExercisePage> {
   String? _unit;
   Exercise? exercise;
 
+  bool isDeleting = false;
+
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<ConfigRepository>();
@@ -66,7 +69,7 @@ class _ExercisePageState extends State<ExercisePage> {
                     color: Theme.of(context).colorScheme.surface,
                     clipBehavior: Clip.antiAlias,
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                    child: WorkoutList(sets: gymSets),
+                    child: WorkoutPeek(sets: gymSets),
                   ),
                 );
               },
@@ -85,164 +88,178 @@ class _ExercisePageState extends State<ExercisePage> {
         ),
         buildDeleteButton(),
       ],
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Builder(
-          builder: (context) {
-            List<FlSpot> spots = [];
-            for (var index = 0; index < data.length; index++) {
-              if (useTimeBasedXAxis) {
-                spots.add(FlSpot(data[index].created.millisecondsSinceEpoch.toDouble(), data[index].value));
-              } else {
-                spots.add(FlSpot(index.toDouble(), data[index].value));
-              }
-            }
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Builder(
+              builder: (context) {
+                List<FlSpot> spots = [];
+                for (var index = 0; index < data.length; index++) {
+                  if (useTimeBasedXAxis) {
+                    spots.add(FlSpot(data[index].created.millisecondsSinceEpoch.toDouble(), data[index].value));
+                  } else {
+                    spots.add(FlSpot(index.toDouble(), data[index].value));
+                  }
+                }
 
-            return ListView(
-              children: [
-                DropdownButtonFormField(
-                  decoration: const InputDecoration(labelText: 'Metric'),
-                  initialValue: metric,
-                  items: [
-                    const DropdownMenuItem(value: StrengthMetric.bestWeight, child: Text("Best weight")),
-                    const DropdownMenuItem(value: StrengthMetric.bestReps, child: Text("Best reps")),
-                    const DropdownMenuItem(value: StrengthMetric.oneRepMax, child: Text("One rep max")),
-                    const DropdownMenuItem(value: StrengthMetric.volume, child: Text("Volume")),
-                    if (settings.isEnabled(.workouts, 'show_body_weight'))
-                      const DropdownMenuItem(value: StrengthMetric.relativeStrength, child: Text("Relative strength")),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      metric = value!;
-                    });
-                    setData();
-                  },
-                ),
-                DropdownButtonFormField(
-                  decoration: const InputDecoration(labelText: 'Period'),
-                  initialValue: period,
-                  items: const [
-                    DropdownMenuItem(value: Period.day, child: Text("Daily")),
-                    DropdownMenuItem(value: Period.week, child: Text("Weekly")),
-                    DropdownMenuItem(value: Period.month, child: Text("Monthly")),
-                    DropdownMenuItem(value: Period.year, child: Text("Yearly")),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      period = value!;
-                    });
-                    setData();
-                  },
-                ),
-                Visibility(
-                  visible: settings.isEnabled(.workouts, 'show_units'),
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Unit'),
-                    initialValue: _unit,
-                    items: const [
-                      DropdownMenuItem(value: 'kg', child: Text("Kilograms (kg)")),
-                      DropdownMenuItem(value: 'lb', child: Text("Pounds (lb)")),
-                      DropdownMenuItem(value: 'stone', child: Text("Stone")),
-                    ],
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        _unit = newValue!;
-                      });
-                      setData();
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: ListTile(
-                          title: const Text('Start date'),
-                          subtitle: start == null
-                              ? Text(settings.getSetting(.formats, 'short_date_format'))
-                              : Text(DateFormat(settings.getSetting(.formats, 'short_date_format')).format(start!)),
-                          onLongPress: () {
-                            setState(() {
-                              start = null;
-                            });
-                            setData();
-                          },
-                          trailing: const Icon(Icons.calendar_today),
-                          onTap: () => _selectStart(),
-                        ),
-                      ),
-                      Expanded(
-                        child: ListTile(
-                          title: const Text('Stop date'),
-                          subtitle: Selector<ConfigRepository, String>(
-                            selector: (p0, settings) => settings.getSetting(.formats, 'short_date_format'),
-                            builder: (context, value, child) {
-                              if (end == null) return Text(value);
-
-                              return Text(DateFormat(value).format(end!));
-                            },
-                          ),
-                          onLongPress: () {
-                            setState(() {
-                              end = null;
-                            });
-                            setData();
-                          },
-                          trailing: const Icon(Icons.calendar_today),
-                          onTap: () => _selectEnd(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SwitchListTile(
-                  title: const Text('Use time-based X axis'),
-                  value: useTimeBasedXAxis,
-                  onChanged: (val) => setState(() {
-                    useTimeBasedXAxis = val;
-                  }),
-                ),
-                Column(
+                return ListView(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: Text("Limit ($limit)", style: Theme.of(context).textTheme.bodyLarge),
-                    ),
-                    Slider(
-                      value: limit.toDouble(),
-                      inactiveColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
-                      min: 10,
-                      max: 100,
+                    DropdownButtonFormField(
+                      decoration: const InputDecoration(labelText: 'Metric'),
+                      initialValue: metric,
+                      items: [
+                        const DropdownMenuItem(value: StrengthMetric.bestWeight, child: Text("Best weight")),
+                        const DropdownMenuItem(value: StrengthMetric.bestReps, child: Text("Best reps")),
+                        const DropdownMenuItem(value: StrengthMetric.oneRepMax, child: Text("One rep max")),
+                        const DropdownMenuItem(value: StrengthMetric.volume, child: Text("Volume")),
+                        if (settings.isEnabled(.workouts, 'show_body_weight'))
+                          const DropdownMenuItem(
+                            value: StrengthMetric.relativeStrength,
+                            child: Text("Relative strength"),
+                          ),
+                      ],
                       onChanged: (value) {
                         setState(() {
-                          limit = value.toInt();
+                          metric = value!;
                         });
                         setData();
                       },
                     ),
-                  ],
-                ),
-                SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.35,
-                  child: data.isEmpty
-                      ? const ListTile(title: Text("No data yet."))
-                      : Padding(
-                          padding: const EdgeInsets.only(right: 32.0, top: 16.0),
-                          child: FlexLine(
-                            data: data,
-                            spots: spots,
-                            tooltipData: () => tooltipData(settings.getSetting(.formats, 'short_date_format')),
-                            touchLine: touchLine,
-                            timeBasedXAxis: useTimeBasedXAxis,
+                    DropdownButtonFormField(
+                      decoration: const InputDecoration(labelText: 'Period'),
+                      initialValue: period,
+                      items: const [
+                        DropdownMenuItem(value: Period.day, child: Text("Daily")),
+                        DropdownMenuItem(value: Period.week, child: Text("Weekly")),
+                        DropdownMenuItem(value: Period.month, child: Text("Monthly")),
+                        DropdownMenuItem(value: Period.year, child: Text("Yearly")),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          period = value!;
+                        });
+                        setData();
+                      },
+                    ),
+                    Visibility(
+                      visible: settings.isEnabled(.workouts, 'show_units'),
+                      child: DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(labelText: 'Unit'),
+                        initialValue: _unit,
+                        items: const [
+                          DropdownMenuItem(value: 'kg', child: Text("Kilograms (kg)")),
+                          DropdownMenuItem(value: 'lb', child: Text("Pounds (lb)")),
+                          DropdownMenuItem(value: 'stone', child: Text("Stone")),
+                        ],
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _unit = newValue!;
+                          });
+                          setData();
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ListTile(
+                              title: const Text('Start date'),
+                              subtitle: start == null
+                                  ? Text(settings.getSetting(.formats, 'short_date_format'))
+                                  : Text(DateFormat(settings.getSetting(.formats, 'short_date_format')).format(start!)),
+                              onLongPress: () {
+                                setState(() {
+                                  start = null;
+                                });
+                                setData();
+                              },
+                              trailing: const Icon(Icons.calendar_today),
+                              onTap: () => _selectStart(),
+                            ),
                           ),
+                          Expanded(
+                            child: ListTile(
+                              title: const Text('Stop date'),
+                              subtitle: Selector<ConfigRepository, String>(
+                                selector: (p0, settings) => settings.getSetting(.formats, 'short_date_format'),
+                                builder: (context, value, child) {
+                                  if (end == null) return Text(value);
+
+                                  return Text(DateFormat(value).format(end!));
+                                },
+                              ),
+                              onLongPress: () {
+                                setState(() {
+                                  end = null;
+                                });
+                                setData();
+                              },
+                              trailing: const Icon(Icons.calendar_today),
+                              onTap: () => _selectEnd(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SwitchListTile(
+                      title: const Text('Use time-based X axis'),
+                      value: useTimeBasedXAxis,
+                      onChanged: (val) => setState(() {
+                        useTimeBasedXAxis = val;
+                      }),
+                    ),
+                    Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: Text("Limit ($limit)", style: Theme.of(context).textTheme.bodyLarge),
                         ),
-                ),
-                const SizedBox(height: 116),
-              ],
-            );
-          },
-        ),
+                        Slider(
+                          value: limit.toDouble(),
+                          inactiveColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
+                          min: 10,
+                          max: 100,
+                          onChanged: (value) {
+                            setState(() {
+                              limit = value.toInt();
+                            });
+                            setData();
+                          },
+                        ),
+                      ],
+                    ),
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.35,
+                      child: data.isEmpty
+                          ? const ListTile(title: Text("No data yet."))
+                          : Padding(
+                              padding: const EdgeInsets.only(right: 32.0, top: 16.0),
+                              child: FlexLine(
+                                data: data,
+                                spots: spots,
+                                tooltipData: () => tooltipData(settings.getSetting(.formats, 'short_date_format')),
+                                touchLine: touchLine,
+                                timeBasedXAxis: useTimeBasedXAxis,
+                              ),
+                            ),
+                    ),
+                    const SizedBox(height: 116),
+                  ],
+                );
+              },
+            ),
+          ),
+          if (isDeleting)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.4),
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -255,40 +272,36 @@ class _ExercisePageState extends State<ExercisePage> {
     var services = ExerciseServices(context: context);
     var setServices = GymSetServices(context: context);
     var exerciseSets = setServices.getSetsByExerciseId(widget.exerciseId);
-
+    var name = services.getExerciseById(widget.exerciseId)!.name;
     var setsExist = exerciseSets.length > 1;
 
     var text = setsExist
-        ? 'This exercise has sets logged. Deleting this exercise will delete these sets. Do you wish to proceed?'
-        : 'Are you sure you want to delete this exercise?';
-    await showDialog(
+        ? '\'$name\' has sets logged. \nDeleting this exercise will delete these sets. \n\nDo you wish to proceed?'
+        : 'Are you sure you want to delete exercise: \'$name\'?';
+    final proceed = await showConfirmationDialog(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Confirm Delete'),
-          content: Text(text),
-          actions: [
-            TextButton.icon(
-              label: const Text('No'),
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.pop(dialogContext),
-            ),
-            TextButton.icon(
-              label: const Text('Yes'),
-              icon: const Icon(Icons.delete),
-              onPressed: () async {
-                Navigator.pop(context);
-                await setServices.deleteMultipleGymSetssByIds(exerciseSets.map((g) => g.id!).toSet().toList());
-                await services.deleteExerciseById(widget.exerciseId);
-                if (mounted) {
-                  Navigator.pop(context);
-                }
-              },
-            ),
-          ],
-        );
-      },
+      title: 'Confirm delete',
+      content: text,
+      confirmStyle: TextButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+      cancelStyle: TextButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+      cancelLabel: 'No',
+      confirmLabel: 'Delete',
+      barrierDismissible: true,
     );
+
+    if (proceed == null || !proceed || !mounted) return;
+
+    Navigator.pop(context);
+    setState(() {
+      isDeleting = true;
+    });
+    await services.deleteExercises([widget.exerciseId]);
+    setState(() {
+      isDeleting = false;
+    });
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   void setData() async {

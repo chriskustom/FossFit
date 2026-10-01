@@ -4,6 +4,7 @@ import 'package:fossfit/app/features/workout/widgets/workout_list.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/utils.dart';
+import 'package:fossfit/app/widgets/confirmation_dialog.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
@@ -50,6 +51,8 @@ class CalendarPageState extends State<CalendarPage> {
   DateTime? endDate;
   String? category;
 
+  final Set<GymSet> _selectedItems = {};
+  bool get selectionMode => _selectedItems.isNotEmpty;
   @override
   void initState() {
     super.initState();
@@ -67,9 +70,11 @@ class CalendarPageState extends State<CalendarPage> {
 
     final allGymSets = gymSets;
 
-    final thisMonthsGymSets = allGymSets.where((t) => t.created.month == monthToFilter && t.created.year == yearToFilter).toList();
+    final thisMonthsGymSets = allGymSets
+        .where((t) => t.created.month == monthToFilter && t.created.year == yearToFilter)
+        .toList();
 
-    return AppShell(title: 'Calendar', body: _getCalendar(thisMonthsGymSets));
+    return AppShell(title: 'Calendar', selectActions: _selectActions(), body: _getCalendar(thisMonthsGymSets));
   }
 
   Widget _getCalendar(List<GymSet> monthlyGymSets) {
@@ -110,7 +115,9 @@ class CalendarPageState extends State<CalendarPage> {
               return isSameDay(_selectedDay!, day);
             },
             rowHeight: 40,
-            daysOfWeekStyle: DaysOfWeekStyle(weekdayStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withAlpha(150))),
+            daysOfWeekStyle: DaysOfWeekStyle(
+              weekdayStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withAlpha(150)),
+            ),
             calendarFormat: CalendarFormat.month,
             rangeSelectionMode: RangeSelectionMode.disabled,
             calendarBuilders: CalendarBuilders(
@@ -120,12 +127,18 @@ class CalendarPageState extends State<CalendarPage> {
                   width: double.infinity,
                   height: 4,
                   margin: EdgeInsets.only(top: 2, left: 18, right: 18),
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 );
               },
             ),
             eventLoader: (day) {
-              final exercise = services.getExerciseSets(monthlyGymSets).where((e) => isSameDay(e.date, day)).firstOrNull;
+              final exercise = services
+                  .getExerciseSets(monthlyGymSets)
+                  .where((e) => isSameDay(e.date, day))
+                  .firstOrNull;
 
               return exercise == null ? <ExerciseSets>[] : [exercise];
             },
@@ -171,11 +184,73 @@ class CalendarPageState extends State<CalendarPage> {
                 }
               }
             },
-            child: groupHistory ? WorkoutGrouped(sets: selectedSets) : WorkoutList(sets: selectedSets),
+            child: groupHistory
+                ? WorkoutGrouped(
+                    sets: selectedSets,
+                    selectedItems: _selectedItems,
+                    selectionMode: selectionMode,
+                    toggleSelection: (set) => _toggleSelection(set),
+                    scroll: scroll,
+                  )
+                : WorkoutList(
+                    sets: selectedSets,
+                    selectedItems: _selectedItems,
+                    selectionMode: selectionMode,
+                    toggleSelection: (set) => _toggleSelection(set),
+                    scroll: scroll,
+                  ),
           ),
         ),
       ],
     );
+  }
+
+  void _toggleSelection(GymSet set) {
+    setState(() {
+      _selectedItems.contains(set) ? _selectedItems.remove(set) : _selectedItems.add(set);
+    });
+  }
+
+  List<IconButton> _selectActions() {
+    final setServices = GymSetServices(context: context);
+    final sets = setServices.getAllGymSets();
+    List<IconButton> buttons = [];
+    if (_selectedItems.isNotEmpty) {
+      buttons.add(
+        IconButton(
+          onPressed: () {
+            setState(() {
+              if (_selectedItems.length == sets.length) {
+                _selectedItems.clear();
+              } else {
+                _selectedItems.addAll(sets);
+              }
+            });
+          },
+          icon: Icon(_selectedItems.length == sets.length ? Icons.deselect : Icons.select_all),
+        ),
+      );
+
+      buttons.addAll([
+        IconButton(
+          onPressed: () async {
+            final confirmed = await showConfirmationDialog(
+              context: context,
+              title: "Delete?",
+              content: "Are you sure?",
+              barrierDismissible: true,
+            );
+
+            if (!mounted || confirmed == null || !confirmed) return;
+            await setServices.deleteMultipleGymSetssByIds(_selectedItems.map((i) => i.id!).toList());
+            setState(() => _selectedItems.clear());
+          },
+          icon: const Icon(Icons.delete),
+        ),
+      ]);
+    }
+    setState(() {});
+    return buttons;
   }
 }
 
@@ -212,7 +287,11 @@ class _CalendarHeader extends StatelessWidget {
             onPressed: onTodayButtonTap,
           ),
           if (clearButtonVisible)
-            IconButton(icon: const Icon(Icons.clear, size: 20.0), visualDensity: VisualDensity.compact, onPressed: onClearButtonTap),
+            IconButton(
+              icon: const Icon(Icons.clear, size: 20.0),
+              visualDensity: VisualDensity.compact,
+              onPressed: onClearButtonTap,
+            ),
           const Spacer(),
           IconButton(icon: const Icon(Icons.chevron_left), onPressed: onLeftArrowTap),
           IconButton(icon: const Icon(Icons.chevron_right), onPressed: onRightArrowTap),

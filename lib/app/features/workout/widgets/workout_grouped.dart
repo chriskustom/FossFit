@@ -1,7 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/utils/utils.dart';
-import 'package:fossfit/app/widgets/exercise_icon.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
@@ -12,15 +13,26 @@ import 'package:timeago/timeago.dart' as timeago;
 
 class WorkoutGrouped extends StatelessWidget {
   final List<GymSet> sets;
-  WorkoutGrouped({super.key, required this.sets});
+  final bool selectionMode;
+  final Set<GymSet> selectedItems;
+  final Function(GymSet set) toggleSelection;
+  final ScrollController scroll;
+  const WorkoutGrouped({
+    super.key,
+    required this.sets,
+    required this.selectionMode,
+    required this.toggleSelection,
+    required this.selectedItems,
+    required this.scroll,
+  });
 
-  final scroll = ScrollController();
   @override
   Widget build(BuildContext context) {
     var config = context.read<ConfigRepository>();
     final showImages = config.isEnabled(.workouts, 'show_images');
     final services = GymSetServices(context: context);
-    final sortedDays = List<ExerciseSets>.from(services.getExerciseSets(sets, reversed: true))..sort((a, b) => b.date.compareTo(a.date));
+    final sortedDays = List<ExerciseSets>.from(services.getExerciseSets(sets, reversed: true))
+      ..sort((a, b) => b.date.compareTo(a.date));
     var grouped = services.groupExerciseSetsByDay(sortedDays);
 
     return ListView.builder(
@@ -73,7 +85,10 @@ class WorkoutGrouped extends StatelessWidget {
             const SizedBox(width: 4),
             const Icon(Icons.today, size: 16),
             const SizedBox(width: 4),
-            Text(DateFormat(config.getSetting(.formats, 'short_date_format')).format(date), style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              DateFormat(config.getSetting(.formats, 'short_date_format')).format(date),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(width: 4),
             const Expanded(child: Divider(thickness: 1)),
           ],
@@ -91,19 +106,25 @@ class WorkoutGrouped extends StatelessWidget {
         final reps = gymSet.reps;
         final weight = gymSet.weight;
 
-        Widget? leading = ExerciseIcon(exercise: history.exercise, showImages: showImages);
-
         final dateFormat = config.getSetting(.formats, 'short_date_format');
-        final trailing = Text(dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created));
+        final trailing = Text(
+          dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
+        );
         return ListTile(
           dense: true,
           visualDensity: VisualDensity.comfortable,
-          leading: leading,
+          leading: _leading(context, gymSet, history.exercise, showImages),
           title: Text("${_getSetNumber(gymSet, history.sets)}: $reps REPS @ $weight ${gymSet.unit}"),
           trailing: trailing,
+          selected: selectedItems.contains(gymSet),
+          onLongPress: () => toggleSelection(gymSet),
           onTap: () async {
-            var services = GymSetServices(context: context);
-            await services.openAddEditPage(context, gymSet.id);
+            if (selectionMode) {
+              toggleSelection(gymSet);
+            } else {
+              var services = GymSetServices(context: context);
+              await services.openAddEditPage(context, gymSet.id);
+            }
           },
         );
       }).toList(),
@@ -124,5 +145,68 @@ class WorkoutGrouped extends StatelessWidget {
         .toList();
     final positionOnThisDay = sameDayEntries.indexOf(gymSet) + 1;
     return 'Set $positionOnThisDay';
+  }
+
+  Widget _leading(BuildContext context, GymSet set, Exercise exercise, bool showImages) {
+    Widget? leading = SizedBox(
+      height: 24,
+      width: 24,
+      child: Checkbox(value: selectedItems.contains(set), onChanged: (_) => toggleSelection(set)),
+    );
+
+    if (!selectionMode && showImages && exercise.hasImage()) {
+      leading = GestureDetector(
+        onTap: () => toggleSelection(set),
+        child: Container(
+          width: 24,
+          height: 24,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            image: DecorationImage(
+              image: MemoryImage(exercise.image ?? Uint8List(0)),
+              fit: BoxFit.cover,
+              colorFilter: ColorFilter.mode(Color.fromARGB(100, 0, 0, 0), BlendMode.darken),
+            ),
+          ),
+        ),
+      );
+    } else if (!selectionMode) {
+      leading = GestureDetector(
+        onTap: () => toggleSelection(set),
+        child: Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.inversePrimary,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: 2),
+              child: Text(
+                exercise.name.isNotEmpty ? exercise.name[0] : '?',
+                textAlign: TextAlign.justify,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    leading = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 150),
+      transitionBuilder: (child, animation) {
+        return ScaleTransition(scale: animation, child: child);
+      },
+      child: leading,
+    );
+    return leading;
   }
 }

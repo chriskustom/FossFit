@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/features/plans/plan/widgets/plan_exercise_tile.dart';
-import 'package:fossfit/app/features/workout/widgets/workout_list.dart';
+import 'package:fossfit/app/features/workout/widgets/workout_peek.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/services/features/plan_exercise_services.dart';
 import 'package:fossfit/app/services/features/plan_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/widgets/animated_fab.dart';
+import 'package:fossfit/app/widgets/confirmation_dialog.dart';
 import 'package:fossfit/app/widgets/countdown_timer.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/models/features/plan_exercise_model.dart';
@@ -37,6 +38,7 @@ class _PlanPageState extends State<PlanPage> {
   int expandedIndex = 0;
   int? selectedPlanExerciseId;
   int? selectedExerciseId;
+  String? planName;
   @override
   void initState() {
     super.initState();
@@ -49,6 +51,7 @@ class _PlanPageState extends State<PlanPage> {
     var planExRepo = context.watch<PlanExercisesRepository>();
     var exRepo = context.watch<ExercisesRepository>();
     var plan = planRepo.getPlanById(widget.planId);
+    planName = plan?.name;
     var timer = config.isEnabled(.timers, 'enabled');
 
     final planExercises = displayPlanExercises ?? planExRepo.getPlanExercisesByPlanId(widget.planId);
@@ -56,7 +59,7 @@ class _PlanPageState extends State<PlanPage> {
     selectedExerciseId = selectedExerciseId ?? planExercises.firstOrNull?.exerciseId;
     return AppShell(
       showNavBar: false,
-      title: plan!.name,
+      title: planName ?? 'Add Plan',
       showSearch: false,
       body: Column(
         children: [
@@ -142,6 +145,7 @@ class _PlanPageState extends State<PlanPage> {
           },
           icon: Icon(Icons.edit),
         ),
+        buildDeleteButton(),
       ],
     );
   }
@@ -164,11 +168,46 @@ class _PlanPageState extends State<PlanPage> {
             color: Theme.of(context).colorScheme.surface,
             clipBehavior: Clip.antiAlias,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: WorkoutList(sets: sets.take(20).toList()),
+            child: WorkoutPeek(sets: sets.take(20).toList()),
           ),
         );
       },
     );
+  }
+
+  Widget buildDeleteButton() {
+    return IconButton(icon: const Icon(Icons.delete), onPressed: () => showDeleteDialog());
+  }
+
+  Future<void> showDeleteDialog() async {
+    var services = PlanServices(context: context);
+    var setServices = GymSetServices(context: context);
+    var exerciseSets = setServices.getSetsByPlanId(widget.planId);
+
+    var setsExist = exerciseSets.isNotEmpty;
+
+    var text = setsExist
+        ? '\'$planName\' has ${exerciseSets.length} set(s) logged. \nDeleting this plan will unlink these sets. \n\nDo you wish to proceed?'
+        : 'Are you sure you want to delete plan \'$planName\'?';
+    final proceed = await showConfirmationDialog(
+      context: context,
+      title: setsExist ? 'Warning' : 'Confirm delete',
+      content: text,
+      confirmStyle: TextButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+      cancelStyle: TextButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+      cancelLabel: 'No, go back',
+      confirmLabel: 'Yes, remove plan',
+      barrierDismissible: true,
+    );
+
+    if (proceed == null || !proceed || !mounted) return;
+
+    Navigator.pop(context);
+    await setServices.decoupleSetsFromPlan(exerciseSets.map((g) => g.id!).toSet().toList());
+    await services.deletePlanById(widget.planId);
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   Future<bool> save({bool nextExercise = false}) async {

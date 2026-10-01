@@ -81,6 +81,17 @@ class GymSetRepository extends ChangeNotifier {
     return gymSet;
   }
 
+  Future<void> decoupleSetsFromPlan(List<int> ids) async {
+    final placeholders = List.filled(ids.length, '?').join(', ');
+
+    await _db.execute('''
+        UPDATE sets
+        SET plan_id = NULL
+        WHERE id IN ($placeholders);
+      ''', ids);
+    return;
+  }
+
   Future<bool> updateGymSet(GymSet? gymSet) async {
     if (gymSet == null || gymSet.id == null) {
       return false;
@@ -212,7 +223,7 @@ class GymSetRepository extends ChangeNotifier {
     if (unit == 'kg') {
       await _db.execute(
         '''
-    UPDATE gym_sets
+    UPDATE sets
     SET
       weight = CASE
         WHEN unit = 'lb' THEN weight * 0.45359237
@@ -228,7 +239,7 @@ class GymSetRepository extends ChangeNotifier {
     } else if (unit == 'lb') {
       await _db.execute(
         '''
-    UPDATE gym_sets
+    UPDATE sets
     SET
       weight = CASE
         WHEN unit = 'kg' THEN weight * 2.20462262
@@ -244,7 +255,7 @@ class GymSetRepository extends ChangeNotifier {
     } else if (unit == 'st') {
       await _db.execute(
         '''
-    UPDATE gym_sets
+    UPDATE sets
     SET
       weight = CASE
         WHEN unit = 'kg' THEN weight * 0.157473044
@@ -270,7 +281,10 @@ class GymSetRepository extends ChangeNotifier {
       _latestgymsets = [];
       return;
     }
-    final mostRecentDay = _gymsets.map((s) => dayOnly(s.created)).where((d) => !d.isAfter(today)).reduce((a, b) => a.isAfter(b) ? a : b);
+    final mostRecentDay = _gymsets
+        .map((s) => dayOnly(s.created))
+        .where((d) => !d.isAfter(today))
+        .reduce((a, b) => a.isAfter(b) ? a : b);
 
     _latestgymsets = _gymsets.where((s) => dayOnly(s.created) == mostRecentDay).toList();
   }
@@ -518,7 +532,13 @@ class GymSetRepository extends ChangeNotifier {
     ''');
 
     return results
-        .map((result) => (name: result['name'] as String, rpm: (result['rpm'] as num).toDouble(), weight: (result['weight'] as num).toDouble()))
+        .map(
+          (result) => (
+            name: result['name'] as String,
+            rpm: (result['rpm'] as num).toDouble(),
+            weight: (result['weight'] as num).toDouble(),
+          ),
+        )
         .toList();
   }
 }

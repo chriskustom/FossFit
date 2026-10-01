@@ -48,4 +48,10 @@ class PlanExerciseServices {
       },
     );
   }
+
+  List<PlanExercise> getPlanExercisesByExerciseId(int exerciseId) =>
+      planExerciseRepo.getPlanExercisesByExerciseId(exerciseId);
+
+  Future<void> deleteMultiplePlanExercisesByIds(List<int> ids) async =>
+      await planExerciseRepo.deletePlanExercisesByIds(ids);
 }

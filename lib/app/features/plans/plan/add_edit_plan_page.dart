@@ -28,6 +28,7 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
   final node = FocusNode();
   final searchCtrl = TextEditingController();
   final titleCtrl = TextEditingController();
+  ScrollController scroll = ScrollController();
   List<bool>? _days;
   bool isEditMode = false;
   String search = '';
@@ -61,7 +62,9 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
     _planExercises =
         _planExercises ??
         exerciseRepo.exercises
-            .where((e) => planExerciseRepo.getPlanExercisesByPlanId(plan?.id ?? 0).map((pe) => pe.exerciseId).contains(e.id))
+            .where(
+              (e) => planExerciseRepo.getPlanExercisesByPlanId(plan?.id ?? 0).map((pe) => pe.exerciseId).contains(e.id),
+            )
             .toList();
     final tiles = _buildTiles(exerciseRepo.exercises, _planExercises!);
     titleCtrl.text = isEditMode ? plan!.name : 'Add plan';
@@ -72,6 +75,7 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: ListView(
+          controller: scroll,
           children: [
             TextField(
               decoration: const InputDecoration(labelText: 'Title (optional)'),
@@ -107,6 +111,7 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
         },
         label: const Text('Save'),
         icon: const Icon(Icons.save),
+        scroll: scroll,
       ),
     );
   }
@@ -163,6 +168,16 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
               },
             ),
           ),
+          onTap: () {
+            if (!planExercises.contains(exercise)) {
+              planExercises.add(exercise);
+            } else {
+              if (planExercises.contains(exercise)) planExercises.removeAt(planExercises.indexOf(exercise));
+            }
+
+            _planExercises = planExercises;
+            setState(() {});
+          },
         ),
       );
     }

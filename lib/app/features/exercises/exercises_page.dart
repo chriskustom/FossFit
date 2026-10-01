@@ -1,10 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/widgets/animated_fab.dart';
-import 'package:fossfit/app/widgets/exercise_icon.dart';
+import 'package:fossfit/app/widgets/confirmation_dialog.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
@@ -27,6 +29,11 @@ class _ExercisesPageState extends State<ExercisesPage> {
 
   String search = '';
   final searchCtrl = TextEditingController();
+
+  final Set<Exercise> _selectedItems = {};
+  bool get selectionMode => _selectedItems.isNotEmpty;
+
+  bool isDeleting = false;
   @override
   void initState() {
     super.initState();
@@ -45,72 +52,89 @@ class _ExercisesPageState extends State<ExercisesPage> {
 
       return true;
     }).toList();
-    var showImages = config.isEnabled(.workouts, 'show_images');
     final dateFormat = config.getSetting(.formats, 'long_date_format');
     return AppShell(
       showSearch: false,
-      title: 'Exercises',
-      body: Padding(
-        padding: EdgeInsets.all(8),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: SearchBar(
-                leading: const Padding(padding: EdgeInsets.all(8.0), child: Icon(Icons.search)),
-                textCapitalization: TextCapitalization.sentences,
-                hintText: 'Search exercises...',
-                controller: searchCtrl,
-                onChanged: (value) {
-                  setState(() {
-                    search = value;
-                  });
-                },
+      selectActions: _selectActions(),
+      title: selectionMode ? '${_selectedItems.length} selected' : 'Exercises',
+      body: Stack(
+        children: [
+          Padding(
+            padding: EdgeInsets.all(8),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: SearchBar(
+                    leading: const Padding(padding: EdgeInsets.all(8.0), child: Icon(Icons.search)),
+                    textCapitalization: TextCapitalization.sentences,
+                    hintText: 'Search exercises...',
+                    controller: searchCtrl,
+                    onChanged: (value) {
+                      setState(() {
+                        search = value;
+                      });
+                    },
+                  ),
+                ),
+
+                if (matching.isEmpty)
+                  _buildNothingFound()
+                else
+                  Expanded(
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      itemCount: matching.length,
+                      itemBuilder: (context, index) {
+                        var exercise = matching[index];
+                        var lastSet = gymSetRepo.gymsets.where((g) => g.exerciseId == exercise.id).toList();
+                        lastSet.sorted((a, b) => b.created.compareTo(a.created));
+                        var subtitle = lastSet.isEmpty
+                            ? Text('Never completed')
+                            : Text(
+                                'Last completed - ${dateFormat == 'timeago' ? timeago.format(lastSet.first.created) : DateFormat(dateFormat).format(lastSet.first.created)}',
+                              );
+                        return ListTile(
+                          key: Key('${exercise.id}-${exercise.name}'),
+                          leading: _leading(exercise),
+                          title: Text(exercise.name),
+                          subtitle: subtitle,
+                          selected: _selectedItems.contains(exercise),
+                          onLongPress: () => _toggleSelection(exercise),
+                          onTap: () async {
+                            if (selectionMode) {
+                              _toggleSelection(exercise);
+                            } else {
+                              var exServices = ExerciseServices(context: context);
+                              var data = await gymSetRepo.getStrengthData(
+                                target: lastSet.firstOrNull?.unit ?? exercise.defaultUnit ?? 'kg',
+                                exerciseId: exercise.id!,
+                                metric: StrengthMetric.bestWeight,
+                                period: Period.day,
+                                start: null,
+                                end: null,
+                                limit: 20,
+                              );
+                              if (!context.mounted) return;
+
+                              await exServices.openExercisePage(context, exercise.id!, data);
+                            }
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (isDeleting)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.4),
+                child: const Center(child: CircularProgressIndicator()),
               ),
             ),
-
-            if (matching.isEmpty)
-              _buildNothingFound()
-            else
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  itemCount: matching.length,
-                  itemBuilder: (context, index) {
-                    var exercise = matching[index];
-                    var lastSet = gymSetRepo.gymsets.where((g) => g.exerciseId == exercise.id).toList();
-                    lastSet.sorted((a, b) => b.created.compareTo(a.created));
-                    var subtitle = lastSet.isEmpty
-                        ? Text('Never completed')
-                        : Text(
-                            'Last completed - ${dateFormat == 'timeago' ? timeago.format(lastSet.first.created) : DateFormat(dateFormat).format(lastSet.first.created)}',
-                          );
-                    return ListTile(
-                      key: Key('${exercise.id}-${exercise.name}'),
-                      leading: ExerciseIcon(exercise: exercise, showImages: showImages),
-                      title: Text(exercise.name),
-                      subtitle: subtitle,
-                      onTap: () async {
-                        var exServices = ExerciseServices(context: context);
-                        var data = await gymSetRepo.getStrengthData(
-                          target: lastSet.firstOrNull?.unit ?? exercise.defaultUnit ?? 'kg',
-                          exerciseId: exercise.id!,
-                          metric: StrengthMetric.bestWeight,
-                          period: Period.day,
-                          start: null,
-                          end: null,
-                          limit: 20,
-                        );
-                        if (!context.mounted) return;
-
-                        await exServices.openExercisePage(context, exercise.id!, data);
-                      },
-                    );
-                  },
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
       floatingActionButton: AnimatedFab(
         onPressed: () async {
@@ -137,5 +161,130 @@ class _ExercisesPageState extends State<ExercisesPage> {
         await services.openAddEditExercisePage(context, null, search);
       },
     );
+  }
+
+  Widget _leading(Exercise exercise) {
+    var showImages = config.isEnabled(.workouts, 'show_image');
+    Widget? leading = SizedBox(
+      height: 24,
+      width: 24,
+      child: Checkbox(value: _selectedItems.contains(exercise), onChanged: (_) => _toggleSelection(exercise)),
+    );
+
+    if (!selectionMode && showImages && exercise.hasImage()) {
+      leading = GestureDetector(
+        onTap: () => _toggleSelection(exercise),
+        child: Container(
+          width: 24,
+          height: 24,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            image: DecorationImage(
+              image: MemoryImage(exercise.image ?? Uint8List(0)),
+              fit: BoxFit.cover,
+              colorFilter: ColorFilter.mode(Color.fromARGB(100, 0, 0, 0), BlendMode.darken),
+            ),
+          ),
+        ),
+      );
+    } else if (!selectionMode) {
+      leading = GestureDetector(
+        onTap: () => _toggleSelection(exercise),
+        child: Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.inversePrimary,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: 2),
+              child: Text(
+                exercise.name.isNotEmpty ? exercise.name[0].toUpperCase() : '?',
+                textAlign: TextAlign.justify,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    leading = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 150),
+      transitionBuilder: (child, animation) {
+        return ScaleTransition(scale: animation, child: child);
+      },
+      child: leading,
+    );
+    return leading;
+  }
+
+  void _toggleSelection(Exercise plan) {
+    setState(() {
+      _selectedItems.contains(plan) ? _selectedItems.remove(plan) : _selectedItems.add(plan);
+    });
+  }
+
+  List<IconButton> _selectActions() {
+    final planServices = ExerciseServices(context: context);
+    final plans = planServices.getAllExercises();
+    List<IconButton> buttons = [];
+    if (_selectedItems.isNotEmpty) {
+      buttons.add(
+        IconButton(
+          onPressed: () {
+            setState(() {
+              if (_selectedItems.length == plans.length) {
+                _selectedItems.clear();
+              } else {
+                _selectedItems.addAll(plans);
+              }
+            });
+          },
+          icon: Icon(_selectedItems.length == plans.length ? Icons.deselect : Icons.select_all),
+        ),
+      );
+
+      buttons.addAll([
+        IconButton(
+          onPressed: () async {
+            final confirmed = await showConfirmationDialog(
+              context: context,
+              title: "Delete?",
+              content:
+                  'Deleting multiple exercises will delete every set for those exercises, \nand remove the exercise from any plans they are included in.'
+                  '\nThis is destructive and non-reversible.'
+                  '\nPlease back-up your database first.'
+                  '\n\nAre you sure you wish to continue?',
+              barrierDismissible: true,
+              confirmStyle: TextButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+              cancelStyle: TextButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+              cancelLabel: 'No, Cancel',
+              confirmLabel: 'Yes, Delete.',
+            );
+
+            if (!mounted || confirmed == null || !confirmed) return;
+            setState(() {
+              isDeleting = true;
+            });
+            await planServices.deleteExercises(_selectedItems.map((i) => i.id!).toList());
+            setState(() {
+              isDeleting = false;
+              _selectedItems.clear();
+            });
+          },
+          icon: const Icon(Icons.delete),
+        ),
+      ]);
+    }
+    return buttons;
   }
 }

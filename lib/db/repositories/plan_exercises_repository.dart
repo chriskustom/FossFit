@@ -38,6 +38,16 @@ class PlanExercisesRepository extends ChangeNotifier {
     return result;
   }
 
+  List<PlanExercise> getPlanExercisesByExerciseId(int exerciseId) {
+    final result = _planexercises.where((n) => n.exerciseId == exerciseId).toList();
+
+    result.sort((a, b) {
+      return a.sequence.compareTo(b.sequence);
+    });
+
+    return result;
+  }
+
   bool exists(int eId, int pId) => getPlanExerciseByExerciseAndPlan(eId, pId) != null;
 
   Future<PlanExercise> insertPlanExercise(PlanExercise planExercise) async {
@@ -45,7 +55,9 @@ class PlanExercisesRepository extends ChangeNotifier {
 
     planExercise.id = id;
 
-    final index = _planexercises.indexWhere((e) => e.planId == planExercise.planId && e.exerciseId == planExercise.exerciseId);
+    final index = _planexercises.indexWhere(
+      (e) => e.planId == planExercise.planId && e.exerciseId == planExercise.exerciseId,
+    );
 
     if (index >= 0) {
       _planexercises[index] = planExercise;
@@ -59,7 +71,8 @@ class PlanExercisesRepository extends ChangeNotifier {
   }
 
   Future<bool> reorderPlanExercises(int planId, int oldIndex, int newIndex) async {
-    final planExercises = _planexercises.where((e) => e.planId == planId).toList()..sort((a, b) => a.sequence.compareTo(b.sequence));
+    final planExercises = _planexercises.where((e) => e.planId == planId).toList()
+      ..sort((a, b) => a.sequence.compareTo(b.sequence));
 
     if (oldIndex < 0 || oldIndex >= planExercises.length || newIndex < 0 || newIndex >= planExercises.length) {
       return false;
@@ -68,7 +81,9 @@ class PlanExercisesRepository extends ChangeNotifier {
     final moved = planExercises.removeAt(oldIndex);
     planExercises.insert(newIndex, moved);
 
-    final updatedPlanExercises = [for (int i = 0; i < planExercises.length; i++) planExercises[i].copyWith(sequence: i)];
+    final updatedPlanExercises = [
+      for (int i = 0; i < planExercises.length; i++) planExercises[i].copyWith(sequence: i),
+    ];
 
     // Update the in-memory global list.
     final updatedById = {for (final exercise in updatedPlanExercises) exercise.id!: exercise};
@@ -89,7 +104,12 @@ class PlanExercisesRepository extends ChangeNotifier {
   }
 
   Future<bool> _persistPlanExercise(PlanExercise planExercise) async {
-    final count = await _db.update(TableName.planexercises.name, planExercise.toMap(), where: 'id = ?', whereArgs: [planExercise.id]);
+    final count = await _db.update(
+      TableName.planexercises.name,
+      planExercise.toMap(),
+      where: 'id = ?',
+      whereArgs: [planExercise.id],
+    );
 
     return count > 0;
   }
@@ -103,7 +123,9 @@ class PlanExercisesRepository extends ChangeNotifier {
       return false;
     }
 
-    final index = _planexercises.indexWhere((e) => e.planId == planExercise.planId && e.exerciseId == planExercise.exerciseId);
+    final index = _planexercises.indexWhere(
+      (e) => e.planId == planExercise.planId && e.exerciseId == planExercise.exerciseId,
+    );
 
     if (index >= 0) {
       _planexercises[index] = planExercise;
@@ -117,7 +139,11 @@ class PlanExercisesRepository extends ChangeNotifier {
   }
 
   Future<bool> deletePlanExerciseByIdAndPlanId(int exerciseId, int planId) async {
-    final deleted = await _db.delete(TableName.planexercises.name, where: 'exercise_id = ? AND plan_id = ?', whereArgs: [exerciseId, planId]);
+    final deleted = await _db.delete(
+      TableName.planexercises.name,
+      where: 'exercise_id = ? AND plan_id = ?',
+      whereArgs: [exerciseId, planId],
+    );
 
     if (deleted <= 0) {
       return false;
@@ -149,7 +175,11 @@ class PlanExercisesRepository extends ChangeNotifier {
       return false;
     }
 
-    final deleted = await _db.delete(TableName.planexercises.name, where: 'plan_id IN (${List.filled(ids.length, '?').join(',')})', whereArgs: ids);
+    final deleted = await _db.delete(
+      TableName.planexercises.name,
+      where: 'plan_id IN (${List.filled(ids.length, '?').join(',')})',
+      whereArgs: ids,
+    );
 
     if (deleted <= 0) {
       return false;
@@ -158,6 +188,36 @@ class PlanExercisesRepository extends ChangeNotifier {
     _planexercises.removeWhere((e) => ids.contains(e.planId));
 
     //notifyListeners();
+
+    return true;
+  }
+
+  Future<void> deletePlanExercisesByIds(List<int> ids) async {
+    for (var id in ids) {
+      await deletePlanExerciseById(id);
+    }
+  }
+
+  Future<bool> deletePlanExerciseById(int id) async {
+    final exercises = getPlanExerciseById(id);
+
+    if (exercises == null) {
+      return false;
+    }
+
+    final count = await _db.delete(TableName.planexercises.name, where: 'id = ?', whereArgs: [exercises.id]);
+
+    if (count <= 0) {
+      return false;
+    }
+
+    final index = _planexercises.indexWhere((e) => e.id == exercises.id);
+
+    if (index >= 0) {
+      _planexercises.remove(exercises);
+    }
+
+    notifyListeners();
 
     return true;
   }

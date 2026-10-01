@@ -23,7 +23,10 @@ class PlanServices {
   }
   List<Plan> getAllPlans() => planRepo.plans;
   Plan? getPlanById(int id) => planRepo.getPlanById(id);
-
+  List<Plan> getEmptyPlans() => planRepo.plans
+      .where((p) => !planExerciseRepo.planexercises.map((pe) => pe.planId).toSet().contains(p.id))
+      .toSet()
+      .toList();
   Future<Plan?> openPlanPage(BuildContext context, int planId) async {
     return await showGeneralDialog<Plan?>(
       context: context,
@@ -94,14 +97,13 @@ class PlanServices {
     if (id <= 0) return false;
     final result = await planRepo.deletePlanById(id);
     AppSnackBar.success('Deleted');
+    planRepo.loadAll();
     return result;
   }
 
   Future<bool> deleteMultiplePlanByIds(List<int> ids) async {
     if (ids.isEmpty) return false;
-    for (final id in ids) {
-      await planRepo.deletePlanById(id);
-    }
+    await planRepo.deletePlansByIds(ids);
     planRepo.loadAll();
     AppSnackBar.success('Deleted');
     return true;
