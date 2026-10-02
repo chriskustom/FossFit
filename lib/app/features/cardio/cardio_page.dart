@@ -639,6 +639,33 @@ class _CardioPageState extends State<CardioPage> {
     );
   }
 
+  Widget _buildDeleteButton() {
+    return IconButton(icon: const Icon(Icons.delete), onPressed: () => _showDeleteDialog());
+  }
+
+  Future<void> _showDeleteDialog() async {
+    var services = CardioServices(context: context);
+
+    final proceed = await showConfirmationDialog(
+      context: context,
+      title: 'Confirm delete',
+      content: 'Are you sure you want to delete this session?',
+      confirmStyle: TextButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+      cancelStyle: TextButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+      cancelLabel: 'No',
+      confirmLabel: 'Delete',
+      barrierDismissible: true,
+    );
+
+    if (proceed == null || !proceed || !mounted) return;
+
+    //Navigator.pop(context);
+    await services.deleteCardioById(widget.cardioId ?? _cardioSet!.id!);
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
   Future<void> save() async {
     final exercise = currentExercise;
 
@@ -741,8 +768,9 @@ class _CardioPageState extends State<CardioPage> {
     });
   }
 
-  List<IconButton> _clearActions() {
+  List<Widget> _clearActions() {
     return [
+      _buildDeleteButton(),
       IconButton(
         onPressed: () {
           setState(() {
