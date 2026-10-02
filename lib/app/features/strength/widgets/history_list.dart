@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
-import 'package:fossfit/app/utils/utils.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
@@ -11,111 +11,93 @@ import 'package:provider/provider.dart';
 import 'package:sticky_headers/sticky_headers/widget.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-class WorkoutGrouped extends StatelessWidget {
+class HistoryList extends StatelessWidget {
   final List<GymSet> sets;
   final bool selectionMode;
   final Set<GymSet> selectedItems;
   final Function(GymSet set) toggleSelection;
   final ScrollController scroll;
-  const WorkoutGrouped({
+  const HistoryList({
     super.key,
     required this.sets,
     required this.selectionMode,
-    required this.toggleSelection,
     required this.selectedItems,
+    required this.toggleSelection,
     required this.scroll,
   });
 
   @override
   Widget build(BuildContext context) {
-    var config = context.read<ConfigRepository>();
+    var config = context.watch<ConfigRepository>();
     final showImages = config.isEnabled(.workouts, 'show_images');
     final services = GymSetServices(context: context);
-    final sortedDays = List<ExerciseSets>.from(services.getExerciseSets(sets, reversed: true))
-      ..sort((a, b) => b.date.compareTo(a.date));
-    var grouped = services.groupExerciseSetsByDay(sortedDays);
+    var grouped = services.groupSetsByDay(sets);
 
     return ListView.builder(
+      shrinkWrap: true,
       controller: scroll,
       padding: const EdgeInsets.only(bottom: 96),
       itemCount: grouped.entries.length,
       itemBuilder: (context, sectionIndex) {
         final entry = grouped.entries.elementAt(sectionIndex);
         final date = entry.key;
-        final sets = entry.value;
+        final sets = entry.value.reversed.toList();
 
         return StickyHeader(
           header: Container(
             color: Theme.of(context).scaffoldBackgroundColor,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
             alignment: Alignment.center,
-            child: _buildSectionDivider(date, sets, context),
+            child: _buildSectionDivider(context, date),
           ),
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: List.generate(sets.length, (index) => workoutChildren(sets[index], context, showImages, config)),
+            children: List.generate(sets.length, (index) => _buildListItem(context, sets[index], showImages)),
           ),
         );
       },
     );
   }
 
-  Widget _buildSectionDivider(DateTime date, List<ExerciseSets> day, BuildContext context) {
-    var config = context.read<ConfigRepository>();
-    var services = GymSetServices(context: context);
-    return GestureDetector(
-      onTap: () {
-        showDialog(
-          context: context,
-          builder: (ctx) {
-            return AlertDialog(
-              title: Text(formatDateWithOrdinal(date)),
-              content: services.getLastGymSetWorkout(day.expand((t) => t.sets).toList()),
+  //region HELPERS
 
-              actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Close"))],
-            );
-          },
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            const Expanded(child: Divider(thickness: 1)),
-            const SizedBox(width: 4),
-            const Icon(Icons.today, size: 16),
-            const SizedBox(width: 4),
-            Text(
-              DateFormat(config.getSetting(.formats, 'short_date_format')).format(date),
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(width: 4),
-            const Expanded(child: Divider(thickness: 1)),
-          ],
-        ),
+  Widget _buildSectionDivider(BuildContext context, DateTime date) {
+    final format = context.read<ConfigRepository>().getSetting(.formats, 'short_date_format');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          const Expanded(child: Divider(thickness: 1)),
+          const SizedBox(width: 4),
+          const Icon(Icons.today, size: 16),
+          const SizedBox(width: 4),
+          Text(DateFormat(format).format(date), style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(width: 4),
+          const Expanded(child: Divider(thickness: 1)),
+        ],
       ),
     );
   }
 
-  Widget workoutChildren(ExerciseSets history, BuildContext context, bool showImages, ConfigRepository config) {
-    return ExpansionTile(
-      childrenPadding: EdgeInsets.all(0),
-      title: Text("${history.exercise.name} (${history.sets.length})", style: Theme.of(context).textTheme.labelMedium),
-      shape: const Border.symmetric(),
-      children: history.sets.reversed.toList().map((gymSet) {
-        final reps = gymSet.reps;
-        final weight = gymSet.weight;
+  Widget _buildListItem(BuildContext context, GymSet gymSet, bool showImages) {
+    var services = ExerciseServices(context: context);
+    var exercise = services.getExerciseById(gymSet.exerciseId);
+    final reps = gymSet.reps;
+    final weight = gymSet.weight;
+    final trailing = Text("${_getSetNumber(gymSet)}: $reps REPS @ $weight ${gymSet.unit}");
+    final dateFormat = context.read<ConfigRepository>().getSetting(.formats, 'short_date_format');
+    final subtitle = Text(dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created));
 
-        final dateFormat = config.getSetting(.formats, 'short_date_format');
-        final trailing = Text(
-          dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
-        );
-        return ListTile(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
           dense: true,
-          visualDensity: VisualDensity.comfortable,
-          leading: _leading(context, gymSet, history.exercise, showImages),
-          title: Text("${_getSetNumber(gymSet, history.sets)}: $reps REPS @ $weight ${gymSet.unit}"),
-          trailing: trailing,
+          visualDensity: VisualDensity.compact,
+          leading: _leading(context, gymSet, exercise!, showImages),
+          title: Text(exercise.name),
+          subtitle: trailing,
+          trailing: subtitle,
           selected: selectedItems.contains(gymSet),
           onLongPress: () => toggleSelection(gymSet),
           onTap: () async {
@@ -126,14 +108,14 @@ class WorkoutGrouped extends StatelessWidget {
               await services.openAddEditPage(context, gymSet.id);
             }
           },
-        );
-      }).toList(),
+        ),
+      ],
     );
   }
 
-  String _getSetNumber(GymSet gymSet, List<GymSet> today) {
+  String _getSetNumber(GymSet gymSet) {
     final currentDate = gymSet.created.toLocal();
-    final sameDayEntries = today
+    final sameDayEntries = sets
         .where(
           (entry) =>
               entry.created.toLocal().year == currentDate.year &&
@@ -147,6 +129,7 @@ class WorkoutGrouped extends StatelessWidget {
     return 'Set $positionOnThisDay';
   }
 
+  //endregion
   Widget _leading(BuildContext context, GymSet set, Exercise exercise, bool showImages) {
     Widget? leading = SizedBox(
       height: 24,
@@ -177,22 +160,14 @@ class WorkoutGrouped extends StatelessWidget {
         child: Container(
           width: 24,
           height: 24,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.inversePrimary,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.inversePrimary, borderRadius: BorderRadius.circular(12)),
           child: Center(
             child: Padding(
               padding: EdgeInsets.only(bottom: 2),
               child: Text(
                 exercise.name.isNotEmpty ? exercise.name[0] : '?',
                 textAlign: TextAlign.justify,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
               ),
             ),
           ),
@@ -209,4 +184,37 @@ class WorkoutGrouped extends StatelessWidget {
     );
     return leading;
   }
+}
+
+class DateHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final DateTime date;
+
+  DateHeaderDelegate(this.date);
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Selector<ConfigRepository, String>(
+      selector: (context, settings) {
+        final format = settings.getSetting(.formats, 'short_date_format');
+        return format;
+      },
+      builder: (context, format, child) {
+        return Container(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(DateFormat(format).format(date), style: Theme.of(context).textTheme.titleMedium),
+        );
+      },
+    );
+  }
+
+  @override
+  double get maxExtent => 44;
+
+  @override
+  double get minExtent => 44;
+
+  @override
+  bool shouldRebuild(DateHeaderDelegate oldDelegate) => oldDelegate.date != date;
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/utils.dart';
+import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:provider/provider.dart';
 
@@ -49,15 +50,9 @@ class _TabsSettingsPageState extends State<TabsSettingsPage> {
                 key: ValueKey(tabname),
                 leading: Transform.scale(
                   scale: iconScale,
-                  child: Icon(
-                    NavRoute.values.byName(tabname.toLowerCase()).icon,
-                    color: enabled ? Theme.of(context).colorScheme.primary : null,
-                  ),
+                  child: Icon(NavRoute.values.byName(tabname.toLowerCase()).icon, color: enabled ? Theme.of(context).colorScheme.primary : null),
                 ),
-                title: Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Text(tab.replaceFirst('.', '').toTitleCase),
-                ),
+                title: Padding(padding: const EdgeInsets.only(left: 8), child: Text(tab.replaceFirst('.', '').toTitleCase)),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -66,15 +61,15 @@ class _TabsSettingsPageState extends State<TabsSettingsPage> {
                       child: Switch.adaptive(
                         value: enabled,
                         onChanged: (on) {
-                          final enabledTabs = List<String>.from(tabs);
+                          final allTabs = List<String>.from(tabs);
+                          if (allTabs.where((t) => t.startsWith('.')).length == 1 && !on) {
+                            AppSnackBar.info('At least one tab must be active');
+                            return;
+                          }
                           final prefix = on ? '' : '.';
-                          enabledTabs[index] = '$prefix$tabname';
+                          allTabs[index] = '$prefix$tabname';
 
-                          context.read<ConfigRepository>().setSetting(
-                            category: category,
-                            key: 'tabs',
-                            value: enabledTabs.join(','),
-                          );
+                          context.read<ConfigRepository>().setSetting(category: category, key: 'tabs', value: allTabs.join(','));
                         },
                       ),
                     ),
@@ -87,11 +82,7 @@ class _TabsSettingsPageState extends State<TabsSettingsPage> {
                   final prefix = enabled ? '.' : '';
                   enabledTabs[index] = '$prefix$tabname';
 
-                  context.read<ConfigRepository>().setSetting(
-                    category: category,
-                    key: 'tabs',
-                    value: enabledTabs.join(','),
-                  );
+                  context.read<ConfigRepository>().setSetting(category: category, key: 'tabs', value: enabledTabs.join(','));
                 },
               );
             },

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/features/plans/plan/widgets/plan_strength_tile.dart';
-import 'package:fossfit/app/features/workout/widgets/workout_peek.dart';
+import 'package:fossfit/app/features/strength/widgets/history_peek.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/services/features/plan_exercise_services.dart';
@@ -160,7 +160,7 @@ class _PlanPageState extends State<PlanPage> {
             color: Theme.of(context).colorScheme.surface,
             clipBehavior: Clip.antiAlias,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: WorkoutPeek(sets: sets.take(20).toList()),
+            child: HistoryPeek(sets: sets.take(20).toList(), cardio: []),
           ),
         );
       },
@@ -225,7 +225,6 @@ class _PlanPageState extends State<PlanPage> {
       created: DateTime.now(),
       //copied from last set
       bodyWeight: lastSets.firstOrNull?.bodyWeight,
-      rest: lastSets.firstOrNull?.rest,
     );
     await services.insertGymSet(gymSet);
 

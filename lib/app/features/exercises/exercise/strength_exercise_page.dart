@@ -1,7 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/features/exercises/exercise/graph/flex_line.dart';
-import 'package:fossfit/app/features/workout/widgets/workout_peek.dart';
+import 'package:fossfit/app/features/strength/widgets/history_peek.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
@@ -68,7 +68,7 @@ class _StrengthExercisePageState extends State<StrengthExercisePage> {
                     color: Theme.of(context).colorScheme.surface,
                     clipBehavior: Clip.antiAlias,
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                    child: WorkoutPeek(sets: gymSets),
+                    child: HistoryPeek(sets: gymSets, cardio: []),
                   ),
                 );
               },

@@ -104,7 +104,7 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  void _navigateIfNeeded(NavRoute target) {
+  void _navigateIfNeeded(NavRoute target, NavRoute home) {
     final currentName = ModalRoute.of(context)?.settings.name;
 
     if (currentName == target.route) {
@@ -113,7 +113,7 @@ class _AppShellState extends State<AppShell> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (target == NavRoute.workout) {
+      if (target == NavRoute.strength) {
         // Clear stack and go home
         Navigator.of(context).pushNamedAndRemoveUntil(
           target.route,
@@ -125,12 +125,6 @@ class _AppShellState extends State<AppShell> {
     });
   }
 
-  // void _openSettings() {
-  //   Navigator.of(context).maybePop();
-  //   WidgetsBinding.instance.addPostFrameCallback((_) {
-  //     Navigator.push(context, FadeRoute(page: const SettingsPage()));
-  //   });
-  // }
   Widget _buildTimer() {
     return Padding(padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8), child: CountdownTimer());
   }
@@ -140,8 +134,9 @@ class _AppShellState extends State<AppShell> {
       selector: (_, config) => config.getSetting(.tabs, 'tabs'),
       builder: (context, tabs, _) {
         final pageOrder = tabs.split(',').where((t) => !t.startsWith('.'));
-
+        final home = pageOrder.first.toLowerCase();
         final allPages = <String, NavPage>{
+          'Strength': NavPage(route: NavRoute.strength, label: 'Strength', enabled: pageOrder.contains('Strength')),
           'Cardio': NavPage(route: NavRoute.cardio, label: 'Cardio', enabled: pageOrder.contains('Cardio')),
           'Plans': NavPage(route: NavRoute.plans, label: 'Plans', enabled: pageOrder.contains('Plans')),
           'Calendar': NavPage(route: NavRoute.calendar, label: 'Calendar', enabled: pageOrder.contains('Calendar')),
@@ -150,10 +145,10 @@ class _AppShellState extends State<AppShell> {
 
         final orderedPages = pageOrder.map((k) => allPages[k]).whereType<NavPage>().toList();
 
-        final bottomNavPages = [NavPage(route: NavRoute.workout, label: 'Workout', enabled: true), ...orderedPages];
+        final bottomNavPages = orderedPages;
 
         final currentRoute = ModalRoute.of(context)?.settings.name;
-        final selectedIndex = bottomNavPages.indexWhere((p) => p.route == NavRoute.fromRoute(currentRoute));
+        final selectedIndex = bottomNavPages.indexWhere((p) => p.route == NavRoute.fromRoute(currentRoute, home));
 
         return NavigationBar(
           elevation: globalElevation,
@@ -162,7 +157,7 @@ class _AppShellState extends State<AppShell> {
           selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
           onDestinationSelected: (index) {
             AppHaptics.tap(context);
-            _navigateIfNeeded(bottomNavPages[index].route);
+            _navigateIfNeeded(bottomNavPages[index].route, NavRoute.values.byName(home));
           },
           destinations: bottomNavPages.map((page) {
             return NavigationDestination(icon: Icon(page.route.icon), label: page.label);

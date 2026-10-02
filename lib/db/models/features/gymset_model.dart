@@ -6,7 +6,6 @@ class GymSet extends BaseModel {
   final String? unit;
   final String? note;
   final double? bodyWeight;
-  final int? rest;
   final int? planId;
   final int exerciseId;
 
@@ -17,7 +16,6 @@ class GymSet extends BaseModel {
     this.unit,
     this.note,
     this.bodyWeight,
-    this.rest,
     required this.exerciseId,
     this.planId,
     super.created,
@@ -31,7 +29,6 @@ class GymSet extends BaseModel {
     String? unit,
     String? note,
     double? bodyWeight,
-    int? rest,
     int? exerciseId,
     int? planId,
     DateTime? created,
@@ -42,7 +39,6 @@ class GymSet extends BaseModel {
       weight: weight ?? this.weight,
       unit: unit ?? this.unit,
       note: note ?? this.note,
-      rest: rest ?? this.rest,
       bodyWeight: bodyWeight ?? this.bodyWeight,
       exerciseId: exerciseId ?? this.exerciseId,
       planId: planId ?? this.planId,
@@ -56,7 +52,6 @@ class GymSet extends BaseModel {
     'weight': weight,
     'unit': unit,
     'note': note,
-    'rest': rest,
     'body_weight': bodyWeight,
     'exercise_id': exerciseId,
     'plan_id': planId,
@@ -70,7 +65,6 @@ class GymSet extends BaseModel {
       weight: map['weight'] as double,
       unit: map['unit'] as String,
       note: map['note'] as String?,
-      rest: map['rest'] as int?,
       bodyWeight: map['body_weight'] as double?,
       exerciseId: map['exercise_id'] as int,
       planId: map['plan_id'] as int?,

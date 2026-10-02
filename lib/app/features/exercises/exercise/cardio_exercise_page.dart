@@ -1,7 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/features/exercises/exercise/graph/flex_line.dart';
-import 'package:fossfit/app/features/workout/widgets/workout_peek.dart';
+import 'package:fossfit/app/features/strength/widgets/history_peek.dart';
 import 'package:fossfit/app/services/features/cardio_services.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
@@ -10,11 +10,9 @@ import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/widgets/confirmation_dialog.dart';
 import 'package:fossfit/db/models/features/cardio_model.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
-import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/cardio_repository.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
-import 'package:fossfit/db/repositories/gym_set_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -37,7 +35,7 @@ class _CardioExercisePageState extends State<CardioExercisePage> {
   DateTime? start;
   DateTime? end;
   DateTime lastTap = DateTime.fromMicrosecondsSinceEpoch(0);
-  List<GymSet> gymSets = [];
+  List<Cardio> cardioSets = [];
   String? _unit;
   Exercise? exercise;
 
@@ -46,11 +44,11 @@ class _CardioExercisePageState extends State<CardioExercisePage> {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<ConfigRepository>();
-    final setsRepo = context.watch<GymSetRepository>();
+    final setsRepo = context.watch<CardioRepository>();
     final exRepo = context.watch<ExercisesRepository>();
     exercise = exercise ?? exRepo.getExerciseById(widget.exerciseId);
-    gymSets = setsRepo.gymsets.where((t) => t.exerciseId == widget.exerciseId).toList();
-    _unit = _unit ?? gymSets.firstOrNull?.unit ?? exercise!.defaultUnit ?? 'kg';
+    cardioSets = setsRepo.cardio.where((t) => t.exerciseId == widget.exerciseId).toList();
+    _unit = _unit ?? cardioSets.firstOrNull?.distanceUnit ?? exercise!.defaultUnit ?? 'km';
     setData();
     return AppShell(
       title: exercise!.name,
@@ -71,7 +69,7 @@ class _CardioExercisePageState extends State<CardioExercisePage> {
                     color: Theme.of(context).colorScheme.surface,
                     clipBehavior: Clip.antiAlias,
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                    child: WorkoutPeek(sets: gymSets),
+                    child: HistoryPeek(sets: [], cardio: cardioSets),
                   ),
                 );
               },
@@ -357,10 +355,10 @@ class _CardioExercisePageState extends State<CardioExercisePage> {
     final index = touchResponse?.lineBarSpots?[0].spotIndex;
     if (index == null) return;
     final row = data[index];
-    GymSet? gymSet = gymSets.where((t) => t.created == row.created).toList().firstOrNull;
+    Cardio? cardioSet = cardioSets.where((t) => t.created == row.created).toList().firstOrNull;
 
     if (!mounted) return;
-    await services.openAddEditPage(context, gymSet?.id);
+    await services.openAddEditPage(context, cardioSet?.id);
   }
 
   Future<void> _selectEnd() async {

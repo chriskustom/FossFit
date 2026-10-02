@@ -116,7 +116,7 @@ class GymSetServices {
       return const SizedBox.shrink();
     }
 
-    final allWorkoutSets = totalWorkout.expand((exercise) => exercise.sets).toList();
+    final allWorkoutSets = totalWorkout.expand((exercise) => exercise.gymSets!).toList();
 
     final strengthSet = allWorkoutSets.firstOrNull;
 
@@ -130,9 +130,9 @@ class GymSetServices {
     double totalWeight = 0;
 
     for (final exercise in totalWorkout) {
-      totalSets += exercise.sets.length;
+      totalSets += exercise.gymSets!.length;
 
-      for (final set in exercise.sets) {
+      for (final set in exercise.gymSets!) {
         totalReps += set.reps.toInt();
 
         totalWeight += set.weight * set.reps;
@@ -204,9 +204,9 @@ class GymSetServices {
       final index = exerciseItems.indexWhere((item) => isSameDay(item.date, day) && item.exercise.id == exercise.id);
 
       if (index == -1) {
-        exerciseItems.add(ExerciseSets(sets: [gymSet], date: day, exercise: exercise));
+        exerciseItems.add(ExerciseSets(gymSets: [gymSet], date: day, exercise: exercise));
       } else {
-        exerciseItems[index].sets.add(gymSet);
+        exerciseItems[index].gymSets!.add(gymSet);
       }
     }
 

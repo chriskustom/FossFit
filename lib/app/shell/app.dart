@@ -1,13 +1,7 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fossfit/app/features/calendar/calendar_page.dart';
-import 'package:fossfit/app/features/cardio/cardio_page.dart';
-import 'package:fossfit/app/features/exercises/exercises_page.dart';
-import 'package:fossfit/app/features/plans/plans_page.dart';
-import 'package:fossfit/app/features/workout/workout_page.dart';
 import 'package:fossfit/app/services/navigation_service.dart';
-import 'package:fossfit/app/settings/settings_page.dart';
 import 'package:fossfit/app/theme/theme.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
@@ -47,7 +41,7 @@ class _AppState extends State<App> {
             final fontSize = double.tryParse(repo.getSetting(.formats, 'font_size')) ?? 16;
             final seedColour = int.tryParse(repo.getSetting(.appearance, 'color'));
             final sysColours = repo.isEnabled(.appearance, 'system_colours');
-
+            final home = repo.getSetting(.tabs, 'tabs').split(',').where((t) => !t.startsWith('.')).first.toLowerCase();
             return DynamicColorBuilder(
               builder: (lightDynamic, darkDynamic) {
                 final currentBrightness = mode == .dark || (mode == .system && MediaQuery.of(context).platformBrightness == Brightness.dark)
@@ -68,32 +62,12 @@ class _AppState extends State<App> {
                   theme: AppTheme.light(fontFamily: font, fontSize: fontSize, seedColor: seedColour, sysColours: sysColours, dynamic: lightDynamic),
                   darkTheme: AppTheme.dark(fontFamily: font, fontSize: fontSize, seedColor: seedColour, sysColours: sysColours, dynamic: darkDynamic),
                   themeMode: mode,
-                  home: WorkoutPage(),
+                  home: NavRoute.values.byName(home).page,
                   onGenerateRoute: (settings) {
                     Widget page;
-                    final pageName = settings.name == '/' ? '/workout' : settings.name;
-                    final navRoute = NavRoute.fromRoute(pageName);
-
-                    switch (navRoute) {
-                      case NavRoute.workout:
-                        page = const WorkoutPage();
-                        break;
-                      case NavRoute.plans:
-                        page = const PlansPage();
-                        break;
-                      case NavRoute.exercises:
-                        page = const ExercisesPage();
-                        break;
-                      case NavRoute.calendar:
-                        page = const CalendarPage();
-                        break;
-                      case NavRoute.cardio:
-                        page = const CardioPage();
-                        break;
-                      case NavRoute.settings:
-                        page = const SettingsPage();
-                        break;
-                    }
+                    final pageName = settings.name == '/' ? '/$home' : settings.name;
+                    final navRoute = NavRoute.fromRoute(pageName, home);
+                    page = navRoute.page;
                     return PageRouteBuilder(
                       settings: settings,
                       transitionDuration: const Duration(milliseconds: 220),

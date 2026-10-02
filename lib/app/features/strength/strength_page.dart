@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:fossfit/app/features/workout/widgets/workout_grouped.dart';
-import 'package:fossfit/app/features/workout/widgets/workout_list.dart';
+import 'package:fossfit/app/features/strength/widgets/history_grouped.dart';
+import 'package:fossfit/app/features/strength/widgets/history_list.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/widgets/animated_fab.dart';
@@ -10,14 +10,14 @@ import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/gym_set_repository.dart';
 import 'package:provider/provider.dart';
 
-class WorkoutPage extends StatefulWidget {
-  const WorkoutPage({super.key});
+class StrengthPage extends StatefulWidget {
+  const StrengthPage({super.key});
 
   @override
-  State<StatefulWidget> createState() => _WorkoutPageState();
+  State<StatefulWidget> createState() => _StrengthPageState();
 }
 
-class _WorkoutPageState extends State<WorkoutPage> {
+class _StrengthPageState extends State<StrengthPage> {
   List<GymSet>? _lastWorkoutSets;
   Widget lastWorkout = const SizedBox.shrink();
   final expand = ExpansibleController();
@@ -74,14 +74,14 @@ class _WorkoutPageState extends State<WorkoutPage> {
               ),
             Expanded(
               child: grouped
-                  ? WorkoutGrouped(
+                  ? HistoryGrouped(
                       sets: lastWorkoutSets,
                       selectedItems: _selectedItems,
                       selectionMode: selectionMode,
                       toggleSelection: (set) => _toggleSelection(set),
                       scroll: scroll,
                     )
-                  : WorkoutList(
+                  : HistoryList(
                       sets: lastWorkoutSets,
                       selectedItems: _selectedItems,
                       selectionMode: selectionMode,

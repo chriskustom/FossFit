@@ -15,7 +15,8 @@ import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:provider/provider.dart';
 
 class CardioPage extends StatefulWidget {
-  const CardioPage({super.key});
+  final int? cardioId;
+  const CardioPage({super.key, this.cardioId});
 
   @override
   State<CardioPage> createState() => _CardioPageState();
@@ -64,6 +65,9 @@ class _CardioPageState extends State<CardioPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.cardioId != null) {
+      isEditMode = true;
+    }
 
     final exerciseRepository = context.read<ExercisesRepository>();
     _cardioExerciseNamesFuture = exerciseRepository.getCardioExerciseNames();
@@ -97,6 +101,21 @@ class _CardioPageState extends State<CardioPage> {
 
     final lastWorkoutSets = _lastWorkoutSets ?? repo.latestcardio;
     final cardioSets = _cardioSets ?? repo.cardio;
+
+    if (isEditMode) {
+      _cardioSet = _cardioSet ?? repo.getCardioById(widget.cardioId!);
+      isEditMode = true;
+      currentExercise = currentExercise ?? exRepo.getExerciseById(_cardioSet!.exerciseId);
+      name = currentExercise!.name;
+      nameTec.text = name ?? '';
+      distance.text = _cardioSet!.distance.toString();
+      distanceUnit = _cardioSet!.distanceUnit;
+      incline.text = _cardioSet!.incline.toString();
+      var duration = formatDuration(Duration(seconds: _cardioSet!.duration)).split(':');
+      hoursController.text = duration[0];
+      minutesController.text = duration[1];
+      secondsController.text = duration[2]; /*  */
+    }
 
     if (currentExercise == null && exRepo.cardioExercises.isNotEmpty) {
       currentExercise = exRepo.cardioExercises.first;
@@ -143,29 +162,7 @@ class _CardioPageState extends State<CardioPage> {
           child: Column(
             children: [
               ..._getCardioFields(effectiveDistanceUnit, effectivePaceUnit),
-
-              // if (lastWorkoutSets.isNotEmpty && showStats)
-              //   Theme(
-              //     data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-              //     child: Padding(
-              //       padding: const EdgeInsets.only(top: 8),
-              //       child: ExpansionTile(
-              //         childrenPadding: EdgeInsets.zero,
-              //         iconColor: Theme.of(context).colorScheme.onSurface,
-              //         leading: Icon(
-              //           expand.isExpanded ? Icons.analytics_outlined : Icons.fitness_center_rounded,
-              //           color: Theme.of(context).colorScheme.primary,
-              //         ),
-              //         title: Text(expand.isExpanded ? 'Stats' : 'Exercises'),
-              //         initiallyExpanded: true,
-              //         controller: expand,
-              //         children: [lastWorkout],
-              //         onExpansionChanged: (_) {
-              //           setState(() {});
-              //         },
-              //       ),
-              //     ),
-              //   ),
+              Text('Cardio history', textAlign: .center),
               Divider(),
               if (lastWorkoutSets.isEmpty) const ListTile(title: Text('No entries yet'), subtitle: Text('Complete a session to see them here')),
               Expanded(child: _getCardioHistory(cardioSets, showImages)),
@@ -315,6 +312,7 @@ class _CardioPageState extends State<CardioPage> {
               focusNode: focusNode,
               decoration: const InputDecoration(labelText: 'Exercise name'),
               textInputAction: TextInputAction.next,
+              onTap: () => selectAll(controller),
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Required';

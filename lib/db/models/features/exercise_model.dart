@@ -81,16 +81,9 @@ class Exercise extends BaseModel {
 
 class ExerciseSets {
   final Exercise exercise;
-  final List<GymSet> sets;
+  final List<GymSet>? gymSets;
+  final List<Cardio>? cardioSets;
   final DateTime date;
 
-  ExerciseSets({required this.exercise, required this.sets, required this.date});
-}
-
-class CardioSets {
-  final Exercise exercise;
-  final List<Cardio> sets;
-  final DateTime date;
-
-  CardioSets({required this.exercise, required this.sets, required this.date});
+  ExerciseSets({required this.exercise, this.gymSets, required this.date, this.cardioSets});
 }

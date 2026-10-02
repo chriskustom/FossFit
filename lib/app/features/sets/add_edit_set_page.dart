@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:fossfit/app/features/workout/widgets/workout_peek.dart';
+import 'package:fossfit/app/features/strength/widgets/history_peek.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/services/image_services.dart';
@@ -159,7 +159,13 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
                 if (showNotes) ...[notesField(), const SizedBox(height: 8.0)],
                 dateSelector(),
                 if (showImages) ...[const SizedBox(height: 8.0), imageField()],
-                if (name != '') ...[SizedBox(height: 300, child: WorkoutPeek(sets: getHistory())), const SizedBox(height: 8.0)],
+                if (name != '') ...[
+                  SizedBox(
+                    height: 300,
+                    child: HistoryPeek(sets: getHistory(), cardio: []),
+                  ),
+                  const SizedBox(height: 8.0),
+                ],
               ],
             );
           },

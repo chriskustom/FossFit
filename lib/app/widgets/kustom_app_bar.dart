@@ -33,7 +33,7 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
   }
 
   Widget? _getLeading() {
-    return ModalRoute.of(context)?.settings.name != NavRoute.workout.route && Navigator.canPop(context)
+    return ModalRoute.of(context)?.settings.name != NavRoute.strength.route && Navigator.canPop(context)
         ? IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: AppHaptics.selectWithHaptics(context, () {

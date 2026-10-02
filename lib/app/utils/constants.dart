@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/features/calendar/calendar_page.dart';
+import 'package:fossfit/app/features/cardio/cardio_page.dart';
+import 'package:fossfit/app/features/exercises/exercises_page.dart';
+import 'package:fossfit/app/features/plans/plans_page.dart';
+import 'package:fossfit/app/features/strength/strength_page.dart';
+import 'package:fossfit/app/settings/settings_page.dart';
 import 'package:fossfit/app/utils/sort_option.dart';
 
 enum Period { day, week, month, year }
@@ -12,20 +18,21 @@ enum GraphSort { dateDesc, dateAsc, name }
 enum ThreeDialogOptions { save, dismiss, stay }
 
 enum NavRoute {
-  workout("/workout", Icons.fitness_center_rounded),
-  exercises('/exercises', Icons.list_alt_rounded),
-  plans('/plans', Icons.format_list_numbered),
-  calendar('/calendar', Icons.calendar_month_rounded),
-  cardio('/cardio', Icons.run_circle_rounded),
-  settings('/settings', Icons.settings);
+  strength("/strength", Icons.fitness_center_rounded, StrengthPage()),
+  exercises('/exercises', Icons.list_alt_rounded, ExercisesPage()),
+  plans('/plans', Icons.format_list_numbered, PlansPage()),
+  calendar('/calendar', Icons.calendar_month_rounded, CalendarPage()),
+  cardio('/cardio', Icons.run_circle_rounded, CardioPage()),
+  settings('/settings', Icons.settings, SettingsPage());
 
-  const NavRoute(this.route, this.icon);
+  const NavRoute(this.route, this.icon, this.page);
   final String route;
   final IconData icon;
+  final Widget page;
 
-  static NavRoute fromRoute(String? route) {
-    if (route == null) return NavRoute.workout;
-    return NavRoute.values.firstWhere((e) => e.route == route || route.startsWith(e.route), orElse: () => NavRoute.workout);
+  static NavRoute fromRoute(String? route, String home) {
+    if (route == null) return NavRoute.values.byName(home);
+    return NavRoute.values.firstWhere((e) => e.route == route || route.startsWith(e.route), orElse: () => NavRoute.values.byName(home));
   }
 
   bool matches(String? route) => route != null && route.startsWith(this.route);

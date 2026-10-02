@@ -180,7 +180,7 @@ class DatabaseHelper {
           ('appearance','color','4281559659'),
           ('appearance','curve_lines','1'),
           ('appearance','curve_smoothness','0.1'),
-          ('tabs','tabs','Plans,Calendar,Exercises,Cardio'),
+          ('tabs','tabs','Strength,Plans,Cardio,Exercises,Calendar'),
           ('backup','backup','0'),
           ('backup','frequency','14'),
           ('backup','directory',''),

@@ -23,7 +23,7 @@ class CardioServices {
   }
   List<Cardio> getAllCardio() => cardioRepo.cardio;
   Cardio? getCardioById(int id) => cardioRepo.getCardioById(id);
-  Future<Cardio?> openAddEditPage(BuildContext context, int? cardioId) async {
+  Future<Cardio?> openCardioPage(BuildContext context, int? cardioId) async {
     return await showGeneralDialog<Cardio?>(
       context: context,
       barrierLabel: '',
@@ -117,7 +117,7 @@ class CardioServices {
       return const SizedBox.shrink();
     }
 
-    final allWorkoutSets = totalWorkout.expand((exercise) => exercise.sets).toList();
+    final allWorkoutSets = totalWorkout.expand((exercise) => exercise.cardioSets!).toList();
 
     double totalDistance = allWorkoutSets.map((e) => (e.distance ?? 0.0)).reduce((a, b) => a + b);
 
@@ -177,8 +177,8 @@ class CardioServices {
         '${secs.toString().padLeft(2, '0')}';
   }
 
-  List<CardioSets> getCardioSets(List<Cardio> sets, {bool reversed = false}) {
-    final exerciseItems = <CardioSets>[];
+  List<ExerciseSets> getCardioSets(List<Cardio> sets, {bool reversed = false}) {
+    final exerciseItems = <ExerciseSets>[];
 
     for (final cardio in sets) {
       final exercise = exerciseRepo.getExerciseById(cardio.exerciseId);
@@ -192,9 +192,9 @@ class CardioServices {
       final index = exerciseItems.indexWhere((item) => isSameDay(item.date, day) && item.exercise.id == exercise.id);
 
       if (index == -1) {
-        exerciseItems.add(CardioSets(sets: [cardio], date: day, exercise: exercise));
+        exerciseItems.add(ExerciseSets(cardioSets: [cardio], date: day, exercise: exercise));
       } else {
-        exerciseItems[index].sets.add(cardio);
+        exerciseItems[index].cardioSets!.add(cardio);
       }
     }
 
