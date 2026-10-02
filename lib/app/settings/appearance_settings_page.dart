@@ -1,8 +1,11 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/features/exercises/exercise/graph/flex_line.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/utils.dart';
 import 'package:fossfit/app/widgets/colour_picker.dart';
+import 'package:fossfit/db/models/features/strength_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:provider/provider.dart';
 
@@ -24,6 +27,7 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
   @override
   Widget build(BuildContext context) {
     var sysColours = context.watch<ConfigRepository>().isEnabled(category, 'system_colours');
+    var curves = context.watch<ConfigRepository>().isEnabled(category, 'curve_lines');
     return AppShell(
       title: category.name.toTitleCase,
       showSearch: false,
@@ -47,6 +51,8 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
           ),
           SizedBox(height: 8),
           _enableHaptics(),
+          _curveLines(),
+          if (curves) ...[_curveLineSmoothness(), _curveGraphExample()],
         ],
       ),
     );
@@ -107,11 +113,7 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
                   primaryColor: colorScheme,
                   initialColor: dbColor,
                   onChanged: (color) {
-                    context.read<ConfigRepository>().setSetting(
-                      category: category,
-                      key: 'color',
-                      value: color.toARGB32().toString(),
-                    );
+                    context.read<ConfigRepository>().setSetting(category: category, key: 'color', value: color.toARGB32().toString());
                   },
                 ),
               ),
@@ -178,6 +180,90 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Padding _curveLines() {
+    const key = 'curve_lines';
+
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: Selector<ConfigRepository, bool>(
+        selector: (_, repo) => repo.isEnabled(category, key),
+        builder: (context, isEnabled, _) {
+          return ListTile(
+            leading: Transform.scale(
+              scale: iconScale,
+              child: Icon(Icons.stacked_line_chart_rounded, color: Theme.of(context).colorScheme.primary),
+            ),
+            title: const Padding(padding: EdgeInsets.only(left: 8), child: Text('Enable curved lines on graph')),
+            trailing: Transform.scale(
+              scale: switchScale,
+              child: Switch.adaptive(
+                value: isEnabled,
+                onChanged: (value) {
+                  context.read<ConfigRepository>().setSetting(category: category, key: key, value: value ? '1' : '0');
+                },
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Padding _curveLineSmoothness() {
+    const key = 'curve_smoothness';
+
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: Selector<ConfigRepository, double>(
+        selector: (_, repo) => repo.getDouble(category, key),
+        builder: (context, smoothness, _) {
+          return ListTile(
+            leading: Transform.scale(
+              scale: iconScale,
+              child: Icon(Icons.line_axis_rounded, color: Theme.of(context).colorScheme.primary),
+            ),
+            title: const Padding(padding: EdgeInsets.only(left: 8), child: Text('Curved line smoothness')),
+            subtitle: Slider(
+              value: smoothness,
+              inactiveColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
+              onChanged: (value) {
+                context.read<ConfigRepository>().setSetting(category: category, key: key, value: value.toString());
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Padding _curveGraphExample() {
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.2,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: FlexLine(
+            hideBottom: true,
+            hideLeft: true,
+            spots: const [FlSpot(0, 0.13), FlSpot(1, 5), FlSpot(2, 2)],
+            tooltipData: () => LineTouchTooltipData(
+              getTooltipColor: (touchedSpot) => Theme.of(context).colorScheme.surface,
+              getTooltipItems: (touchedSpots) => touchedSpots
+                  .map((spot) => LineTooltipItem(spot.y.toStringAsFixed(2), TextStyle(color: Theme.of(context).textTheme.bodyLarge!.color)))
+                  .toList(),
+            ),
+            data: [
+              StrengthData(created: DateTime.parse('2024-05-19 14:54:17.000'), value: 0.13, unit: 'kg', reps: 0),
+              StrengthData(created: DateTime.parse('2024-05-19 14:54:17.000'), value: 0.13, unit: 'kg', reps: 0),
+              StrengthData(created: DateTime.parse('2024-05-19 14:54:17.000'), value: 0.13, unit: 'kg', reps: 0),
+            ],
+          ),
+        ),
       ),
     );
   }
