@@ -42,14 +42,15 @@ class _StrengthPageState extends State<StrengthPage> {
     var grouped = config.isEnabled(.workouts, 'group_history');
     var timer = config.isEnabled(.timers, 'enabled');
     return AppShell(
-      title: selectionMode ? '${_selectedItems.length} selected' : 'Workout',
+      title: selectionMode ? '${_selectedItems.length} selected' : 'Strength',
       selectActions: _selectActions(),
       showTimer: timer,
       body: Padding(
         padding: EdgeInsets.all(8),
         child: Column(
           children: [
-            if (lastWorkoutSets.isEmpty) const ListTile(title: Text('No entries yet'), subtitle: Text('Complete some sets to see them here')),
+            if (lastWorkoutSets.isEmpty)
+              const ListTile(title: Text('No entries yet'), subtitle: Text('Complete some sets to see them here')),
             if (lastWorkoutSets.isNotEmpty && showStats)
               Theme(
                 data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -144,7 +145,12 @@ class _StrengthPageState extends State<StrengthPage> {
       buttons.addAll([
         IconButton(
           onPressed: () async {
-            final confirmed = await showConfirmationDialog(context: context, title: "Delete?", content: "Are you sure?", barrierDismissible: true);
+            final confirmed = await showConfirmationDialog(
+              context: context,
+              title: "Delete?",
+              content: "Are you sure?",
+              barrierDismissible: true,
+            );
 
             if (!mounted || confirmed == null || !confirmed) return;
             await setServices.deleteMultipleGymSetssByIds(_selectedItems.map((i) => i.id!).toList());

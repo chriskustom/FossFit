@@ -86,7 +86,9 @@ class HistoryList extends StatelessWidget {
     final weight = gymSet.weight;
     final trailing = Text("${_getSetNumber(gymSet)}: $reps REPS @ $weight ${gymSet.unit}");
     final dateFormat = context.read<ConfigRepository>().getSetting(.formats, 'short_date_format');
-    final subtitle = Text(dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created));
+    final subtitle = Text(
+      dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -160,14 +162,22 @@ class HistoryList extends StatelessWidget {
         child: Container(
           width: 24,
           height: 24,
-          decoration: BoxDecoration(color: Theme.of(context).colorScheme.inversePrimary, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Center(
             child: Padding(
               padding: EdgeInsets.only(bottom: 2),
               child: Text(
                 exercise.name.isNotEmpty ? exercise.name[0] : '?',
                 textAlign: TextAlign.justify,
-                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                ),
               ),
             ),
           ),

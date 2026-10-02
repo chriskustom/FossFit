@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_iconpicker/extensions/list_extensions.dart';
 import 'package:fossfit/app/features/strength/widgets/history_grouped.dart';
 import 'package:fossfit/app/features/strength/widgets/history_list.dart';
 import 'package:fossfit/app/features/strength/widgets/history_peek.dart';
@@ -72,10 +73,18 @@ class CalendarPageState extends State<CalendarPage> {
     cardioSets = context.watch<CardioRepository>().cardio;
     final allGymSets = gymSets;
     final allCardioSets = cardioSets;
-    final thisMonthsGymSets = allGymSets.where((t) => t.created.month == monthToFilter && t.created.year == yearToFilter).toList();
-    final thisMonthsCardioSets = allCardioSets.where((t) => t.created.month == monthToFilter && t.created.year == yearToFilter).toList();
+    final thisMonthsGymSets = allGymSets
+        .where((t) => t.created.month == monthToFilter && t.created.year == yearToFilter)
+        .toList();
+    final thisMonthsCardioSets = allCardioSets
+        .where((t) => t.created.month == monthToFilter && t.created.year == yearToFilter)
+        .toList();
 
-    return AppShell(title: 'Calendar', selectActions: _selectActions(), body: _getCalendar(thisMonthsGymSets, thisMonthsCardioSets));
+    return AppShell(
+      title: 'Calendar',
+      selectActions: _selectActions(),
+      body: _getCalendar(thisMonthsGymSets, thisMonthsCardioSets),
+    );
   }
 
   Widget _getCalendar(List<GymSet> monthlyGymSets, List<Cardio> monthlyCardioSets) {
@@ -122,7 +131,9 @@ class CalendarPageState extends State<CalendarPage> {
               return isSameDay(_selectedDay!, day);
             },
             rowHeight: 40,
-            daysOfWeekStyle: DaysOfWeekStyle(weekdayStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withAlpha(150))),
+            daysOfWeekStyle: DaysOfWeekStyle(
+              weekdayStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withAlpha(150)),
+            ),
             calendarFormat: CalendarFormat.month,
             rangeSelectionMode: RangeSelectionMode.disabled,
             calendarBuilders: CalendarBuilders(
@@ -135,14 +146,23 @@ class CalendarPageState extends State<CalendarPage> {
                   width: double.infinity,
                   height: 4,
                   margin: const EdgeInsets.only(top: 2, left: 18, right: 18),
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 );
               },
             ),
             eventLoader: (day) {
-              final gymExercise = gymServices.getExerciseSets(monthlyGymSets).where((e) => isSameDay(e.date, day)).firstOrNull;
+              final gymExercise = gymServices
+                  .getExerciseSets(monthlyGymSets)
+                  .where((e) => isSameDay(e.date, day))
+                  .firstOrNull;
 
-              final cardioExercise = cardioServices.getCardioSets(monthlyCardioSets).where((e) => isSameDay(e.date, day)).firstOrNull;
+              final cardioExercise = cardioServices
+                  .getCardioSets(monthlyCardioSets)
+                  .where((e) => isSameDay(e.date, day))
+                  .firstOrNull;
 
               return (gymExercise == null && cardioExercise == null) ? <ExerciseSets>[] : [gymExercise, cardioExercise];
             },
@@ -197,29 +217,31 @@ class CalendarPageState extends State<CalendarPage> {
             child: Column(
               mainAxisSize: .min,
               children: [
-                Flexible(
-                  fit: FlexFit.loose,
-                  child: groupHistory
-                      ? HistoryGrouped(
-                          sets: selectedGymSets,
-                          selectedItems: _selectedItems,
-                          selectionMode: selectionMode,
-                          toggleSelection: _toggleSelection,
-                          scroll: scroll,
-                        )
-                      : HistoryList(
-                          sets: selectedGymSets,
-                          selectedItems: _selectedItems,
-                          selectionMode: selectionMode,
-                          toggleSelection: _toggleSelection,
-                          scroll: scroll,
-                        ),
-                ),
+                if (selectedGymSets.isNotNullOrEmpty)
+                  Flexible(
+                    fit: FlexFit.loose,
+                    child: groupHistory
+                        ? HistoryGrouped(
+                            sets: selectedGymSets,
+                            selectedItems: _selectedItems,
+                            selectionMode: selectionMode,
+                            toggleSelection: _toggleSelection,
+                            scroll: scroll,
+                          )
+                        : HistoryList(
+                            sets: selectedGymSets,
+                            selectedItems: _selectedItems,
+                            selectionMode: selectionMode,
+                            toggleSelection: _toggleSelection,
+                            scroll: scroll,
+                          ),
+                  ),
 
-                Flexible(
-                  fit: FlexFit.loose,
-                  child: HistoryPeek(sets: [], cardio: selectedCardioSets, dateHeader: 'Cardio'),
-                ),
+                if (selectedCardioSets.isNotNullOrEmpty)
+                  Flexible(
+                    fit: FlexFit.loose,
+                    child: HistoryPeek(sets: [], cardio: selectedCardioSets, dateHeader: 'Cardio'),
+                  ),
               ],
             ),
           ),
@@ -257,7 +279,12 @@ class CalendarPageState extends State<CalendarPage> {
       buttons.addAll([
         IconButton(
           onPressed: () async {
-            final confirmed = await showConfirmationDialog(context: context, title: "Delete?", content: "Are you sure?", barrierDismissible: true);
+            final confirmed = await showConfirmationDialog(
+              context: context,
+              title: "Delete?",
+              content: "Are you sure?",
+              barrierDismissible: true,
+            );
 
             if (!mounted || confirmed == null || !confirmed) return;
             await setServices.deleteMultipleGymSetssByIds(_selectedItems.map((i) => i.id!).toList());
@@ -305,7 +332,11 @@ class _CalendarHeader extends StatelessWidget {
             onPressed: onTodayButtonTap,
           ),
           if (clearButtonVisible)
-            IconButton(icon: const Icon(Icons.clear, size: 20.0), visualDensity: VisualDensity.compact, onPressed: onClearButtonTap),
+            IconButton(
+              icon: const Icon(Icons.clear, size: 20.0),
+              visualDensity: VisualDensity.compact,
+              onPressed: onClearButtonTap,
+            ),
           const Spacer(),
           IconButton(icon: const Icon(Icons.chevron_left), onPressed: onLeftArrowTap),
           IconButton(icon: const Icon(Icons.chevron_right), onPressed: onRightArrowTap),

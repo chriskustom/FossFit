@@ -1,10 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/services/features/cardio_services.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/utils/utils.dart';
-import 'package:fossfit/app/widgets/exercise_icon.dart';
 import 'package:fossfit/db/models/features/cardio_model.dart';
+import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:intl/intl.dart';
@@ -109,7 +111,9 @@ class HistoryPeek extends StatelessWidget {
     var exercise = services.getExerciseById(cardioSet.exerciseId);
 
     final dateFormat = context.read<ConfigRepository>().getSetting(.formats, 'short_date_format');
-    final trailing = Text(dateFormat == 'timeago' ? timeago.format(cardioSet.created) : DateFormat("HH:mm a").format(cardioSet.created));
+    final trailing = Text(
+      dateFormat == 'timeago' ? timeago.format(cardioSet.created) : DateFormat("HH:mm a").format(cardioSet.created),
+    );
     final setPace = '${cardioSet.pace}/${cardioSet.distanceUnit}';
     final subtitle = cardioSet.distance != null
         ? '${exercise?.name}: '
@@ -124,7 +128,7 @@ class HistoryPeek extends StatelessWidget {
         ListTile(
           dense: true,
           visualDensity: VisualDensity.compact,
-          leading: ExerciseIcon(exercise: exercise!),
+          leading: _leading(context, exercise!, showImages),
           title: Text(exercise.name),
           subtitle: Text(subtitle),
           trailing: trailing,
@@ -162,7 +166,9 @@ class HistoryPeek extends StatelessWidget {
     final weight = gymSet.weight;
     final trailing = Text("${_getSetNumber(gymSet)}: $reps REPS @ $weight ${gymSet.unit}");
     final dateFormat = context.read<ConfigRepository>().getSetting(.formats, 'short_date_format');
-    final subtitle = Text(dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created));
+    final subtitle = Text(
+      dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -170,7 +176,7 @@ class HistoryPeek extends StatelessWidget {
         ListTile(
           dense: true,
           visualDensity: VisualDensity.compact,
-          leading: ExerciseIcon(exercise: exercise!),
+          leading: _leading(context, exercise!, showImages),
           title: Text(exercise.name),
           subtitle: trailing,
           trailing: subtitle,
@@ -197,6 +203,58 @@ class HistoryPeek extends StatelessWidget {
         .toList();
     final positionOnThisDay = sameDayEntries.indexOf(gymSet) + 1;
     return 'Set $positionOnThisDay';
+  }
+
+  Widget _leading(BuildContext context, Exercise exercise, bool showImages) {
+    Widget leading = SizedBox(height: 24, width: 24);
+
+    if (showImages && exercise.hasImage()) {
+      leading = Container(
+        width: 24,
+        height: 24,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          image: DecorationImage(
+            image: MemoryImage(exercise.image ?? Uint8List(0)),
+            fit: BoxFit.cover,
+            colorFilter: const ColorFilter.mode(Color.fromARGB(100, 0, 0, 0), BlendMode.darken),
+          ),
+        ),
+      );
+    } else {
+      leading = Container(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Text(
+              exercise.name.isNotEmpty ? exercise.name[0] : '?',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 150),
+      transitionBuilder: (child, animation) {
+        return ScaleTransition(scale: animation, child: child);
+      },
+      child: leading,
+    );
   }
 }
 

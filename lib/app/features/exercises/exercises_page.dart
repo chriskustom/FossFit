@@ -141,7 +141,8 @@ class _ExercisesPageState extends State<ExercisesPage> {
                                 await exServices.openStrengthPage(context, exercise.id!, data);
                               } else {
                                 var data = await cardioRepo.getCardioData(
-                                  target: lastSet.cast<Cardio>().firstOrNull?.distanceUnit ?? exercise.defaultUnit ?? 'km',
+                                  target:
+                                      lastSet.cast<Cardio>().firstOrNull?.distanceUnit ?? exercise.defaultUnit ?? 'km',
                                   exerciseId: exercise.id!,
                                   metric: CardioMetric.pace,
                                   period: Period.day,
@@ -194,9 +195,18 @@ class _ExercisesPageState extends State<ExercisesPage> {
         ),
         onSelected: (value) => onChanged(value),
         itemBuilder: (context) => [
-          const PopupMenuItem<int?>(value: null, child: Row(children: [Icon(Icons.list), SizedBox(width: 12), Text('All')])),
-          const PopupMenuItem<int?>(value: 0, child: Row(children: [Icon(Icons.fitness_center), SizedBox(width: 12), Text('Strength')])),
-          const PopupMenuItem<int?>(value: 1, child: Row(children: [Icon(Icons.directions_run), SizedBox(width: 12), Text('Cardio')])),
+          const PopupMenuItem<int?>(
+            value: null,
+            child: Row(children: [Icon(Icons.list), SizedBox(width: 12), Text('All')]),
+          ),
+          const PopupMenuItem<int?>(
+            value: 0,
+            child: Row(children: [Icon(Icons.fitness_center), SizedBox(width: 12), Text('Strength')]),
+          ),
+          const PopupMenuItem<int?>(
+            value: 1,
+            child: Row(children: [Icon(Icons.directions_run), SizedBox(width: 12), Text('Cardio')]),
+          ),
         ],
       ),
     ];
@@ -248,14 +258,22 @@ class _ExercisesPageState extends State<ExercisesPage> {
         child: Container(
           width: 24,
           height: 24,
-          decoration: BoxDecoration(color: Theme.of(context).colorScheme.inversePrimary, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Center(
             child: Padding(
               padding: EdgeInsets.only(bottom: 2),
               child: Text(
                 exercise.name.isNotEmpty ? exercise.name[0].toUpperCase() : '?',
                 textAlign: TextAlign.justify,
-                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                ),
               ),
             ),
           ),

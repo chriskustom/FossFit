@@ -138,7 +138,7 @@ class _PlansPageState extends State<PlansPage> {
           width: 24,
           height: 24,
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.inversePrimary,
+            color: Theme.of(context).colorScheme.primaryContainer,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Center(

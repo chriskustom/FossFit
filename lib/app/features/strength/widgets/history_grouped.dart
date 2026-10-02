@@ -31,7 +31,8 @@ class HistoryGrouped extends StatelessWidget {
     var config = context.read<ConfigRepository>();
     final showImages = config.isEnabled(.workouts, 'show_images');
     final services = GymSetServices(context: context);
-    final sortedDays = List<ExerciseSets>.from(services.getExerciseSets(sets, reversed: true))..sort((a, b) => b.date.compareTo(a.date));
+    final sortedDays = List<ExerciseSets>.from(services.getExerciseSets(sets, reversed: true))
+      ..sort((a, b) => b.date.compareTo(a.date));
     var grouped = services.groupExerciseSetsByDay(sortedDays);
 
     return ListView.builder(
@@ -85,7 +86,10 @@ class HistoryGrouped extends StatelessWidget {
             const SizedBox(width: 4),
             const Icon(Icons.today, size: 16),
             const SizedBox(width: 4),
-            Text(DateFormat(config.getSetting(.formats, 'short_date_format')).format(date), style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              DateFormat(config.getSetting(.formats, 'short_date_format')).format(date),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(width: 4),
             const Expanded(child: Divider(thickness: 1)),
           ],
@@ -97,14 +101,19 @@ class HistoryGrouped extends StatelessWidget {
   Widget workoutChildren(ExerciseSets history, BuildContext context, bool showImages, ConfigRepository config) {
     return ExpansionTile(
       childrenPadding: EdgeInsets.all(0),
-      title: Text("${history.exercise.name} (${history.gymSets!.length})", style: Theme.of(context).textTheme.labelMedium),
+      title: Text(
+        "${history.exercise.name} (${history.gymSets!.length})",
+        style: Theme.of(context).textTheme.labelMedium,
+      ),
       shape: const Border.symmetric(),
       children: history.gymSets!.reversed.toList().map((gymSet) {
         final reps = gymSet.reps;
         final weight = gymSet.weight;
 
         final dateFormat = config.getSetting(.formats, 'short_date_format');
-        final trailing = Text(dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created));
+        final trailing = Text(
+          dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
+        );
         return ListTile(
           dense: true,
           visualDensity: VisualDensity.comfortable,
@@ -172,14 +181,22 @@ class HistoryGrouped extends StatelessWidget {
         child: Container(
           width: 24,
           height: 24,
-          decoration: BoxDecoration(color: Theme.of(context).colorScheme.inversePrimary, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Center(
             child: Padding(
               padding: EdgeInsets.only(bottom: 2),
               child: Text(
                 exercise.name.isNotEmpty ? exercise.name[0] : '?',
                 textAlign: TextAlign.justify,
-                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                ),
               ),
             ),
           ),

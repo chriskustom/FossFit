@@ -66,7 +66,8 @@ class _PlanStrengthTileState extends State<PlanStrengthTile> {
     config = context.watch<ConfigRepository>();
     var peRepo = context.watch<PlanExercisesRepository>();
     final services = GymSetServices(context: context);
-    final planExercise = currentPlanExercise ?? peRepo.getPlanExerciseByExerciseAndPlan(widget.exercise.id!, widget.planId)!;
+    final planExercise =
+        currentPlanExercise ?? peRepo.getPlanExerciseByExerciseAndPlan(widget.exercise.id!, widget.planId)!;
 
     final max = planExercise.maxSets ?? widget.exercise.defaultSets ?? 3;
     final completedSets = services.getTodaysSetsByExerciseId(widget.exercise.id!, widget.planId);
@@ -112,14 +113,23 @@ class _PlanStrengthTileState extends State<PlanStrengthTile> {
     );
   }
 
-  Widget _buildExerciseTitle(Exercise exercise, PlanExercise planExercise, int completedSets, int max, bool showImages) {
+  Widget _buildExerciseTitle(
+    Exercise exercise,
+    PlanExercise planExercise,
+    int completedSets,
+    int max,
+    bool showImages,
+  ) {
     return Row(
       children: [
         Container(
           width: 24,
           height: 24,
           clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(color: Theme.of(context).colorScheme.inversePrimary, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: showImages && exercise.hasImage() == true
               ? Stack(
                   children: [
@@ -168,7 +178,10 @@ class _PlanStrengthTileState extends State<PlanStrengthTile> {
     );
 
     if (screenWidth <= 450) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [repsField, const SizedBox(height: 8), weightField]);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [repsField, const SizedBox(height: 8), weightField],
+      );
     }
 
     return Row(
@@ -229,7 +242,10 @@ class _PlanStrengthTileState extends State<PlanStrengthTile> {
         SizedBox(
           width: 10,
           child: Container(
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: Theme.of(context).colorScheme.outlineVariant),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(2),
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
             height: 4,
             child: AnimatedFractionallySizedBox(
               alignment: Alignment.centerLeft,
@@ -237,7 +253,10 @@ class _PlanStrengthTileState extends State<PlanStrengthTile> {
               duration: const Duration(milliseconds: 250),
               curve: Curves.ease,
               child: DecoratedBox(
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: Theme.of(context).colorScheme.primary),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(2),
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
             ),
           ),
@@ -345,7 +364,12 @@ class _PlanStrengthTileState extends State<PlanStrengthTile> {
                     setState(() {});
                   },
                 ),
-              if (sets.isEmpty) ListTile(leading: const Icon(Icons.swap_horiz), title: const Text('Swap'), onTap: () => widget.onSwap()),
+              if (sets.isEmpty)
+                ListTile(
+                  leading: const Icon(Icons.swap_horiz),
+                  title: const Text('Swap'),
+                  onTap: () => widget.onSwap(),
+                ),
             ],
           ),
         );

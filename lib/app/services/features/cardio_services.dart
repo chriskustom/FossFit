@@ -37,7 +37,7 @@ class CardioServices {
             child: SizedBox(
               width: MediaQuery.of(context).size.width,
               height: double.infinity,
-              child: CardioPage(cardioId: cardioId),
+              child: CardioPage(cardioId: cardioId, full: false),
             ),
           ),
         );
@@ -90,11 +90,13 @@ class CardioServices {
 
   Cardio? getLastCardio() => getAllCardio().firstOrNull;
 
-  List<Cardio> getTodaysSetsByExerciseId(int exerciseId, int? planId) => cardioRepo.getTodaysSetsByExerciseId(exerciseId, planId);
+  List<Cardio> getTodaysSetsByExerciseId(int exerciseId, int? planId) =>
+      cardioRepo.getTodaysSetsByExerciseId(exerciseId, planId);
 
   List<Cardio> getSetsByExerciseId(int exerciseId, {int limit = 100}) =>
       cardioRepo.cardio.where((e) => e.exerciseId == exerciseId).take(limit).toList();
-  List<Cardio> getSetsByPlanId(int planId, {int limit = 100}) => cardioRepo.cardio.where((e) => e.planId == planId).take(limit).toList();
+  List<Cardio> getSetsByPlanId(int planId, {int limit = 100}) =>
+      cardioRepo.cardio.where((e) => e.planId == planId).take(limit).toList();
 
   Widget getLastCardioWorkout(List<Cardio> sets) {
     String plural(double s) => s > 0.1 ? 's' : '';
