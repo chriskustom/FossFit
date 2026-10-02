@@ -8,9 +8,13 @@ class ExercisesRepository extends ChangeNotifier {
 
   List<Exercise> _exercises = [];
 
+  List<Exercise> _cardioExercises = [];
+  List<Exercise> _strengthExercises = [];
   ExercisesRepository(this._db);
 
   List<Exercise> get exercises => List.unmodifiable(_exercises);
+  List<Exercise> get cardioExercises => List.unmodifiable(_cardioExercises);
+  List<Exercise> get strengthExercises => List.unmodifiable(_strengthExercises);
 
   // ---------------------------------------------------------------------------
   // Basic CRUD
@@ -20,15 +24,18 @@ class ExercisesRepository extends ChangeNotifier {
     final rows = await _db.query(TableName.exercises.name, orderBy: 'name ASC');
 
     _exercises = rows.map((r) => Exercise.fromMap(r)).toList();
-
+    _cardioExercises = _exercises.where((e) => e.type == 1).toList();
+    _strengthExercises = _exercises.where((e) => e.type == 0).toList();
     notifyListeners();
   }
 
-  Exercise? getExerciseById(int id) {
+  Exercise? getExerciseById(int id, {int? type}) {
+    if (type != null) return _exercises.where((n) => n.id == id && type == type).firstOrNull;
     return _exercises.where((n) => n.id == id).firstOrNull;
   }
 
-  Exercise? getExerciseByName(String name) {
+  Exercise? getExerciseByName(String name, {int? type}) {
+    if (type != null) return _exercises.where((n) => n.name == name && type == type).firstOrNull;
     return _exercises.where((n) => n.name == name).firstOrNull;
   }
 
@@ -37,20 +44,21 @@ class ExercisesRepository extends ChangeNotifier {
   }
 
   Future<List<String>> getDistinctCategories() async {
-    final rows = await _db.query(
-      'exercises',
-      columns: ['category'],
-      distinct: true,
-      where: 'category IS NOT NULL',
-      orderBy: 'category ASC',
-    );
+    final rows = await _db.query('exercises', columns: ['category'], distinct: true, where: 'category IS NOT NULL', orderBy: 'category ASC');
 
     final categories = rows.map((row) => row['category'] as String).toList();
     return categories;
   }
 
-  Future<List<String>> getExerciseNames() async {
-    final rows = await _db.query('exercises', columns: ['name'], distinct: true, orderBy: 'name ASC');
+  Future<List<String>> getStrengthExerciseNames() async {
+    final rows = await _db.query('exercises', columns: ['name'], where: 'type = ?', whereArgs: ['0'], distinct: true, orderBy: 'name ASC');
+
+    final categories = rows.map((row) => row['name'] as String).toList();
+    return categories;
+  }
+
+  Future<List<String>> getCardioExerciseNames() async {
+    final rows = await _db.query('exercises', columns: ['name'], where: 'type = ?', whereArgs: ['1'], distinct: true, orderBy: 'name ASC');
 
     final categories = rows.map((row) => row['name'] as String).toList();
     return categories;
@@ -77,12 +85,7 @@ class ExercisesRepository extends ChangeNotifier {
       return false;
     }
 
-    final count = await _db.update(
-      TableName.exercises.name,
-      exercises.toMap(),
-      where: 'id = ?',
-      whereArgs: [exercises.id],
-    );
+    final count = await _db.update(TableName.exercises.name, exercises.toMap(), where: 'id = ?', whereArgs: [exercises.id]);
 
     if (count <= 0) {
       return false;

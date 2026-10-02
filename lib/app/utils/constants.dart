@@ -5,6 +5,8 @@ enum Period { day, week, month, year }
 
 enum StrengthMetric { oneRepMax, volume, bestWeight, relativeStrength, bestReps }
 
+enum CardioMetric { pace, distance, duration, incline, inclineAdjustedPace }
+
 enum GraphSort { dateDesc, dateAsc, name }
 
 enum ThreeDialogOptions { save, dismiss, stay }
@@ -14,6 +16,7 @@ enum NavRoute {
   exercises('/exercises', Icons.list_alt_rounded),
   plans('/plans', Icons.format_list_numbered),
   calendar('/calendar', Icons.calendar_month_rounded),
+  cardio('/cardio', Icons.run_circle_rounded),
   settings('/settings', Icons.settings);
 
   const NavRoute(this.route, this.icon);
@@ -22,10 +25,7 @@ enum NavRoute {
 
   static NavRoute fromRoute(String? route) {
     if (route == null) return NavRoute.workout;
-    return NavRoute.values.firstWhere(
-      (e) => e.route == route || route.startsWith(e.route),
-      orElse: () => NavRoute.workout,
-    );
+    return NavRoute.values.firstWhere((e) => e.route == route || route.startsWith(e.route), orElse: () => NavRoute.workout);
   }
 
   bool matches(String? route) => route != null && route.startsWith(this.route);
@@ -43,6 +43,7 @@ enum ConfigCategory {
   plans('plans', Icons.today_rounded),
   tabs('tabs', Icons.tab_rounded),
   timers('timers', Icons.timer_rounded),
+  cardio('cardio', Icons.run_circle_rounded),
   workouts('workouts', Icons.fitness_center_rounded);
 
   const ConfigCategory(this.name, this.icon);
@@ -135,12 +136,13 @@ const List<String> emptyPhrases = [
 
 const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-const List<MapEntry<String, String>> unitsList = [
-  MapEntry('kg', 'Kilograms (kg)'),
-  MapEntry('lb', 'Pounds (lb)'),
-  MapEntry('st', 'Stone (st)'),
+const List<MapEntry<String, String>> strengthUnits = [MapEntry('kg', 'Kilograms (kg)'), MapEntry('lb', 'Pounds (lb)'), MapEntry('st', 'Stone (st)')];
+const List<MapEntry<String, String>> distanceUnits = [MapEntry('km', 'Kilometers (km)'), MapEntry('mi', 'Miles (mi)')];
+const List<MapEntry<String, String>> paceUnits = [
+  MapEntry('min/km', 'Minutes per Kilometer (min/km)'),
+  MapEntry('min/mi', 'Minutes per mile (min/mi)'),
 ];
-
+const List<String> exerciseTypes = ['cardio', 'strength'];
 const longdateFormats = [
   'timeago',
   'dd/MM/yy',
@@ -161,76 +163,88 @@ const longdateFormats = [
 
 const shortdateFormats = ['d/M/yy', 'M/d/yy', 'd-M-yy', 'M-d-yy', 'd.M.yy', 'M.d.yy', 'dd.MM.yy'];
 
-const fonts = [
-  'Arial',
-  'Lato',
-  'Lunasima',
-  'Montserrat',
-  'Noto Sans',
-  'Open Sans',
-  'Roboto',
-  'Staatliches',
-  'Times New Roman',
-  'Wolland',
+const fonts = ['Arial', 'Lato', 'Lunasima', 'Montserrat', 'Noto Sans', 'Open Sans', 'Roboto', 'Staatliches', 'Times New Roman', 'Wolland'];
+
+const defaultStrengthExercises = [
+  ('Arnold press', 'Shoulders', 0),
+  ('Back extension', 'Back', 0),
+  ('Barbell bench press', 'Chest', 0),
+  ('Barbell biceps curl', 'Arms', 0),
+  ('Barbell bent-over row', 'Back', 0),
+  ('Barbell shoulder press', 'Shoulders', 0),
+  ('Barbell shrug', 'Shoulders', 0),
+  ('Cable fly', 'Chest', 0),
+  ('Cable lateral raise', 'Shoulders', 0),
+  ('Cable pull-down', 'Back', 0),
+  ('Chest fly', 'Chest', 0),
+  ('Chin-up', 'Back', 0),
+  ('Close-grip pull-up', 'Back', 0),
+  ('Crunch', 'Core', 0),
+  ('Deadlift', 'Back', 0),
+  ('Decline bench press', 'Chest', 0),
+  ('Diamond push-up', 'Chest', 0),
+  ('Dumbbell bench press', 'Chest', 0),
+  ('Dumbbell biceps curl', 'Arms', 0),
+  ('Dumbbell bent-over row', 'Back', 0),
+  ('Dumbbell fly', 'Chest', 0),
+  ('Dumbbell lateral raise', 'Shoulders', 0),
+  ('Dumbbell shoulder press', 'Shoulders', 0),
+  ('Dumbbell shrug', 'Shoulders', 0),
+  ('Good morning', 'Back', 0),
+  ('Hanging leg raise', 'Core', 0),
+  ('Hyperextension', 'Back', 0),
+  ('Incline bench press', 'Chest', 0),
+  ('Lat pull-down', 'Back', 0),
+  ('Leg curl', 'Legs', 0),
+  ('Leg extension', 'Legs', 0),
+  ('Leg press', 'Legs', 0),
+  ('Leg raise', 'Core', 0),
+  ('Lunge', 'Legs', 0),
+  ('Narrow-grip push-up', 'Chest', 0),
+  ('Neck curl', 'Shoulders', 0),
+  ('Overhead triceps extension', 'Arms', 0),
+  ('Preacher curl', 'Arms', 0),
+  ('Pull-down', 'Back', 0),
+  ('Pull-up', 'Back', 0),
+  ('Push-up', 'Chest', 0),
+  ('Reverse grip pull-down', 'Back', 0),
+  ('Reverse grip pushdown', 'Arms', 0),
+  ('Roman chair leg raise', 'Core', 0),
+  ('Romanian deadlift', 'Back', 0),
+  ('Russian twist', 'Core', 0),
+  ('Seated calf raise', 'Calves', 0),
+  ('Shoulder shrug', 'Shoulders', 0),
+  ('Squat', 'Legs', 0),
+  ('Standing calf raise', 'Calves', 0),
+  ('T-bar row', 'Back', 0),
+  ('Triceps dip', 'Arms', 0),
+  ('Triceps extension', 'Arms', 0),
+  ('Triceps pushdown', 'Arms', 0),
+  ('Upright row', 'Shoulders', 0),
+  ('Weighted Russian twist', 'Core', 0),
+  ('Wide-grip pull-up', 'Back', 0),
+  ('Wide-grip push-up', 'Chest', 0),
 ];
 
-const defaultExercises = [
-  ('Arnold press', 'Shoulders'),
-  ('Back extension', 'Back'),
-  ('Barbell bench press', 'Chest'),
-  ('Barbell biceps curl', 'Arms'),
-  ('Barbell bent-over row', 'Back'),
-  ('Barbell shoulder press', 'Shoulders'),
-  ('Barbell shrug', 'Shoulders'),
-  ('Cable fly', 'Chest'),
-  ('Cable lateral raise', 'Shoulders'),
-  ('Cable pull-down', 'Back'),
-  ('Chest fly', 'Chest'),
-  ('Chin-up', 'Back'),
-  ('Close-grip pull-up', 'Back'),
-  ('Crunch', 'Core'),
-  ('Deadlift', 'Back'),
-  ('Decline bench press', 'Chest'),
-  ('Diamond push-up', 'Chest'),
-  ('Dumbbell bench press', 'Chest'),
-  ('Dumbbell biceps curl', 'Arms'),
-  ('Dumbbell bent-over row', 'Back'),
-  ('Dumbbell fly', 'Chest'),
-  ('Dumbbell lateral raise', 'Shoulders'),
-  ('Dumbbell shoulder press', 'Shoulders'),
-  ('Dumbbell shrug', 'Shoulders'),
-  ('Good morning', 'Back'),
-  ('Hanging leg raise', 'Core'),
-  ('Hyperextension', 'Back'),
-  ('Incline bench press', 'Chest'),
-  ('Lat pull-down', 'Back'),
-  ('Leg curl', 'Legs'),
-  ('Leg extension', 'Legs'),
-  ('Leg press', 'Legs'),
-  ('Leg raise', 'Core'),
-  ('Lunge', 'Legs'),
-  ('Narrow-grip push-up', 'Chest'),
-  ('Neck curl', 'Shoulders'),
-  ('Overhead triceps extension', 'Arms'),
-  ('Preacher curl', 'Arms'),
-  ('Pull-down', 'Back'),
-  ('Pull-up', 'Back'),
-  ('Push-up', 'Chest'),
-  ('Reverse grip pull-down', 'Back'),
-  ('Reverse grip pushdown', 'Arms'),
-  ('Roman chair leg raise', 'Core'),
-  ('Romanian deadlift', 'Back'),
-  ('Russian twist', 'Core'),
-  ('Seated calf raise', 'Calves'),
-  ('Shoulder shrug', 'Shoulders'),
-  ('Squat', 'Legs'),
-  ('Standing calf raise', 'Calves'),
-  ('T-bar row', 'Back'),
-  ('Triceps dip', 'Arms'),
-  ('Triceps extension', 'Arms'),
-  ('Triceps pushdown', 'Arms'),
-  ('Upright row', 'Shoulders'),
-  ('Weighted Russian twist', 'Core'),
-  ('Wide-grip pull-up', 'Back'),
-  ('Wide-grip push-up', 'Chest'),
+const defaultCardioExercises = [
+  ('Running', 1),
+  ('Jogging', 1),
+  ('Walking', 1),
+  ('Cycling', 1),
+  ('Swimming', 1),
+  ('Jumping jacks', 1),
+  ('Jump rope', 1),
+  ('Rowing', 1),
+  ('Stair climbing', 1),
+  ('Hiking', 1),
+  ('Elliptical', 1),
+  ('Dancing', 1),
+  ('Burpees', 1),
+  ('High knees', 1),
+  ('Mountain climbers', 1),
+  ('Boxing', 1),
+  ('Kickboxing', 1),
+  ('Aerobics', 1),
+  ('Zumba', 1),
+  ('Skating', 1),
 ];

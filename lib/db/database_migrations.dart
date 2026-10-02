@@ -7,21 +7,22 @@ Future<void> importSqliteFile(Database db) async {
         CREATE TABLE exercises(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
+          type INTEGER NOT NULL DEFAULT 1,
           category TEXT,
           description TEXT,
           image BLOB,
           default_sets INTEGER NOT NULL DEFAULT 3,
           default_unit TEXT NOT NULL DEFAULT 'kg',
-          default_rest INTEGER,
           created INTEGER NOT NULL DEFAULT (unixepoch('subsecond') * 1000) 
         );
       ''');
     //Insert all existing user exercises from gym sets
     await txn.execute('''
-    INSERT INTO exercises (name, category)
+    INSERT INTO exercises (name, category, type)
     SELECT
       gs.name,
-      gs.category     
+      gs.category,
+      CASE WHEN gs.cardio = 1 THEN 0 ELSE 1 END
     FROM gym_sets gs
     WHERE gs.name <> 'Weight'
       AND gs.id IN (
@@ -33,11 +34,12 @@ Future<void> importSqliteFile(Database db) async {
   ''');
     //insert any unique exercises from plan exercsies
     await txn.execute('''
-    INSERT INTO exercises (name, category, image)
+    INSERT INTO exercises (name, category, type, image)
     SELECT
       pe.exercise,
       NULL,
-      NULL
+      1,
+      NULL,
     FROM plan_exercises pe
     WHERE NOT EXISTS (
         SELECT 1
@@ -52,12 +54,19 @@ Future<void> importSqliteFile(Database db) async {
     if (exerciseCount == 0) {
       final batch = txn.batch();
 
-      for (final exercise in defaultExercises) {
+      for (final exercise in defaultStrengthExercises) {
         batch.insert('exercises', {'name': exercise.$1, 'category': exercise.$2});
       }
 
       await batch.commit(noResult: true);
+
+      for (final exercise in defaultCardioExercises) {
+        batch.insert('exercises', {'name': exercise.$1, 'type': exercise.$2});
+      }
+
+      await batch.commit(noResult: true);
     }
+    //create sets
     await txn.execute('''
         CREATE TABLE sets(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,7 +90,6 @@ Future<void> importSqliteFile(Database db) async {
           weight,
           unit,
           note,
-          rest,
           body_weight,
           exercise_id,
           plan_id,
@@ -93,14 +101,62 @@ Future<void> importSqliteFile(Database db) async {
           gs.weight,
           gs.unit,
           gs.notes,
-          gs.rest_ms,
           gs.body_weight,
           e.id,
           gs.plan_id,
           gs.created * 1000
         FROM gym_sets gs
+        where gs.cardio = 0
         INNER JOIN exercises e ON e.name = gs.name;
       ''');
+    //Create cardio
+    await txn.execute('''
+        CREATE TABLE cardio(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          duration INTEGER NOT NULL DEFAULT 0,
+          distance REAL NOT NULL DEFAULT 0.0,
+          distance_unit TEXT NOT NULL DEFAULT 'km',
+          incline REAL,
+          pace REAL,
+          note TEXT,
+          exercise_id INTEGER NOT NULL,
+          plan_id INTEGER,
+          created INTEGER NOT NULL DEFAULT (unixepoch('subsecond') * 1000),
+          FOREIGN KEY (exercise_id) REFERENCES exercises(id)       
+          )
+      ''');
+    await txn.execute('''
+        CREATE INDEX cardio_exercise_id_created
+        ON cardio(exercise_id, created);
+      ''');
+    //insert cardio
+    await txn.execute('''
+    INSERT INTO cardio (
+      id,
+      duration,
+      distance,
+      distance_unit,
+      incline,
+      note,      
+      exercise_id,
+      plan_id,
+      created
+    )
+    SELECT
+      gs.id,
+      gs.distance,
+      gs.duration,
+      gs.unit,
+      gs.incline,
+      gs.notes,
+      e.id,
+      gs.plan_id,
+      gs.created * 1000
+    FROM gym_sets gs
+    where gs.cardio = 1
+    INNER JOIN exercises e ON e.name = gs.name;
+  ''');
+
     //drop, rename and index
     await txn.execute('DROP TABLE gym_sets;');
     //Plans
@@ -144,7 +200,6 @@ Future<void> importSqliteFile(Database db) async {
         exercise_id INTEGER NOT NULL,
         sequence INTEGER,
         max_sets INTEGER,
-        rest INTEGER,
         created INTEGER NOT NULL DEFAULT (unixepoch('subsecond') * 1000),
         FOREIGN KEY(exercise_id) REFERENCES exercises(id),
         FOREIGN KEY(plan_id) REFERENCES plans(id),

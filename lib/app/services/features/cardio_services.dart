@@ -3,28 +3,28 @@ import 'package:flutter/material.dart';
 import 'package:fossfit/app/features/sets/add_edit_set_page.dart';
 import 'package:fossfit/app/utils/utils.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
+import 'package:fossfit/db/models/features/cardio_model.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
-import 'package:fossfit/db/models/features/gymset_model.dart';
+import 'package:fossfit/db/repositories/cardio_repository.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
-import 'package:fossfit/db/repositories/gym_set_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-class GymSetServices {
+class CardioServices {
   final BuildContext context;
-  late GymSetRepository gymsetsRepo;
+  late CardioRepository cardioRepo;
   late ExercisesRepository exerciseRepo;
   late ConfigRepository settingsRepo;
-  GymSetServices({required this.context}) {
-    gymsetsRepo = context.read<GymSetRepository>();
+  CardioServices({required this.context}) {
+    cardioRepo = context.read<CardioRepository>();
     exerciseRepo = context.read<ExercisesRepository>();
     settingsRepo = context.read<ConfigRepository>();
   }
-  List<GymSet> getAllGymSets() => gymsetsRepo.gymsets;
-  GymSet? getGymSetById(int id) => gymsetsRepo.getGymSetById(id);
-  Future<GymSet?> openAddEditPage(BuildContext context, int? gymSetId) async {
-    return await showGeneralDialog<GymSet?>(
+  List<Cardio> getAllCardio() => cardioRepo.cardio;
+  Cardio? getCardioById(int id) => cardioRepo.getCardioById(id);
+  Future<Cardio?> openAddEditPage(BuildContext context, int? cardioId) async {
+    return await showGeneralDialog<Cardio?>(
       context: context,
       barrierLabel: '',
       barrierDismissible: true,
@@ -37,7 +37,7 @@ class GymSetServices {
             child: SizedBox(
               width: MediaQuery.of(context).size.width,
               height: double.infinity,
-              child: AddEditSetPage(setId: gymSetId),
+              child: AddEditSetPage(setId: cardioId),
             ),
           ),
         );
@@ -49,60 +49,61 @@ class GymSetServices {
     );
   }
 
-  Future<GymSet?> insertGymSet(GymSet? gymSet) async {
-    if (gymSet == null) return null;
-    return await gymsetsRepo.insertGymSet(gymSet);
+  Future<Cardio?> insertCardio(Cardio? cardio) async {
+    if (cardio == null) return null;
+    return await cardioRepo.insertCardio(cardio);
   }
 
-  Future<bool> editGymSet(GymSet? gymSet) async {
-    if (gymSet == null) return false;
-    return await gymsetsRepo.updateGymSet(gymSet);
+  Future<bool> editCardio(Cardio? cardio) async {
+    if (cardio == null) return false;
+    return await cardioRepo.updateCardio(cardio);
   }
 
-  Future<bool> updateGymSet(GymSet gymset) async {
-    return await gymsetsRepo.updateGymSet(gymset);
+  Future<bool> updateCardio(Cardio cardio) async {
+    return await cardioRepo.updateCardio(cardio);
   }
 
   Future<void> decoupleSetsFromPlan(List<int> ids) async {
-    return await gymsetsRepo.decoupleSetsFromPlan(ids);
+    return await cardioRepo.decoupleSetsFromPlan(ids);
   }
 
-  Future<bool> deleteGymSetById(int id) async {
+  Future<bool> deleteCardioById(int id) async {
     if (id <= 0) return false;
-    final result = await gymsetsRepo.deleteGymSetById(id);
+    final result = await cardioRepo.deleteCardioById(id);
     AppSnackBar.success('Deleted');
     return result;
   }
 
-  Future<bool> deleteMultipleGymSetssByIds(List<int> ids) async {
+  Future<bool> deleteMultipleCardiosByIds(List<int> ids) async {
     if (ids.isEmpty) return false;
     for (final id in ids) {
-      await gymsetsRepo.deleteGymSetById(id);
+      await cardioRepo.deleteCardioById(id);
     }
-    gymsetsRepo.loadAll();
+    cardioRepo.loadAll();
     AppSnackBar.success('Deleted');
     return true;
   }
 
-  Future<bool> isBest(GymSet set) async {
-    return await gymsetsRepo.isBest(set);
+  Future<bool> isBest(Cardio set) async {
+    return await cardioRepo.isBest(set);
   }
 
-  GymSet? getLastGymSet() => getAllGymSets().firstOrNull;
+  Cardio? getLastCardio() => getAllCardio().firstOrNull;
 
-  List<GymSet> getTodaysSetsByExerciseId(int exerciseId, int? planId) => gymsetsRepo.getTodaysSetsByExerciseId(exerciseId, planId);
+  List<Cardio> getTodaysSetsByExerciseId(int exerciseId, int? planId) => cardioRepo.getTodaysSetsByExerciseId(exerciseId, planId);
 
-  List<GymSet> getSetsByExerciseId(int exerciseId, {int limit = 100}) =>
-      gymsetsRepo.gymsets.where((e) => e.exerciseId == exerciseId).take(limit).toList();
-  List<GymSet> getSetsByPlanId(int planId, {int limit = 100}) => gymsetsRepo.gymsets.where((e) => e.planId == planId).take(limit).toList();
+  List<Cardio> getSetsByExerciseId(int exerciseId, {int limit = 100}) =>
+      cardioRepo.cardio.where((e) => e.exerciseId == exerciseId).take(limit).toList();
+  List<Cardio> getSetsByPlanId(int planId, {int limit = 100}) => cardioRepo.cardio.where((e) => e.planId == planId).take(limit).toList();
 
-  Widget getLastGymSetWorkout(List<GymSet> sets) {
-    String plural(int s) => s > 1 ? 's' : '';
+  Widget getLastCardioWorkout(List<Cardio> sets) {
+    String plural(double s) => s > 0.1 ? 's' : '';
+    String plurals(int s) => s > 1 ? 's' : '';
     if (sets.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    var sortedDays = getExerciseSets(sets);
+    var sortedDays = getCardioSets(sets);
 
     if (sortedDays.isEmpty) {
       return const SizedBox.shrink();
@@ -118,26 +119,13 @@ class GymSetServices {
 
     final allWorkoutSets = totalWorkout.expand((exercise) => exercise.sets).toList();
 
-    final strengthSet = allWorkoutSets.firstOrNull;
+    double totalDistance = allWorkoutSets.map((e) => (e.distance ?? 0.0)).reduce((a, b) => a + b);
 
-    final weightUnit = strengthSet?.unit ?? '';
+    int totalDuration = allWorkoutSets.map((e) => e.duration).reduce((a, b) => a + b);
 
-    var totalSets = 0;
-    var totalReps = 0;
+    final distanceUnit = allWorkoutSets.firstOrNull?.distanceUnit ?? 'km';
 
     final totalExercises = totalWorkout.length;
-
-    double totalWeight = 0;
-
-    for (final exercise in totalWorkout) {
-      totalSets += exercise.sets.length;
-
-      for (final set in exercise.sets) {
-        totalReps += set.reps.toInt();
-
-        totalWeight += set.weight * set.reps;
-      }
-    }
 
     var dateFormat = settingsRepo.getSetting(.formats, 'short_date_format');
 
@@ -165,56 +153,56 @@ class GymSetServices {
           const Divider(),
           Text(
             '$totalExercises exercise'
-            '${plural(totalExercises)} completed',
+            '${plurals(totalExercises)} completed',
             textAlign: TextAlign.left,
           ),
           Text(
-            '$totalSets set'
-            '${plural(totalSets)} completed',
+            '$totalDistance $distanceUnit'
+            '${plural(totalDistance)} covered',
             textAlign: TextAlign.left,
           ),
-          Text(
-            '$totalReps rep'
-            '${plural(totalReps)} completed',
-            textAlign: TextAlign.left,
-          ),
-          if (totalWeight > 0)
-            Text(
-              '${num.parse(totalWeight.toStringAsFixed(3))}'
-              '$weightUnit total lifted',
-              textAlign: TextAlign.left,
-            ),
+          Text('${formatSeconds(totalDuration)} completed', textAlign: TextAlign.left),
         ],
       ),
     );
   }
 
-  List<ExerciseSets> getExerciseSets(List<GymSet> sets, {bool reversed = false}) {
-    final exerciseItems = <ExerciseSets>[];
+  String formatSeconds(int seconds) {
+    final hours = seconds ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+    final secs = seconds % 60;
 
-    for (final gymSet in sets) {
-      final exercise = exerciseRepo.getExerciseById(gymSet.exerciseId);
+    return '${hours.toString().padLeft(2, '0')}:'
+        '${minutes.toString().padLeft(2, '0')}:'
+        '${secs.toString().padLeft(2, '0')}';
+  }
+
+  List<CardioSets> getCardioSets(List<Cardio> sets, {bool reversed = false}) {
+    final exerciseItems = <CardioSets>[];
+
+    for (final cardio in sets) {
+      final exercise = exerciseRepo.getExerciseById(cardio.exerciseId);
 
       if (exercise == null || exercise.id == null) {
         continue;
       }
 
-      final day = DateUtils.dateOnly(gymSet.created);
+      final day = DateUtils.dateOnly(cardio.created);
 
       final index = exerciseItems.indexWhere((item) => isSameDay(item.date, day) && item.exercise.id == exercise.id);
 
       if (index == -1) {
-        exerciseItems.add(ExerciseSets(sets: [gymSet], date: day, exercise: exercise));
+        exerciseItems.add(CardioSets(sets: [cardio], date: day, exercise: exercise));
       } else {
-        exerciseItems[index].sets.add(gymSet);
+        exerciseItems[index].sets.add(cardio);
       }
     }
 
     return reversed ? exerciseItems.reversed.toList() : exerciseItems;
   }
 
-  Map<DateTime, List<GymSet>> groupSetsByDay(List<GymSet> sets) {
-    final map = <DateTime, List<GymSet>>{};
+  Map<DateTime, List<Cardio>> groupSetsByDay(List<Cardio> sets) {
+    final map = <DateTime, List<Cardio>>{};
 
     for (final set in sets) {
       final day = DateTime(set.created.year, set.created.month, set.created.day);

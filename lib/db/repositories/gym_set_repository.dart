@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/db/db_constants.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
-import 'package:fossfit/db/models/features/strength_model.dart';
 import 'package:sqflite/sqflite.dart';
 
 typedef Rpm = ({String name, double rpm, double weight});
@@ -281,10 +280,7 @@ class GymSetRepository extends ChangeNotifier {
       _latestgymsets = [];
       return;
     }
-    final mostRecentDay = _gymsets
-        .map((s) => dayOnly(s.created))
-        .where((d) => !d.isAfter(today))
-        .reduce((a, b) => a.isAfter(b) ? a : b);
+    final mostRecentDay = _gymsets.map((s) => dayOnly(s.created)).where((d) => !d.isAfter(today)).reduce((a, b) => a.isAfter(b) ? a : b);
 
     _latestgymsets = _gymsets.where((s) => dayOnly(s.created) == mostRecentDay).toList();
   }
@@ -532,13 +528,7 @@ class GymSetRepository extends ChangeNotifier {
     ''');
 
     return results
-        .map(
-          (result) => (
-            name: result['name'] as String,
-            rpm: (result['rpm'] as num).toDouble(),
-            weight: (result['weight'] as num).toDouble(),
-          ),
-        )
+        .map((result) => (name: result['name'] as String, rpm: (result['rpm'] as num).toDouble(), weight: (result['weight'] as num).toDouble()))
         .toList();
   }
 }

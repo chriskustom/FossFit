@@ -49,13 +49,7 @@ int generateNotificationId({
   required DateTime timestamp,
   String? notificationType,
 }) {
-  return Object.hash(
-    entityType,
-    entityId,
-    parentId ?? 0,
-    timestamp.millisecondsSinceEpoch,
-    notificationType ?? '',
-  ).abs();
+  return Object.hash(entityType, entityId, parentId ?? 0, timestamp.millisecondsSinceEpoch, notificationType ?? '').abs();
 }
 
 bool isSameDay(DateTime date1, DateTime date2) {
@@ -77,8 +71,7 @@ Future<bool> requestNotificationPermission() async {
   return true;
 }
 
-void selectAll(TextEditingController controller) =>
-    controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
+void selectAll(TextEditingController controller) => controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
 
 String toString(double value) {
   final str = value.toStringAsFixed(2);
@@ -105,6 +98,131 @@ String formatDateWithOrdinal(DateTime date) {
   return '${DateFormat('EEE').format(date)}, '
       '${date.day}${suffix(date.day)} '
       '${DateFormat('MMM yy').format(date)}';
+}
+
+String getPace({required int totalSeconds, required double totalDistance, required String paceUnit, required String distanceUnit}) {
+  if (totalSeconds <= 0 || totalDistance <= 0) {
+    return '00:00';
+  }
+
+  final distanceMeters = switch (distanceUnit) {
+    'km' => totalDistance * 1000.0,
+    'mi' => totalDistance * 1609.344,
+    _ => 1000.0,
+  };
+
+  final metersPerSecond = distanceMeters / totalSeconds;
+
+  switch (paceUnit) {
+    case 'min/km':
+      final secondsPerKm = 1000 / metersPerSecond;
+      return _formatPaceDuration(secondsPerKm);
+
+    case 'min/mi':
+      final secondsPerMile = 1609.344 / metersPerSecond;
+      return _formatPaceDuration(secondsPerMile);
+
+    default:
+      return '00:00';
+  }
+}
+
+String formatPace({required int totalSeconds, required double totalDistance, required String paceUnit, required String distanceUnit}) {
+  if (totalSeconds <= 0 || totalDistance <= 0) {
+    return '00:00';
+  }
+
+  final distanceMeters = switch (distanceUnit) {
+    'km' => totalDistance * 1000.0,
+    'mi' => totalDistance * 1609.344,
+    _ => 1000.0,
+  };
+
+  final metersPerSecond = distanceMeters / totalSeconds;
+
+  switch (paceUnit) {
+    case 'min/km':
+      final secondsPerKm = 1000 / metersPerSecond;
+      return '${_formatPaceDuration(secondsPerKm)}/km';
+
+    case 'min/mi':
+      final secondsPerMile = 1609.344 / metersPerSecond;
+      return '${_formatPaceDuration(secondsPerMile)}/mi';
+
+    default:
+      return '00:00';
+  }
+}
+
+String formatGradeAdjustedPace({
+  required int totalSeconds,
+  required double totalDistance,
+  required double inclinePercent,
+  required String paceUnit, // mph, km/h, min/mi, min/km
+  required String distanceUnit, // km, mi, m, yd
+}) {
+  if (totalSeconds <= 0 || totalDistance <= 0) {
+    throw ArgumentError('Time and distance must be greater than zero');
+  }
+
+  final distanceMeters = switch (distanceUnit) {
+    'km' => totalDistance * 1000.0,
+    'mi' => totalDistance * 1609.344,
+    _ => throw ArgumentError('Unknown distance unit: $distanceUnit'),
+  };
+
+  // Actual horizontal running speed.
+  final actualSpeed = distanceMeters / totalSeconds;
+
+  // Convert percentage grade to decimal.
+  final grade = inclinePercent / 100.0;
+
+  // Minetti et al. energy cost of running.
+  //
+  // Returns energy cost in J/kg/m.
+  double energyCost(double grade) {
+    return 155.4 * pow(grade, 5) - 30.4 * pow(grade, 4) - 43.3 * pow(grade, 3) + 46.3 * pow(grade, 2) + 19.5 * grade + 3.6;
+  }
+
+  // Equivalent flat-ground speed.
+  //
+  // At 0% grade, energyCost(0) = 3.6.
+  final actualCost = energyCost(grade);
+  final flatCost = energyCost(0);
+
+  final adjustedSpeed = actualSpeed * actualCost / flatCost;
+
+  switch (paceUnit) {
+    case 'min/km':
+      final secondsPerKm = 1000 / adjustedSpeed;
+      return '${_formatPaceDuration(secondsPerKm)}/km';
+
+    case 'min/mi':
+      final secondsPerMile = 1609.344 / adjustedSpeed;
+      return '${_formatPaceDuration(secondsPerMile)}/mi';
+
+    default:
+      throw ArgumentError('Unknown pace unit: $paceUnit');
+  }
+}
+
+String _formatPaceDuration(double seconds) {
+  final totalSeconds = seconds.round();
+  final minutes = totalSeconds ~/ 60;
+  final remainingSeconds = totalSeconds % 60;
+
+  return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
+}
+
+String formatDuration(Duration duration) {
+  String hours = duration.inHours.toString().padLeft(2, '0');
+  String minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+  String seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return "$hours:$minutes:$seconds";
+}
+
+int durationToSeconds({int hours = 0, int minutes = 0, int seconds = 0}) {
+  return hours * 3600 + minutes * 60 + seconds;
 }
 
 ///## An extension on the [String] class that provides methods for transforming text.
@@ -137,9 +255,7 @@ extension StringExtensions on String {
             .toList();
 
     // Capitalize the first letter of each word and join them back together
-    return words
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1).toLowerCase() : '')
-        .join(' ');
+    return words.map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1).toLowerCase() : '').join(' ');
   }
 
   //!~~~~~~~~~~~~~~~~~~~~~~~ Small Case Text ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

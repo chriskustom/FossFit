@@ -48,12 +48,12 @@ class DatabaseHelper {
         CREATE TABLE exercises(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
+          type INTEGER NOT NULL DEFAULT 1,
           category TEXT,
           description TEXT,
           image BLOB,
           default_sets INTEGER NOT NULL DEFAULT 3,
           default_unit TEXT NOT NULL DEFAULT 'kg',
-          default_rest INTEGER,
           created INTEGER NOT NULL DEFAULT (unixepoch('subsecond') * 1000) 
         )
       ''');
@@ -65,7 +65,6 @@ class DatabaseHelper {
           weight REAL NOT NULL DEFAULT 0.0,
           unit TEXT,
           note TEXT,
-          rest INTEGER,
           body_weight REAL,
           exercise_id INTEGER NOT NULL,
           plan_id INTEGER,
@@ -79,6 +78,25 @@ class DatabaseHelper {
         ON sets(exercise_id, created);
       ''');
 
+    await db.execute('''
+        CREATE TABLE cardio(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          duration INTEGER NOT NULL DEFAULT 0,
+          distance REAL NOT NULL DEFAULT 0.0,
+          distance_unit TEXT NOT NULL DEFAULT 'km',
+          incline REAL,
+          pace REAL,
+          note TEXT,
+          exercise_id INTEGER NOT NULL,
+          plan_id INTEGER,
+          created INTEGER NOT NULL DEFAULT (unixepoch('subsecond') * 1000),
+          FOREIGN KEY (exercise_id) REFERENCES exercises(id)       
+          )
+      ''');
+    await db.execute('''
+        CREATE INDEX cardio_exercise_id_created
+        ON cardio(exercise_id, created);
+      ''');
     await db.execute('''
       CREATE TABLE plans(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,7 +114,6 @@ class DatabaseHelper {
         exercise_id INTEGER NOT NULL,
         sequence INTEGER,
         max_sets INTEGER,
-        rest INTEGER,
         created INTEGER NOT NULL DEFAULT (unixepoch('subsecond') * 1000),
         FOREIGN KEY(exercise_id) REFERENCES exercises(id),
         FOREIGN KEY(plan_id) REFERENCES plans(id),
@@ -163,7 +180,7 @@ class DatabaseHelper {
           ('appearance','color','4281559659'),
           ('appearance','curve_lines','1'),
           ('appearance','curve_smoothness','0.1'),
-          ('tabs','tabs','Plans,Calendar,Exercises'),
+          ('tabs','tabs','Plans,Calendar,Exercises,Cardio'),
           ('backup','backup','0'),
           ('backup','frequency','14'),
           ('backup','directory',''),
@@ -185,8 +202,17 @@ class DatabaseHelper {
     await db.transaction((txn) async {
       final batch = txn.batch();
 
-      for (final exercise in defaultExercises) {
-        batch.insert('exercises', {'name': exercise.$1, 'category': exercise.$2});
+      for (final exercise in defaultStrengthExercises) {
+        batch.insert('exercises', {'name': exercise.$1, 'category': exercise.$2, 'type': exercise.$3});
+      }
+
+      await batch.commit(noResult: true);
+    });
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+
+      for (final exercise in defaultCardioExercises) {
+        batch.insert('exercises', {'name': exercise.$1, 'type': exercise.$2, 'default_unit': 'km'});
       }
 
       await batch.commit(noResult: true);
@@ -207,15 +233,13 @@ class DatabaseHelper {
             plan_id,
             exercise_id,
             sequence,
-            max_sets,
-            rest
+            max_sets
           )
           SELECT
             plan_id,
             exercise_id,
             sequence,
-            max_sets,
-            rest
+            max_sets
           FROM (
             SELECT
               p.id AS plan_id,
@@ -224,8 +248,7 @@ class DatabaseHelper {
                 PARTITION BY p.id
                 ORDER BY RANDOM()
               ) AS sequence,
-              e.default_sets AS max_sets,
-              e.default_rest AS rest
+              e.default_sets AS max_sets
             FROM plans p
             JOIN exercises e
               ON e.category = p.name
@@ -279,11 +302,7 @@ class DatabaseHelper {
     final dir = Directory(backupDirPath);
     if (!dir.existsSync()) return null;
 
-    final files = dir
-        .listSync()
-        .whereType<File>()
-        .where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'))
-        .toList();
+    final files = dir.listSync().whereType<File>().where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db')).toList();
 
     if (files.isEmpty) return null;
 

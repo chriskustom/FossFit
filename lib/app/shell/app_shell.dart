@@ -85,9 +85,9 @@ class _AppShellState extends State<AppShell> {
                 return ConstrainedBox(
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(context).copyWith(
-                      dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad},
-                    ),
+                    behavior: ScrollConfiguration.of(
+                      context,
+                    ).copyWith(dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad}),
                     child: widget.body,
                   ),
                 );
@@ -142,6 +142,7 @@ class _AppShellState extends State<AppShell> {
         final pageOrder = tabs.split(',').where((t) => !t.startsWith('.'));
 
         final allPages = <String, NavPage>{
+          'Cardio': NavPage(route: NavRoute.cardio, label: 'Cardio', enabled: pageOrder.contains('Cardio')),
           'Plans': NavPage(route: NavRoute.plans, label: 'Plans', enabled: pageOrder.contains('Plans')),
           'Calendar': NavPage(route: NavRoute.calendar, label: 'Calendar', enabled: pageOrder.contains('Calendar')),
           'Exercises': NavPage(route: NavRoute.exercises, label: 'Exercises', enabled: pageOrder.contains('Exercises')),

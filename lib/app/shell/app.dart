@@ -2,6 +2,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fossfit/app/features/calendar/calendar_page.dart';
+import 'package:fossfit/app/features/cardio/cardio_page.dart';
 import 'package:fossfit/app/features/exercises/exercises_page.dart';
 import 'package:fossfit/app/features/plans/plans_page.dart';
 import 'package:fossfit/app/features/workout/workout_page.dart';
@@ -85,6 +86,9 @@ class _AppState extends State<App> {
                         break;
                       case NavRoute.calendar:
                         page = const CalendarPage();
+                        break;
+                      case NavRoute.cardio:
+                        page = const CardioPage();
                         break;
                       case NavRoute.settings:
                         page = const SettingsPage();

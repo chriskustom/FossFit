@@ -6,6 +6,7 @@ import 'package:fossfit/app/services/notifications/notification_service_desktop.
 import 'package:fossfit/app/shell/app.dart';
 import 'package:fossfit/app/widgets/countdown_timer.dart';
 import 'package:fossfit/db/database_helper.dart';
+import 'package:fossfit/db/repositories/cardio_repository.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/gym_set_repository.dart';
@@ -53,6 +54,7 @@ Future main() async {
         ChangeNotifierProvider<GymSetRepository>(create: (_) => GymSetRepository(db)..loadAll()),
         ChangeNotifierProvider<PlansRepository>(create: (_) => PlansRepository(db)..loadAll()),
         ChangeNotifierProvider<PlanExercisesRepository>(create: (_) => PlanExercisesRepository(db)..loadAll()),
+        ChangeNotifierProvider<CardioRepository>(create: (_) => CardioRepository(db)..loadAll()),
         ChangeNotifierProvider<ConfigRepository>.value(value: settingsRepo),
         ChangeNotifierProvider(create: (_) => CountdownTimerController()),
       ],

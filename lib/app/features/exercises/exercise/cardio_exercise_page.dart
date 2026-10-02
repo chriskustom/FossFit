@@ -2,35 +2,37 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/features/exercises/exercise/graph/flex_line.dart';
 import 'package:fossfit/app/features/workout/widgets/workout_peek.dart';
+import 'package:fossfit/app/services/features/cardio_services.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/widgets/confirmation_dialog.dart';
+import 'package:fossfit/db/models/features/cardio_model.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
-import 'package:fossfit/db/models/features/strength_model.dart';
+import 'package:fossfit/db/repositories/cardio_repository.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/gym_set_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-class ExercisePage extends StatefulWidget {
+class CardioExercisePage extends StatefulWidget {
   final int exerciseId;
-  final List<StrengthData> initialData;
-  const ExercisePage({super.key, required this.exerciseId, required this.initialData});
+  final List<CardioData> initialData;
+  const CardioExercisePage({super.key, required this.exerciseId, required this.initialData});
 
   @override
-  State<ExercisePage> createState() => _ExercisePageState();
+  State<CardioExercisePage> createState() => _CardioExercisePageState();
 }
 
-class _ExercisePageState extends State<ExercisePage> {
-  late List<StrengthData> data = widget.initialData;
+class _CardioExercisePageState extends State<CardioExercisePage> {
+  late List<CardioData> data = widget.initialData;
   bool useTimeBasedXAxis = false;
 
   int limit = 20;
-  StrengthMetric metric = StrengthMetric.bestWeight;
+  CardioMetric metric = CardioMetric.pace;
   Period period = Period.day;
   DateTime? start;
   DateTime? end;
@@ -108,16 +110,12 @@ class _ExercisePageState extends State<ExercisePage> {
                     DropdownButtonFormField(
                       decoration: const InputDecoration(labelText: 'Metric'),
                       initialValue: metric,
-                      items: [
-                        const DropdownMenuItem(value: StrengthMetric.bestWeight, child: Text("Best weight")),
-                        const DropdownMenuItem(value: StrengthMetric.bestReps, child: Text("Best reps")),
-                        const DropdownMenuItem(value: StrengthMetric.oneRepMax, child: Text("One rep max")),
-                        const DropdownMenuItem(value: StrengthMetric.volume, child: Text("Volume")),
-                        if (settings.isEnabled(.workouts, 'show_body_weight'))
-                          const DropdownMenuItem(
-                            value: StrengthMetric.relativeStrength,
-                            child: Text("Relative strength"),
-                          ),
+                      items: const [
+                        DropdownMenuItem(value: CardioMetric.pace, child: Text("Pace (distance / time)")),
+                        DropdownMenuItem(value: CardioMetric.inclineAdjustedPace, child: Text("Adjusted pace")),
+                        DropdownMenuItem(value: CardioMetric.duration, child: Text("Duration")),
+                        DropdownMenuItem(value: CardioMetric.distance, child: Text("Distance")),
+                        DropdownMenuItem(value: CardioMetric.incline, child: Text("Incline")),
                       ],
                       onChanged: (value) {
                         setState(() {
@@ -147,11 +145,7 @@ class _ExercisePageState extends State<ExercisePage> {
                       child: DropdownButtonFormField<String>(
                         decoration: const InputDecoration(labelText: 'Unit'),
                         initialValue: _unit,
-                        items: const [
-                          DropdownMenuItem(value: 'kg', child: Text("Kilograms (kg)")),
-                          DropdownMenuItem(value: 'lb', child: Text("Pounds (lb)")),
-                          DropdownMenuItem(value: 'stone', child: Text("Stone")),
-                        ],
+                        items: distanceUnits.map((u) => DropdownMenuItem<String>(value: u.key, child: Text(u.value))).toList(),
                         onChanged: (String? newValue) {
                           setState(() {
                             _unit = newValue!;
@@ -270,13 +264,13 @@ class _ExercisePageState extends State<ExercisePage> {
 
   Future<void> showDeleteDialog() async {
     var services = ExerciseServices(context: context);
-    var setServices = GymSetServices(context: context);
+    var setServices = CardioServices(context: context);
     var exerciseSets = setServices.getSetsByExerciseId(widget.exerciseId);
     var name = services.getExerciseById(widget.exerciseId)!.name;
     var setsExist = exerciseSets.length > 1;
 
     var text = setsExist
-        ? '\'$name\' has sets logged. \nDeleting this exercise will delete these sets. \n\nDo you wish to proceed?'
+        ? '\'$name\' has activities logged. \nDeleting this exercise will delete these activities. \n\nDo you wish to proceed?'
         : 'Are you sure you want to delete exercise: \'$name\'?';
     final proceed = await showConfirmationDialog(
       context: context,
@@ -306,17 +300,16 @@ class _ExercisePageState extends State<ExercisePage> {
 
   void setData() async {
     if (!mounted) return;
-    final strengthData = await context.read<GymSetRepository>().getStrengthData(
+    final cardioData = await context.read<CardioRepository>().getCardioData(
       target: _unit ?? 'kg',
       exerciseId: widget.exerciseId,
       metric: metric,
       period: period,
       start: start,
       end: end,
-      limit: limit,
     );
     setState(() {
-      data = strengthData;
+      data = cardioData;
     });
   }
 
@@ -326,26 +319,27 @@ class _ExercisePageState extends State<ExercisePage> {
       getTooltipItems: (touchedSpots) {
         final row = data.elementAt(touchedSpots.last.spotIndex);
         final created = DateFormat(format).format(row.created);
-        final formatter = NumberFormat("#,###.00");
-
         String text = "${row.value.toStringAsFixed(2)}$_unit $created";
         switch (metric) {
-          case StrengthMetric.bestReps:
-          case StrengthMetric.relativeStrength:
-            text = "${row.value.toStringAsFixed(2)} $created";
+          case CardioMetric.pace:
+            text = "${row.value} ${row.unit} / min";
             break;
-          case StrengthMetric.volume:
-          case StrengthMetric.oneRepMax:
-            text = "${formatter.format(row.value)}$_unit $created";
+          case CardioMetric.duration:
+            final minutes = row.value.floor();
+            final seconds = ((row.value * 60) % 60).floor().toString().padLeft(2, '0');
+            text = "$minutes:$seconds";
             break;
-          case StrengthMetric.bestWeight:
+          case CardioMetric.distance:
+            text += " ${row.unit}";
+            break;
+          case CardioMetric.incline:
+            text += "%";
+            break;
+          case CardioMetric.inclineAdjustedPace:
             break;
         }
 
-        return [
-          LineTooltipItem(text, TextStyle(color: Theme.of(context).textTheme.bodyLarge!.color)),
-          if (touchedSpots.length > 1) null,
-        ];
+        return [LineTooltipItem(text, TextStyle(color: Theme.of(context).textTheme.bodyLarge!.color)), if (touchedSpots.length > 1) null];
       },
     );
   }
@@ -363,44 +357,14 @@ class _ExercisePageState extends State<ExercisePage> {
     final index = touchResponse?.lineBarSpots?[0].spotIndex;
     if (index == null) return;
     final row = data[index];
-    GymSet? gymSet;
-    var theseSets = gymSets.where((t) => t.created == row.created).toList();
-    switch (metric) {
-      case StrengthMetric.oneRepMax:
-        gymSet = await context.read<GymSetRepository>().getOrmEstimate(row.created, row.value, exercise!.name);
-        break;
-      case StrengthMetric.volume:
-        gymSet = theseSets.take(1).first;
-        break;
-      case StrengthMetric.bestWeight:
-        gymSet = theseSets.where((tbl) => tbl.weight == row.value).take(1).first;
-        break;
-      case StrengthMetric.relativeStrength:
-        gymSet = theseSets
-            .where(
-              (tbl) =>
-                  ((tbl.weight / (tbl.bodyWeight ?? 0.0)) == (row.value) ||
-                  (tbl.weight / (tbl.bodyWeight ?? 0.0)).isNaN),
-            )
-            .take(1)
-            .first;
-        break;
-      case StrengthMetric.bestReps:
-        gymSet = theseSets.where((tbl) => tbl.reps == (row.value)).take(1).first;
-        break;
-    }
+    GymSet? gymSet = gymSets.where((t) => t.created == row.created).toList().firstOrNull;
 
     if (!mounted) return;
-    await services.openAddEditPage(context, gymSet.id);
+    await services.openAddEditPage(context, gymSet?.id);
   }
 
   Future<void> _selectEnd() async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: end,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
+    final DateTime? pickedDate = await showDatePicker(context: context, initialDate: end, firstDate: DateTime(2000), lastDate: DateTime(2100));
 
     if (pickedDate == null) return;
 
@@ -411,12 +375,7 @@ class _ExercisePageState extends State<ExercisePage> {
   }
 
   Future<void> _selectStart() async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: start,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
+    final DateTime? pickedDate = await showDatePicker(context: context, initialDate: start, firstDate: DateTime(2000), lastDate: DateTime(2100));
 
     if (pickedDate == null) return;
 

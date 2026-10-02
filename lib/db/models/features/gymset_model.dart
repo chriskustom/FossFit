@@ -10,10 +10,32 @@ class GymSet extends BaseModel {
   final int? planId;
   final int exerciseId;
 
-  GymSet({super.id, required this.reps, required this.weight, this.unit, this.note, this.bodyWeight, this.rest, required this.exerciseId, this.planId, super.created});
+  GymSet({
+    super.id,
+    required this.reps,
+    required this.weight,
+    this.unit,
+    this.note,
+    this.bodyWeight,
+    this.rest,
+    required this.exerciseId,
+    this.planId,
+    super.created,
+  });
 
   @override
-  GymSet copyWith({int? id, int? reps, double? weight, String? unit, String? note, double? bodyWeight, int? rest, int? exerciseId, int? planId, DateTime? created}) {
+  GymSet copyWith({
+    int? id,
+    int? reps,
+    double? weight,
+    String? unit,
+    String? note,
+    double? bodyWeight,
+    int? rest,
+    int? exerciseId,
+    int? planId,
+    DateTime? created,
+  }) {
     return GymSet(
       id: id ?? super.id,
       reps: reps ?? this.reps,
@@ -55,4 +77,14 @@ class GymSet extends BaseModel {
       created: DateTime.fromMillisecondsSinceEpoch((map['created'] as num).toInt()),
     );
   }
+}
+
+class StrengthData {
+  final DateTime created;
+  final double reps;
+  final String unit;
+  final double value;
+  final String? category;
+
+  StrengthData({required this.created, required this.reps, required this.unit, required this.value, this.category});
 }

@@ -36,7 +36,7 @@ class _SwapPlanExerciseState extends State<SwapPlanExercise> {
 
   @override
   Widget build(BuildContext context) {
-    _distinctExercises = context.watch<ExercisesRepository>().exercises;
+    _distinctExercises = context.watch<ExercisesRepository>().strengthExercises;
 
     return Scaffold(
       resizeToAvoidBottomInset: false,

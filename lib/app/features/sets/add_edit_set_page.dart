@@ -44,7 +44,6 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
   DateTime created = DateTime.now().toLocal();
   bool isEditMode = false;
 
-  int? rest;
   Uint8List? image;
   String? category;
   String? unit;
@@ -84,22 +83,17 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     gymSet = setServices.getGymSetById(widget.setId ?? 0);
 
     if (isEditMode) {
-      //set exercuse to gymset exercise
-      currentExercise = exerciseRepo.getExerciseById(gymSet!.exerciseId)!;
+      currentExercise = exerciseRepo.getExerciseById(gymSet!.exerciseId, type: 0)!;
       updateFields(gymSet);
     }
     if (!isEditMode && name == null) {
-      //initial load of new set
-      //set exercise to last completed exercise (or first if none completed)
       var lastSet = setServices.getLastGymSet();
-      var lastExercise = exerciseRepo.getExerciseById(lastSet!.exerciseId);
-      currentExercise = lastExercise ?? exerciseRepo.exercises.first;
+      var lastExercise = exerciseRepo.getExerciseById(lastSet?.exerciseId ?? 0, type: 0);
+      currentExercise = lastExercise ?? exerciseRepo.strengthExercises.first;
       updateFields(lastSet);
     }
     if (!isEditMode && name != null) {
-      //exercise has changed, get details of last gymset from this exercise
-      //get exercise
-      currentExercise = exerciseRepo.getExerciseByName(name!) ?? currentExercise;
+      currentExercise = exerciseRepo.getExerciseByName(name!, type: 0) ?? currentExercise;
       var lastSet = setServices.getSetsByExerciseId(currentExercise.id!).firstOrNull;
       updateFields(lastSet);
     }
@@ -165,10 +159,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
                 if (showNotes) ...[notesField(), const SizedBox(height: 8.0)],
                 dateSelector(),
                 if (showImages) ...[const SizedBox(height: 8.0), imageField()],
-                if (name != '') ...[
-                  SizedBox(height: 300, child: WorkoutPeek(sets: getHistory())),
-                  const SizedBox(height: 8.0),
-                ],
+                if (name != '') ...[SizedBox(height: 300, child: WorkoutPeek(sets: getHistory())), const SizedBox(height: 8.0)],
               ],
             );
           },
@@ -258,7 +249,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     return DropdownButtonFormField<String>(
       decoration: const InputDecoration(labelText: 'Unit'),
       initialValue: unit,
-      items: unitsList.map((u) => DropdownMenuItem(value: u.key, child: Text(u.value))).toList(),
+      items: strengthUnits.map((u) => DropdownMenuItem(value: u.key, child: Text(u.value))).toList(),
       onChanged: (String? newValue) {
         setState(() {
           unit = newValue!;
@@ -286,29 +277,23 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
           onSelected: (String selection) {
             category = selection;
           },
-          fieldViewBuilder:
-              (
-                BuildContext context,
-                TextEditingController textEditingController,
-                FocusNode focusNode,
-                VoidCallback onFieldSubmitted,
-              ) {
-                categoryTEC = textEditingController;
-                return TextFormField(
-                  controller: textEditingController,
-                  focusNode: focusNode,
-                  decoration: const InputDecoration(labelText: 'Category'),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Required';
-                    if (!snapshot.data!.contains(value)) return 'Invlaid';
-                    return null;
-                  },
-                  onChanged: (value) {
-                    if (value.isEmpty || !snapshot.data!.contains(value)) return;
-                    category = value;
-                  },
-                );
+          fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
+            categoryTEC = textEditingController;
+            return TextFormField(
+              controller: textEditingController,
+              focusNode: focusNode,
+              decoration: const InputDecoration(labelText: 'Category'),
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Required';
+                if (!snapshot.data!.contains(value)) return 'Invlaid';
+                return null;
               },
+              onChanged: (value) {
+                if (value.isEmpty || !snapshot.data!.contains(value)) return;
+                category = value;
+              },
+            );
+          },
         );
       },
     );
@@ -324,18 +309,10 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
   }
 
   Widget dateSelector() {
-    final lastSet = context
-        .read<GymSetRepository>()
-        .gymsets
-        .where((e) => e.exerciseId == currentExercise.id)
-        .firstOrNull;
+    final lastSet = context.read<GymSetRepository>().gymsets.where((e) => e.exerciseId == currentExercise.id).firstOrNull;
 
     if (lastSet == null) {
-      return const ListTile(
-        title: Text('Created date'),
-        subtitle: Text('No date available'),
-        trailing: Icon(Icons.calendar_today),
-      );
+      return const ListTile(title: Text('Created date'), subtitle: Text('No date available'), trailing: Icon(Icons.calendar_today));
     }
 
     final lastDate = lastSet.created;
@@ -355,9 +332,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
       selector: (context, settings) => settings.getSetting(.formats, 'long_date_format'),
       builder: (context, longDateFormat, child) => ListTile(
         title: const Text('Created date'),
-        subtitle: Text(
-          longDateFormat == 'timeago' ? timeago.format(created) : DateFormat(longDateFormat).format(created),
-        ),
+        subtitle: Text(longDateFormat == 'timeago' ? timeago.format(created) : DateFormat(longDateFormat).format(created)),
         trailing: const Icon(Icons.calendar_today),
         onTap: () => selectDate(),
       ),
@@ -434,7 +409,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
   Widget nameAutoCompleteField() {
     var repo = context.read<ExercisesRepository>();
     return FutureBuilder(
-      future: repo.getExerciseNames(),
+      future: repo.getStrengthExerciseNames(),
       builder: (context, snapshot) {
         return Autocomplete<String>(
           initialValue: TextEditingValue(text: currentExercise.name),
@@ -453,32 +428,26 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
               currentExercise = repo.getExerciseByName(selection) ?? currentExercise;
             });
           },
-          fieldViewBuilder:
-              (
-                BuildContext context,
-                TextEditingController textEditingController,
-                FocusNode focusNode,
-                VoidCallback onFieldSubmitted,
-              ) {
-                exerciseNameTEC = textEditingController;
-                return TextFormField(
-                  controller: textEditingController,
-                  focusNode: focusNode,
-                  decoration: const InputDecoration(labelText: 'Exercise name'),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Required';
-                    if (!snapshot.data!.contains(value)) return 'Invlaid';
-                    return null;
-                  },
-                  onChanged: (value) {
-                    if (value.isEmpty || !snapshot.data!.contains(value)) return;
-                    setState(() {
-                      name = value;
-                      currentExercise = repo.getExerciseByName(value) ?? currentExercise;
-                    });
-                  },
-                );
+          fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
+            exerciseNameTEC = textEditingController;
+            return TextFormField(
+              controller: textEditingController,
+              focusNode: focusNode,
+              decoration: const InputDecoration(labelText: 'Exercise name'),
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Required';
+                if (!snapshot.data!.contains(value)) return 'Invlaid';
+                return null;
               },
+              onChanged: (value) {
+                if (value.isEmpty || !snapshot.data!.contains(value)) return;
+                setState(() {
+                  name = value;
+                  currentExercise = repo.getExerciseByName(value) ?? currentExercise;
+                });
+              },
+            );
+          },
         );
       },
     );
@@ -490,7 +459,6 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
   void updateFields(GymSet? gymSet) {
     if (gymSet != null) {
       unit = gymSet.unit ?? currentExercise.defaultUnit!;
-      rest = gymSet.rest ?? currentExercise.defaultRest;
       if (gymSet.reps != 0) repsTEC.text = gymSet.reps.toString();
       weightTEC.text = toString(gymSet.weight);
       setORM();
@@ -503,7 +471,6 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
       }
     } else {
       unit = currentExercise.defaultUnit!;
-      rest = currentExercise.defaultRest;
     }
     exerciseNameTEC.text = currentExercise.name;
     category = currentExercise.category;
@@ -516,21 +483,14 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     final parsedWeight = double.tryParse(weightTEC.text);
     if (parsedReps == null || parsedWeight == null) return;
     if (parsedReps > 0) {
-      ormTEC.text =
-          "${(double.parse(weightTEC.text) / (1.0278 - (0.0278 * double.parse(repsTEC.text)))).toStringAsFixed(2)} $unit";
+      ormTEC.text = "${(double.parse(weightTEC.text) / (1.0278 - (0.0278 * double.parse(repsTEC.text)))).toStringAsFixed(2)} $unit";
     } else {
-      ormTEC.text =
-          "${(double.parse(weightTEC.text) * (1.0278 - (0.0278 * double.parse(repsTEC.text)))).toStringAsFixed(2)} $unit";
+      ormTEC.text = "${(double.parse(weightTEC.text) * (1.0278 - (0.0278 * double.parse(repsTEC.text)))).toStringAsFixed(2)} $unit";
     }
   }
 
   Future<void> selectDate() async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: created,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
+    final DateTime? pickedDate = await showDatePicker(context: context, initialDate: created, firstDate: DateTime(2000), lastDate: DateTime(2100));
 
     if (pickedDate != null) {
       selectTime(pickedDate);
@@ -562,7 +522,6 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
         unit: unit,
         note: noteTEC.text,
         bodyWeight: double.tryParse(bodyWeightTEC.text) ?? 0.0,
-        rest: rest,
         created: created,
         exerciseId: currentExercise.id!,
       );
@@ -575,7 +534,6 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
         unit: unit,
         note: noteTEC.text,
         bodyWeight: double.tryParse(bodyWeightTEC.text) ?? 0.0,
-        rest: rest,
         created: created,
         exerciseId: currentExercise.id!,
       );

@@ -7,7 +7,10 @@ import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/widgets/animated_fab.dart';
 import 'package:fossfit/app/widgets/confirmation_dialog.dart';
+import 'package:fossfit/db/models/features/cardio_model.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
+import 'package:fossfit/db/models/features/gymset_model.dart';
+import 'package:fossfit/db/repositories/cardio_repository.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/gym_set_repository.dart';
@@ -44,6 +47,7 @@ class _ExercisesPageState extends State<ExercisesPage> {
     config = context.watch<ConfigRepository>();
     var exRepo = context.watch<ExercisesRepository>();
     var gymSetRepo = context.watch<GymSetRepository>();
+    var cardioRepo = context.watch<CardioRepository>();
     exercises = exRepo.exercises;
     final matching = exercises.where((exercise) {
       if (search.isNotEmpty && !exercise.name.toLowerCase().contains(search)) {
@@ -87,7 +91,9 @@ class _ExercisesPageState extends State<ExercisesPage> {
                       itemCount: matching.length,
                       itemBuilder: (context, index) {
                         var exercise = matching[index];
-                        var lastSet = gymSetRepo.gymsets.where((g) => g.exerciseId == exercise.id).toList();
+                        var lastSet = exercise.type == 0
+                            ? gymSetRepo.gymsets.where((g) => g.exerciseId == exercise.id).toList()
+                            : cardioRepo.cardio.where((g) => g.exerciseId == exercise.id).toList();
                         lastSet.sorted((a, b) => b.created.compareTo(a.created));
                         var subtitle = lastSet.isEmpty
                             ? Text('Never completed')
@@ -106,18 +112,32 @@ class _ExercisesPageState extends State<ExercisesPage> {
                               _toggleSelection(exercise);
                             } else {
                               var exServices = ExerciseServices(context: context);
-                              var data = await gymSetRepo.getStrengthData(
-                                target: lastSet.firstOrNull?.unit ?? exercise.defaultUnit ?? 'kg',
-                                exerciseId: exercise.id!,
-                                metric: StrengthMetric.bestWeight,
-                                period: Period.day,
-                                start: null,
-                                end: null,
-                                limit: 20,
-                              );
-                              if (!context.mounted) return;
+                              if (exercise.type == 0) {
+                                var data = await gymSetRepo.getStrengthData(
+                                  target: lastSet.cast<GymSet>().firstOrNull?.unit ?? exercise.defaultUnit ?? 'kg',
+                                  exerciseId: exercise.id!,
+                                  metric: StrengthMetric.bestWeight,
+                                  period: Period.day,
+                                  start: null,
+                                  end: null,
+                                  limit: 20,
+                                );
+                                if (!context.mounted) return;
 
-                              await exServices.openExercisePage(context, exercise.id!, data);
+                                await exServices.openStrengthPage(context, exercise.id!, data);
+                              } else {
+                                var data = await cardioRepo.getCardioData(
+                                  target: lastSet.cast<Cardio>().firstOrNull?.distanceUnit ?? exercise.defaultUnit ?? 'km',
+                                  exerciseId: exercise.id!,
+                                  metric: CardioMetric.pace,
+                                  period: Period.day,
+                                  start: null,
+                                  end: null,
+                                );
+                                if (!context.mounted) return;
+
+                                await exServices.openCardioPage(context, exercise.id!, data);
+                              }
                             }
                           },
                         );
@@ -194,22 +214,14 @@ class _ExercisesPageState extends State<ExercisesPage> {
         child: Container(
           width: 24,
           height: 24,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.inversePrimary,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.inversePrimary, borderRadius: BorderRadius.circular(12)),
           child: Center(
             child: Padding(
               padding: EdgeInsets.only(bottom: 2),
               child: Text(
                 exercise.name.isNotEmpty ? exercise.name[0].toUpperCase() : '?',
                 textAlign: TextAlign.justify,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
               ),
             ),
           ),

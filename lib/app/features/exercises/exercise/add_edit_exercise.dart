@@ -33,6 +33,7 @@ class _AddEditExerciseState extends State<AddEditExercise> {
   bool isEditMode = false;
   Exercise? _exercise;
   String? unit;
+  String? type;
   String? category;
   Uint8List? image;
   @override
@@ -51,16 +52,19 @@ class _AddEditExerciseState extends State<AddEditExercise> {
     if (isEditMode) {
       _exercise = exRepo.getExerciseById(widget.exerciseId!);
       nameCtrl.text = _exercise?.name ?? '';
+      type = exerciseTypes[_exercise?.type ?? 0];
       catController.text = _exercise?.category ?? '';
       descCtrl.text = _exercise?.description ?? '';
       unit = _exercise?.defaultUnit;
       category = _exercise?.category;
       image = _exercise?.image;
       setsController.text = (_exercise?.defaultSets).toString();
+      type = exerciseTypes[_exercise?.type ?? 0];
     } else {
       nameCtrl.text = widget.name ?? 'Add Exercise';
       catController.text = '';
       unit = 'kg';
+      type = 'Strength';
     }
     var prefix = isEditMode ? 'Update all' : 'Add ';
 
@@ -91,7 +95,7 @@ class _AddEditExerciseState extends State<AddEditExercise> {
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Unit'),
               initialValue: unit,
-              items: unitsList.map((u) => DropdownMenuItem(value: u.key, child: Text(u.value))).toList(),
+              items: distanceUnits.map((u) => DropdownMenuItem(value: u.key, child: Text(u.value))).toList(),
               onChanged: (String? newValue) {
                 setState(() {
                   unit = newValue!;
@@ -99,9 +103,20 @@ class _AddEditExerciseState extends State<AddEditExercise> {
               },
             ),
             const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(labelText: 'Type'),
+              initialValue: type,
+              items: exerciseTypes.map((e) => DropdownMenuItem(value: e, child: Text(e.toTitleCase))).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  type = newValue;
+                });
+              },
+            ),
+            const SizedBox(height: 8),
             categorySelector(),
             const SizedBox(height: 8),
-            defaults(),
+            if ((_exercise?.type ?? 0) != 1) defaults(),
             const SizedBox(height: 8),
             Visibility(visible: settings.isEnabled(.workouts, 'show_images'), child: imageField()),
           ],
@@ -303,6 +318,7 @@ class _AddEditExerciseState extends State<AddEditExercise> {
 
       var newEx = Exercise(
         name: nameCtrl.text,
+        type: exerciseTypes.indexOf(type!.toLowerCase()),
         description: descCtrl.text,
         category: category,
         image: image,

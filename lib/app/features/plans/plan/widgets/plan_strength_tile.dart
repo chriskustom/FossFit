@@ -14,7 +14,7 @@ import 'package:fossfit/db/repositories/gym_set_repository.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
 import 'package:provider/provider.dart';
 
-class PlanExerciseTile extends StatefulWidget {
+class PlanStrengthTile extends StatefulWidget {
   final int planId;
   final int index;
 
@@ -29,7 +29,7 @@ class PlanExerciseTile extends StatefulWidget {
   final Function(bool open) onExpansionChanged;
   final Function() onFieldSubmitted;
   final Function() onSwap;
-  const PlanExerciseTile({
+  const PlanStrengthTile({
     super.key,
     required this.planId,
     required this.index,
@@ -45,10 +45,10 @@ class PlanExerciseTile extends StatefulWidget {
   });
 
   @override
-  State<PlanExerciseTile> createState() => _PlanExerciseTileState();
+  State<PlanStrengthTile> createState() => _PlanStrengthTileState();
 }
 
-class _PlanExerciseTileState extends State<PlanExerciseTile> {
+class _PlanStrengthTileState extends State<PlanStrengthTile> {
   String? category;
   String? image;
   PlanExercise? currentPlanExercise;
@@ -194,7 +194,7 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
             labelStyle: TextStyle(overflow: TextOverflow.ellipsis),
           ),
           initialValue: widget.unit.text,
-          items: unitsList.map((u) => DropdownMenuItem(value: u.key, child: Text(u.value))).toList(),
+          items: strengthUnits.map((u) => DropdownMenuItem(value: u.key, child: Text(u.value))).toList(),
           onChanged: (value) {
             widget.unit.text = value!;
           },
