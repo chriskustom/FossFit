@@ -11,7 +11,7 @@ class StringUtils {
   static SortBy parseSortBy(String? value) {
     switch (value) {
       case 'title':
-        return SortBy.title;
+        return SortBy.name;
       case 'date':
         return SortBy.date;
       default:
@@ -27,17 +27,6 @@ class StringUtils {
         return SortOrder.desc;
       default:
         return SortOrder.desc;
-    }
-  }
-
-  static GroupBy parseGroupBy(String? value) {
-    switch (value) {
-      case 'day':
-        return GroupBy.day;
-      case 'week':
-        return GroupBy.week;
-      default:
-        return GroupBy.day;
     }
   }
 }

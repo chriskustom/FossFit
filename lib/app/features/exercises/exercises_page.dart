@@ -37,6 +37,7 @@ class _ExercisesPageState extends State<ExercisesPage> {
   bool get selectionMode => _selectedItems.isNotEmpty;
 
   bool isDeleting = false;
+  int? selectedType;
   @override
   void initState() {
     super.initState();
@@ -50,12 +51,17 @@ class _ExercisesPageState extends State<ExercisesPage> {
     var cardioRepo = context.watch<CardioRepository>();
     exercises = exRepo.exercises;
     final matching = exercises.where((exercise) {
-      if (search.isNotEmpty && !exercise.name.toLowerCase().contains(search)) {
+      if (selectedType != null && exercise.type != selectedType) {
+        return false;
+      }
+
+      if (search.isNotEmpty && !exercise.name.toLowerCase().contains(search.toLowerCase())) {
         return false;
       }
 
       return true;
     }).toList();
+
     final dateFormat = config.getSetting(.formats, 'long_date_format');
     return AppShell(
       showSearch: false,
@@ -79,6 +85,14 @@ class _ExercisesPageState extends State<ExercisesPage> {
                         search = value;
                       });
                     },
+                    trailing: buildFilterMenu(
+                      selectedType: selectedType,
+                      onChanged: (value) {
+                        setState(() {
+                          selectedType = value;
+                        });
+                      },
+                    ),
                   ),
                 ),
 
@@ -166,6 +180,26 @@ class _ExercisesPageState extends State<ExercisesPage> {
         scroll: _scrollController,
       ),
     );
+  }
+
+  List<Widget> buildFilterMenu({required int? selectedType, required ValueChanged<int?> onChanged}) {
+    return [
+      PopupMenuButton<int?>(
+        icon: Icon(
+          selectedType == null
+              ? Icons.filter_list
+              : selectedType == 0
+              ? Icons.fitness_center
+              : Icons.directions_run,
+        ),
+        onSelected: (value) => onChanged(value),
+        itemBuilder: (context) => [
+          const PopupMenuItem<int?>(value: null, child: Row(children: [Icon(Icons.list), SizedBox(width: 12), Text('All')])),
+          const PopupMenuItem<int?>(value: 0, child: Row(children: [Icon(Icons.fitness_center), SizedBox(width: 12), Text('Strength')])),
+          const PopupMenuItem<int?>(value: 1, child: Row(children: [Icon(Icons.directions_run), SizedBox(width: 12), Text('Cardio')])),
+        ],
+      ),
+    ];
   }
 
   Widget _buildNothingFound() {

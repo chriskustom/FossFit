@@ -1,7 +1,7 @@
 enum TableName {
   exercises('exercises'),
   sets('sets'),
-  cardio('cardio/*  */'),
+  cardio('cardio'),
   plans('plans'),
   planexercises('plan_exercises'),
   config('config');

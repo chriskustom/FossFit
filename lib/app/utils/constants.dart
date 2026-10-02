@@ -22,7 +22,7 @@ enum NavRoute {
   exercises('/exercises', Icons.list_alt_rounded, ExercisesPage()),
   plans('/plans', Icons.format_list_numbered, PlansPage()),
   calendar('/calendar', Icons.calendar_month_rounded, CalendarPage()),
-  cardio('/cardio', Icons.run_circle_rounded, CardioPage()),
+  cardio('/cardio', Icons.directions_run, CardioPage()),
   settings('/settings', Icons.settings, SettingsPage());
 
   const NavRoute(this.route, this.icon, this.page);
@@ -50,7 +50,7 @@ enum ConfigCategory {
   plans('plans', Icons.today_rounded),
   tabs('tabs', Icons.tab_rounded),
   timers('timers', Icons.timer_rounded),
-  cardio('cardio', Icons.run_circle_rounded),
+  cardio('cardio', Icons.directions_run),
   workouts('workouts', Icons.fitness_center_rounded);
 
   const ConfigCategory(this.name, this.icon);
@@ -58,20 +58,18 @@ enum ConfigCategory {
   final IconData icon;
 }
 
-enum SortBy { title, date }
+enum SortBy { name, date }
 
 enum SortOrder { asc, desc }
-
-enum GroupBy { day, week, task }
 
 const double switchScale = 0.85;
 const double iconScale = 0.85;
 
 const sortOptions = [
-  SortOption(SortBy.title, SortOrder.asc, 'Title (A–Z)', Icons.sort_by_alpha),
-  SortOption(SortBy.title, SortOrder.desc, 'Title (Z–A)', Icons.sort_by_alpha),
-  SortOption(SortBy.date, SortOrder.desc, 'Date (Newest)', Icons.schedule),
-  SortOption(SortBy.date, SortOrder.asc, 'Date (Oldest)', Icons.schedule),
+  SortOption(SortBy.name, SortOrder.asc, 'Name (A–Z)', Icons.sort_by_alpha),
+  SortOption(SortBy.name, SortOrder.desc, 'Name (Z–A)', Icons.sort_by_alpha),
+  SortOption(SortBy.date, SortOrder.desc, 'Completed (Earliest)', Icons.schedule),
+  SortOption(SortBy.date, SortOrder.asc, 'Completed (Latest)', Icons.schedule),
 ];
 
 const Map<String, Icon> homePageMenu = {'Settings': Icon(Icons.settings), 'About': Icon(Icons.info_outline)};
@@ -149,7 +147,7 @@ const List<MapEntry<String, String>> paceUnits = [
   MapEntry('min/km', 'Minutes per Kilometer (min/km)'),
   MapEntry('min/mi', 'Minutes per mile (min/mi)'),
 ];
-const List<String> exerciseTypes = ['cardio', 'strength'];
+const List<String> exerciseTypes = ['strength', 'cardio'];
 const longdateFormats = [
   'timeago',
   'dd/MM/yy',

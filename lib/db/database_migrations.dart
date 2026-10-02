@@ -22,7 +22,7 @@ Future<void> importSqliteFile(Database db) async {
     SELECT
       gs.name,
       gs.category,
-      CASE WHEN gs.cardio = 1 THEN 0 ELSE 1 END
+      gs.cardio
     FROM gym_sets gs
     WHERE gs.name <> 'Weight'
       AND gs.id IN (
@@ -38,8 +38,8 @@ Future<void> importSqliteFile(Database db) async {
     SELECT
       pe.exercise,
       NULL,
-      1,
-      NULL,
+      0,
+      NULL
     FROM plan_exercises pe
     WHERE NOT EXISTS (
         SELECT 1
@@ -49,9 +49,8 @@ Future<void> importSqliteFile(Database db) async {
     GROUP BY pe.exercise;
   ''');
     //if nothing exists, populate with defaults
-    final exerciseCount = Sqflite.firstIntValue(await txn.rawQuery('SELECT COUNT(*) FROM exercises')) ?? 0;
 
-    if (exerciseCount == 0) {
+    if ((Sqflite.firstIntValue(await txn.rawQuery('SELECT COUNT(*) FROM exercises WHERE type = 0')) ?? 0) == 0) {
       final batch = txn.batch();
 
       for (final exercise in defaultStrengthExercises) {
@@ -59,9 +58,12 @@ Future<void> importSqliteFile(Database db) async {
       }
 
       await batch.commit(noResult: true);
+    }
 
+    if ((Sqflite.firstIntValue(await txn.rawQuery('SELECT COUNT(*) FROM exercises WHERE type = 1')) ?? 0) == 0) {
+      final batch = txn.batch();
       for (final exercise in defaultCardioExercises) {
-        batch.insert('exercises', {'name': exercise.$1, 'type': exercise.$2});
+        batch.insert('exercises', {'name': exercise.$1, 'type': exercise.$2, 'default_unit': 'km'});
       }
 
       await batch.commit(noResult: true);
@@ -85,7 +87,6 @@ Future<void> importSqliteFile(Database db) async {
     //insert existing gymsets into new gymsets with exercsie id
     await txn.execute('''
         INSERT INTO sets (
-          id,
           reps,
           weight,
           unit,
@@ -96,7 +97,6 @@ Future<void> importSqliteFile(Database db) async {
           created
         )
         SELECT
-          gs.id,
           gs.reps,
           gs.weight,
           gs.unit,
@@ -106,8 +106,8 @@ Future<void> importSqliteFile(Database db) async {
           gs.plan_id,
           gs.created * 1000
         FROM gym_sets gs
-        where gs.cardio = 0
-        INNER JOIN exercises e ON e.name = gs.name;
+        INNER JOIN exercises e ON e.name = gs.name
+        where gs.cardio = 0;
       ''');
     //Create cardio
     await txn.execute('''
@@ -132,7 +132,6 @@ Future<void> importSqliteFile(Database db) async {
     //insert cardio
     await txn.execute('''
     INSERT INTO cardio (
-      id,
       duration,
       distance,
       distance_unit,
@@ -143,18 +142,17 @@ Future<void> importSqliteFile(Database db) async {
       created
     )
     SELECT
-      gs.id,
       gs.distance,
       gs.duration,
-      gs.unit,
+      'km',
       gs.incline,
       gs.notes,
       e.id,
       gs.plan_id,
       gs.created * 1000
     FROM gym_sets gs
-    where gs.cardio = 1
-    INNER JOIN exercises e ON e.name = gs.name;
+    INNER JOIN exercises e ON e.name = gs.name
+    where gs.cardio = 1;
   ''');
 
     //drop, rename and index
