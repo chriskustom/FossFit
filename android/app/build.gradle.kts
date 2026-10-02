@@ -29,28 +29,32 @@ android {
     }
 
     signingConfigs {
-        create("localRelease") {
-            keyAlias = "localrelease"
-            keyPassword = "!nt3r4ct1v"
-            storeFile = file(System.getProperty("user.home") + "/fossfit.keystore")
-            storePassword = "!nt3r4ct1v"
-        }
+    create("localRelease") {
+        keyAlias = "release"
+        keyPassword = "!nt3r4ct1v"
+        storeFile = file(System.getProperty("user.home") + "/fossfit.keystore")
+        storePassword = "!nt3r4ct1v"
     }
+}
 
-    buildTypes {
-        getByName("release") {
-            signingConfig = signingConfigs.getByName("localRelease")
-            ndk {
-                debugSymbolLevel = "NONE"
-            }
-            isMinifyEnabled = false          // ✅ Kotlin DSL
-            isShrinkResources = false        // ✅ Kotlin DSL
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                file("proguard-rules.pro")
-            )
+buildTypes {
+    getByName("release") {
+        signingConfig = signingConfigs.getByName("localRelease")
+
+        ndk {
+            debugSymbolLevel = "NONE"
         }
+
+        isMinifyEnabled = false
+        isShrinkResources = false
+
+        proguardFiles(
+            getDefaultProguardFile("proguard-android-optimize.txt"),
+            file("proguard-rules.pro")
+        )
     }
+}
+
 }
 
 dependencies {

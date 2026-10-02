@@ -29,9 +29,6 @@ class CalendarPageState extends State<CalendarPage> {
   final Set<int> selected = {};
   final ScrollController scroll = ScrollController();
 
-  int monthToFilter = DateTime.now().month;
-  int yearToFilter = DateTime.now().year;
-
   late PageController _pageController;
   final repsGt = TextEditingController();
   final repsLt = TextEditingController();
@@ -70,15 +67,14 @@ class CalendarPageState extends State<CalendarPage> {
 
     final allGymSets = gymSets;
 
-    final thisMonthsGymSets = allGymSets
-        .where((t) => t.created.month == monthToFilter && t.created.year == yearToFilter)
-        .toList();
+    final thisMonthsGymSets = allGymSets.where((t) => t.created.month == _focusedDay.month && t.created.year == _focusedDay.year).toList();
 
     return AppShell(title: 'Calendar', selectActions: _selectActions(), body: _getCalendar(thisMonthsGymSets));
   }
 
   Widget _getCalendar(List<GymSet> monthlyGymSets) {
     var services = GymSetServices(context: context);
+    var earliest = services.getAllGymSets().lastOrNull?.created ?? DateTime(2000, 1, 1);
     final today = DateUtils.dateOnly(DateTime.now());
     final selectedDate = _selectedDay ?? _focusedDay;
     final selectedSets = monthlyGymSets.where((set) => isSameDay(set.created, selectedDate)).toList();
@@ -106,8 +102,8 @@ class CalendarPageState extends State<CalendarPage> {
         Padding(
           padding: EdgeInsets.symmetric(vertical: 8),
           child: TableCalendar<ExerciseSets>(
-            firstDay: DateTime(1900, 1, 1),
-            lastDay: DateTime(2100, 12, 31),
+            firstDay: earliest,
+            lastDay: DateTime.now().add(Duration(days: 31)),
             focusedDay: _focusedDay,
             headerVisible: false,
             startingDayOfWeek: StartingDayOfWeek.values.byName(startOfWeek),
@@ -115,9 +111,7 @@ class CalendarPageState extends State<CalendarPage> {
               return isSameDay(_selectedDay!, day);
             },
             rowHeight: 40,
-            daysOfWeekStyle: DaysOfWeekStyle(
-              weekdayStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withAlpha(150)),
-            ),
+            daysOfWeekStyle: DaysOfWeekStyle(weekdayStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withAlpha(150))),
             calendarFormat: CalendarFormat.month,
             rangeSelectionMode: RangeSelectionMode.disabled,
             calendarBuilders: CalendarBuilders(
@@ -127,18 +121,12 @@ class CalendarPageState extends State<CalendarPage> {
                   width: double.infinity,
                   height: 4,
                   margin: EdgeInsets.only(top: 2, left: 18, right: 18),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface, borderRadius: BorderRadius.circular(2)),
                 );
               },
             ),
             eventLoader: (day) {
-              final exercise = services
-                  .getExerciseSets(monthlyGymSets)
-                  .where((e) => isSameDay(e.date, day))
-                  .firstOrNull;
+              final exercise = services.getExerciseSets(monthlyGymSets).where((e) => isSameDay(e.date, day)).firstOrNull;
 
               return exercise == null ? <ExerciseSets>[] : [exercise];
             },
@@ -154,8 +142,6 @@ class CalendarPageState extends State<CalendarPage> {
             onPageChanged: (focusedDay) {
               setState(() {
                 _focusedDay = focusedDay;
-                monthToFilter = focusedDay.month;
-                yearToFilter = focusedDay.year;
               });
             },
             calendarStyle: CalendarStyle(
@@ -164,7 +150,7 @@ class CalendarPageState extends State<CalendarPage> {
                 color: Colors.transparent,
                 shape: BoxShape.circle,
               ),
-              cellMargin: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              //cellMargin: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
               todayTextStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
               selectedDecoration: BoxDecoration(color: Theme.of(context).colorScheme.primary, shape: BoxShape.circle),
               selectedTextStyle: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
@@ -234,12 +220,7 @@ class CalendarPageState extends State<CalendarPage> {
       buttons.addAll([
         IconButton(
           onPressed: () async {
-            final confirmed = await showConfirmationDialog(
-              context: context,
-              title: "Delete?",
-              content: "Are you sure?",
-              barrierDismissible: true,
-            );
+            final confirmed = await showConfirmationDialog(context: context, title: "Delete?", content: "Are you sure?", barrierDismissible: true);
 
             if (!mounted || confirmed == null || !confirmed) return;
             await setServices.deleteMultipleGymSetssByIds(_selectedItems.map((i) => i.id!).toList());
@@ -287,11 +268,7 @@ class _CalendarHeader extends StatelessWidget {
             onPressed: onTodayButtonTap,
           ),
           if (clearButtonVisible)
-            IconButton(
-              icon: const Icon(Icons.clear, size: 20.0),
-              visualDensity: VisualDensity.compact,
-              onPressed: onClearButtonTap,
-            ),
+            IconButton(icon: const Icon(Icons.clear, size: 20.0), visualDensity: VisualDensity.compact, onPressed: onClearButtonTap),
           const Spacer(),
           IconButton(icon: const Icon(Icons.chevron_left), onPressed: onLeftArrowTap),
           IconButton(icon: const Icon(Icons.chevron_right), onPressed: onRightArrowTap),

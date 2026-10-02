@@ -114,10 +114,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
               child: Icon(Icons.folder, color: Theme.of(context).colorScheme.primary),
             ),
             title: Text('Backup Location'),
-            subtitle: Text(
-              storedValue.isNotEmpty ? storedValue : 'No folder selected',
-              overflow: TextOverflow.ellipsis,
-            ),
+            subtitle: Text(storedValue.isNotEmpty ? storedValue : 'No folder selected', overflow: TextOverflow.ellipsis),
             onTap: () async {
               final repo = context.read<ConfigRepository>();
               final String? path = await getDirectoryPath();
@@ -214,6 +211,17 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                 SystemNavigator.pop(animated: true);
               }
             }),
+            onLongPress: AppHaptics.tapWithHaptics(context, () async {
+              var result = await importDatabase(dir, flexify: true);
+              AppSnackBar.success(result);
+
+              await Future.delayed(const Duration(milliseconds: 2000));
+              if (Platform.isWindows) {
+                exit(0);
+              } else {
+                SystemNavigator.pop(animated: true);
+              }
+            }),
           );
         },
       ),
@@ -224,8 +232,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
     final proceed = await showConfirmationDialog(
       context: context,
       title: '⚠️!WARNING!⚠️',
-      content:
-          'This will delete all content; notes, notebooks, lists and goals.\nAll settings will be reset to default.\n\nDo you wish to continue?',
+      content: 'This will delete all content; notes, notebooks, lists and goals.\nAll settings will be reset to default.\n\nDo you wish to continue?',
       confirmStyle: TextButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
       cancelStyle: TextButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
       cancelLabel: 'No, take me home',

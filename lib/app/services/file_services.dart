@@ -14,7 +14,7 @@ Future<String> backupDatabaseManually(String initialDir) async {
   return 'Backup failed';
 }
 
-Future<String> importDatabase(String initialDir) async {
+Future<String> importDatabase(String initialDir, {bool flexify = false}) async {
   // Pick a single file
   final typeGroup = XTypeGroup(label: 'SQLite Database', extensions: ['db', 'sqlite']);
 
@@ -24,5 +24,5 @@ Future<String> importDatabase(String initialDir) async {
     return 'Cancelled';
   }
   final dbHelper = DatabaseHelper();
-  return await dbHelper.importDatabase(file.path);
+  return flexify ? await dbHelper.importFlexifyDatabase(file.path) : await dbHelper.importDatabase(file.path);
 }

@@ -85,9 +85,9 @@ class _AppShellState extends State<AppShell> {
                 return ConstrainedBox(
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(context).copyWith(
-                      dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad},
-                    ),
+                    behavior: ScrollConfiguration.of(
+                      context,
+                    ).copyWith(dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad}),
                     child: widget.body,
                   ),
                 );
@@ -155,8 +155,6 @@ class _AppShellState extends State<AppShell> {
         final selectedIndex = bottomNavPages.indexWhere((p) => p.route == NavRoute.fromRoute(currentRoute));
 
         return NavigationBar(
-          elevation: globalElevation,
-          shadowColor: colors.onSurface,
           backgroundColor: colors.surface,
           selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
           onDestinationSelected: (index) {

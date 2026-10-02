@@ -279,11 +279,7 @@ class DatabaseHelper {
     final dir = Directory(backupDirPath);
     if (!dir.existsSync()) return null;
 
-    final files = dir
-        .listSync()
-        .whereType<File>()
-        .where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'))
-        .toList();
+    final files = dir.listSync().whereType<File>().where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db')).toList();
 
     if (files.isEmpty) return null;
 
@@ -319,7 +315,6 @@ class DatabaseHelper {
 
   //region import
   Future<String> importDatabase(String importedPath) async {
-    var isSqlite = importedPath.endsWith('sqlite');
     try {
       final dbDir = await getDatabasesPath();
       final targetPath = join(dbDir, dbFileName);
@@ -335,7 +330,7 @@ class DatabaseHelper {
       await importedDb.close();
 
       ///old flexify db. Reset version to allow migrations
-      if (!isSqlite && importedVersion > currentVersion) {
+      if (importedVersion > currentVersion) {
         throw Exception('Backup was created with a newer app version ($importedVersion)');
       }
 
@@ -349,13 +344,46 @@ class DatabaseHelper {
 
       // 3️⃣ Open temp DB with proper version (this triggers migrations)
       final migratedDb = await _openDb(tempPath);
-      if (isSqlite) {
-        await migratedDb.execute('PRAGMA foreign_keys = OFF');
-        await importSqliteFile(migratedDb);
-        await migratedDb.execute('PRAGMA foreign_keys = ON');
-        await migratedDb.execute('PRAGMA user_version = $kDatabaseSchemaVersion;');
-        _defaultSettings(migratedDb);
+      await migratedDb.close();
+
+      // 4️⃣ Replace live DB only AFTER successful migration
+      final targetFile = File(targetPath);
+      if (await targetFile.exists()) {
+        await targetFile.delete();
       }
+
+      await File(tempPath).rename(targetPath);
+
+      // 5️⃣ Reopen normally
+      _database = await _openDb(targetPath);
+
+      return 'Database imported and migrated successfully';
+    } catch (e) {
+      return 'Failed to import database: $e';
+    }
+  }
+
+  Future<String> importFlexifyDatabase(String importedPath) async {
+    try {
+      final dbDir = await getDatabasesPath();
+      final targetPath = join(dbDir, dbFileName);
+      final tempPath = join(dbDir, 'temp_import.db');
+
+      // 2️⃣ Copy to temp location first
+      final tempFile = File(tempPath);
+      if (await tempFile.exists()) {
+        await tempFile.delete();
+      }
+
+      await File(importedPath).copy(tempPath);
+
+      // 3️⃣ Open temp DB with proper version (this triggers migrations)
+      final migratedDb = await openDatabase(tempPath);
+      await migratedDb.execute('PRAGMA foreign_keys = OFF');
+      await importSqliteFile(migratedDb);
+      await migratedDb.execute('PRAGMA foreign_keys = ON');
+      await migratedDb.execute('PRAGMA user_version = $kDatabaseSchemaVersion;');
+      _defaultSettings(migratedDb);
       await migratedDb.close();
 
       // 4️⃣ Replace live DB only AFTER successful migration
