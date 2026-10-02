@@ -87,9 +87,7 @@ class _PlanPageState extends State<PlanPage> {
                     onExpansionChanged: (open) {
                       if (open) {
                         if (expandedIndex != index) {
-                          expanders.entries
-                              .where((c) => c.key != planExercise.id! && c.value.isExpanded)
-                              .forEach((c) => c.value.collapse());
+                          expanders.entries.where((c) => c.key != planExercise.id! && c.value.isExpanded).forEach((c) => c.value.collapse());
                         }
                         selectedPlanExerciseId = planExercise.id;
                         selectedExerciseId = planExercise.exerciseId;
@@ -105,15 +103,8 @@ class _PlanPageState extends State<PlanPage> {
                     onSwap: () async {
                       Navigator.pop(context);
                       var services = PlanExerciseServices(context: context);
-                      var newExerciseId = await services.openSwapExercisePage(
-                        context,
-                        planExercise.exerciseId,
-                        planExercise.planId,
-                      );
-                      final old = planExRepo.getPlanExerciseByExerciseAndPlan(
-                        planExercise.exerciseId,
-                        planExercise.planId,
-                      );
+                      var newExerciseId = await services.openSwapExercisePage(context, planExercise.exerciseId, planExercise.planId);
+                      final old = planExRepo.getPlanExerciseByExerciseAndPlan(planExercise.exerciseId, planExercise.planId);
                       if (old == null) return;
                       await planExRepo.updatePlanExercise(old.copyWith(exerciseId: newExerciseId));
                       planExRepo.loadAll();
@@ -132,8 +123,8 @@ class _PlanPageState extends State<PlanPage> {
       ),
       floatingActionButton: AnimatedFab(
         onPressed: () async => await save(),
-        label: const Text('Save'),
-        icon: const Icon(Icons.save_rounded),
+        label: const Text('Log set'),
+        icon: const Icon(Icons.add_rounded),
         scroll: scroll,
         height: timer ? 60 : 0,
       ),
@@ -238,10 +229,7 @@ class _PlanPageState extends State<PlanPage> {
     );
     await services.insertGymSet(gymSet);
 
-    final max =
-        peServices.getPlanExerciseById(selectedPlanExerciseId!)?.maxSets ??
-        exServices.getExerciseById(selectedExerciseId!)?.defaultSets ??
-        3;
+    final max = peServices.getPlanExerciseById(selectedPlanExerciseId!)?.maxSets ?? exServices.getExerciseById(selectedExerciseId!)?.defaultSets ?? 3;
     final count = services.getTodaysSetsByExerciseId(selectedExerciseId!, widget.planId).length;
     if (count == max) {
       final keys = expanders.keys.toList();
