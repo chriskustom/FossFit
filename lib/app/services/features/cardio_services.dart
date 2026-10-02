@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:fossfit/app/features/sets/add_edit_set_page.dart';
+import 'package:fossfit/app/features/cardio/cardio_page.dart';
 import 'package:fossfit/app/utils/utils.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/db/models/features/cardio_model.dart';
@@ -37,7 +37,7 @@ class CardioServices {
             child: SizedBox(
               width: MediaQuery.of(context).size.width,
               height: double.infinity,
-              child: AddEditSetPage(setId: cardioId),
+              child: CardioPage(cardioId: cardioId),
             ),
           ),
         );

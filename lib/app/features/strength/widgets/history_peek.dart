@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:fossfit/app/features/cardio/cardio_page.dart';
 import 'package:fossfit/app/services/features/cardio_services.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
@@ -130,7 +129,8 @@ class HistoryPeek extends StatelessWidget {
           subtitle: Text(subtitle),
           trailing: trailing,
           onTap: () async {
-            await Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => CardioPage(cardioId: cardioSet.id)));
+            var services = CardioServices(context: context);
+            await services.openCardioPage(context, cardioSet.id);
           },
         ),
       ],
