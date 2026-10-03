@@ -24,6 +24,7 @@ Future main() async {
     databaseFactory = databaseFactoryFfi;
   }
   WidgetsFlutterBinding.ensureInitialized();
+
   tz.initializeTimeZones();
   try {
     final timezoneInfo = await FlutterTimezone.getLocalTimezone();

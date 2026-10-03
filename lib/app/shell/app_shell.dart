@@ -93,6 +93,7 @@ class _AppShellState extends State<AppShell> {
                 );
               },
             ),
+            resizeToAvoidBottomInset: false, // Android keyboard optimization
             floatingActionButton: widget.floatingActionButton,
             bottomNavigationBar: Column(
               mainAxisSize: MainAxisSize.min,

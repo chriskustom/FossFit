@@ -65,14 +65,16 @@ class _ExercisesPageState extends State<ExercisesPage> {
               children: [
                 Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: SearchBar(
-                    leading: const Padding(padding: EdgeInsets.all(8.0), child: Icon(Icons.search)),
-                    textCapitalization: TextCapitalization.sentences,
-                    hintText: 'Search exercises...',
+                  child: TextField(
                     controller: searchCtrl,
+                    decoration: InputDecoration(
+                      hintText: 'Search exercises...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                    ),
                     onChanged: (value) {
                       setState(() {
-                        search = value;
+                        search = value.toLowerCase();
                       });
                     },
                   ),
@@ -194,22 +196,14 @@ class _ExercisesPageState extends State<ExercisesPage> {
         child: Container(
           width: 24,
           height: 24,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.inversePrimary,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.inversePrimary, borderRadius: BorderRadius.circular(12)),
           child: Center(
             child: Padding(
               padding: EdgeInsets.only(bottom: 2),
               child: Text(
                 exercise.name.isNotEmpty ? exercise.name[0].toUpperCase() : '?',
                 textAlign: TextAlign.justify,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
               ),
             ),
           ),

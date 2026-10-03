@@ -118,14 +118,16 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
 
               Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: SearchBar(
-                  leading: const Padding(padding: EdgeInsets.all(8.0), child: Icon(Icons.search)),
-                  textCapitalization: TextCapitalization.sentences,
-                  hintText: 'Search exercises...',
+                child: TextField(
                   controller: searchCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Search exercises...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                  ),
                   onChanged: (value) {
                     setState(() {
-                      search = value;
+                      search = value.toLowerCase();
                     });
                   },
                 ),

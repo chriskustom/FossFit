@@ -1,6 +1,5 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:fossfit/app/features/calendar/calendar_page.dart';
 import 'package:fossfit/app/features/exercises/exercises_page.dart';
 import 'package:fossfit/app/features/plans/plans_page.dart';
@@ -13,103 +12,124 @@ import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:provider/provider.dart';
 
-class App extends StatefulWidget {
+class App extends StatelessWidget {
   const App({super.key});
 
   @override
-  State<App> createState() => _AppState();
+  Widget build(BuildContext context) {
+    return const _AppView();
+  }
 }
 
-class _AppState extends State<App> {
-  @override
-  void initState() {
-    super.initState();
-  }
+class _AppView extends StatelessWidget {
+  const _AppView();
 
   @override
   Widget build(BuildContext context) {
-    final settingsRepo = Provider.of<ConfigRepository>(context, listen: false);
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) {
+        return Selector<ConfigRepository, _AppSettings>(
+          selector: (_, repo) => _AppSettings(
+            theme: repo.getSetting(.appearance, 'theme'),
+            font: repo.getSetting(.formats, 'font'),
+            fontSize: double.tryParse(repo.getSetting(.formats, 'font_size')) ?? 16,
+            color: int.tryParse(repo.getSetting(.appearance, 'color')),
+            systemColors: repo.isEnabled(.appearance, 'system_colours'),
+          ),
+          builder: (context, settings, _) {
+            final mode = ThemeMode.values.byName(settings.theme.isEmpty ? 'system' : settings.theme);
 
-    return FutureBuilder<void>(
-      future: settingsRepo.loadAll(),
-      builder: (ctx, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const MaterialApp(
-            home: Scaffold(body: Center(child: CircularProgressIndicator())),
-          );
-        }
+            return MaterialApp(
+              navigatorKey: NavigationService.navigatorKey,
+              scaffoldMessengerKey: AppSnackBar.messengerKey,
 
-        return Consumer<ConfigRepository>(
-          builder: (c, repo, _) {
-            final mode = ThemeMode.values.byName(repo.getSetting(.appearance, 'theme').isEmpty ? 'system' : repo.getSetting(.appearance, 'theme'));
-            final font = repo.getSetting(.formats, 'font');
-            final fontSize = double.tryParse(repo.getSetting(.formats, 'font_size')) ?? 16;
-            final seedColour = int.tryParse(repo.getSetting(.appearance, 'color'));
-            final sysColours = repo.isEnabled(.appearance, 'system_colours');
+              theme: AppTheme.light(
+                fontFamily: settings.font,
+                fontSize: settings.fontSize,
+                seedColor: settings.color,
+                sysColours: settings.systemColors,
+                dynamic: lightDynamic,
+              ),
 
-            return DynamicColorBuilder(
-              builder: (lightDynamic, darkDynamic) {
-                final currentBrightness = mode == .dark || (mode == .system && MediaQuery.of(context).platformBrightness == Brightness.dark)
-                    ? Brightness.dark
-                    : Brightness.light;
+              darkTheme: AppTheme.dark(
+                fontFamily: settings.font,
+                fontSize: settings.fontSize,
+                seedColor: settings.color,
+                sysColours: settings.systemColors,
+                dynamic: darkDynamic,
+              ),
 
-                SystemChrome.setSystemUIOverlayStyle(
-                  SystemUiOverlayStyle(
-                    statusBarIconBrightness: currentBrightness == Brightness.dark ? Brightness.light : Brightness.dark,
-                    systemNavigationBarIconBrightness: currentBrightness == Brightness.dark ? Brightness.light : Brightness.dark,
-                    statusBarColor: Colors.transparent,
-                    systemNavigationBarColor: Colors.transparent,
-                  ),
-                );
-                return MaterialApp(
-                  navigatorKey: NavigationService.navigatorKey,
-                  scaffoldMessengerKey: AppSnackBar.messengerKey,
-                  theme: AppTheme.light(fontFamily: font, fontSize: fontSize, seedColor: seedColour, sysColours: sysColours, dynamic: lightDynamic),
-                  darkTheme: AppTheme.dark(fontFamily: font, fontSize: fontSize, seedColor: seedColour, sysColours: sysColours, dynamic: darkDynamic),
-                  themeMode: mode,
-                  home: WorkoutPage(),
-                  onGenerateRoute: (settings) {
-                    Widget page;
-                    final pageName = settings.name == '/' ? '/workout' : settings.name;
-                    final navRoute = NavRoute.fromRoute(pageName);
+              themeMode: mode,
 
-                    switch (navRoute) {
-                      case NavRoute.workout:
-                        page = const WorkoutPage();
-                        break;
-                      case NavRoute.plans:
-                        page = const PlansPage();
-                        break;
-                      case NavRoute.exercises:
-                        page = const ExercisesPage();
-                        break;
-                      case NavRoute.calendar:
-                        page = const CalendarPage();
-                        break;
-                      case NavRoute.settings:
-                        page = const SettingsPage();
-                        break;
-                    }
-                    return PageRouteBuilder(
-                      settings: settings,
-                      transitionDuration: const Duration(milliseconds: 220),
-                      reverseTransitionDuration: const Duration(milliseconds: 180),
-                      pageBuilder: (context, animation, secondaryAnimation) => page,
-                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                        return FadeTransition(
-                          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-                          child: child,
-                        );
-                      },
+              home: const WorkoutPage(),
+
+              onGenerateRoute: (settings) {
+                Widget page;
+
+                final pageName = settings.name == '/' ? '/workout' : settings.name;
+
+                final navRoute = NavRoute.fromRoute(pageName);
+
+                switch (navRoute) {
+                  case NavRoute.workout:
+                    page = const WorkoutPage();
+                    break;
+                  case NavRoute.plans:
+                    page = const PlansPage();
+                    break;
+                  case NavRoute.exercises:
+                    page = const ExercisesPage();
+                    break;
+                  case NavRoute.calendar:
+                    page = const CalendarPage();
+                    break;
+                  case NavRoute.settings:
+                    page = const SettingsPage();
+                    break;
+                }
+
+                return PageRouteBuilder(
+                  settings: settings,
+                  transitionDuration: const Duration(milliseconds: 220),
+                  reverseTransitionDuration: const Duration(milliseconds: 180),
+                  pageBuilder: (context, animation, secondaryAnimation) => page,
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(
+                      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                      child: child,
                     );
                   },
-                  supportedLocales: const [Locale('en')],
                 );
               },
+
+              supportedLocales: const [Locale('en')],
             );
           },
         );
       },
     );
   }
+}
+
+class _AppSettings {
+  final String theme;
+  final String font;
+  final double fontSize;
+  final int? color;
+  final bool systemColors;
+
+  const _AppSettings({required this.theme, required this.font, required this.fontSize, required this.color, required this.systemColors});
+
+  @override
+  bool operator ==(Object other) {
+    return other is _AppSettings &&
+        other.theme == theme &&
+        other.font == font &&
+        other.fontSize == fontSize &&
+        other.color == color &&
+        other.systemColors == systemColors;
+  }
+
+  @override
+  int get hashCode => Object.hash(theme, font, fontSize, color, systemColors);
 }
