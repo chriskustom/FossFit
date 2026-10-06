@@ -1,0 +1,552 @@
+import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
+import 'package:fossfit/app/utils/constants.dart';
+import 'package:fossfit/db/db_constants.dart';
+import 'package:fossfit/db/models/features/gymset_model.dart';
+import 'package:fossfit/db/models/features/strength_model.dart';
+import 'package:sqflite/sqflite.dart';
+
+typedef Rpm = ({String name, double rpm, double weight});
+
+class GymSetRepository extends ChangeNotifier {
+  final Database _db;
+
+  List<GymSet> _gymsets = [];
+  List<GymSet> _latestgymsets = [];
+
+  GymSetRepository(this._db);
+
+  List<GymSet> get gymsets => List.unmodifiable(_gymsets);
+  List<GymSet> get latestgymsets => List.unmodifiable(_latestgymsets);
+
+  // ---------------------------------------------------------------------------
+  // Loading
+  // ---------------------------------------------------------------------------
+
+  Future<void> loadAll() async {
+    final rows = await _db.query(TableName.sets.name, orderBy: 'created DESC');
+
+    _gymsets = rows.map(GymSet.fromMap).toList();
+    await _loadLatestWorkout();
+    notifyListeners();
+  }
+  // ---------------------------------------------------------------------------
+  // Getters
+  // ---------------------------------------------------------------------------
+
+  GymSet? getGymSetById(int id) {
+    return _gymsets.where((set) => set.id == id).firstOrNull;
+  }
+
+  List<GymSet> getTodaysSetsByExerciseId(int exerciseId, int? planId) {
+    final sets = gymsets;
+
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day);
+    final startOfTomorrow = startOfDay.add(const Duration(days: 1));
+
+    final todays = sets
+        .where(
+          (set) =>
+              (planId == null || set.planId == planId) &&
+              set.exerciseId == exerciseId &&
+              set.created.isAfter(startOfDay) &&
+              set.created.isBefore(startOfTomorrow),
+        )
+        .toList();
+
+    todays.sort((a, b) => a.created.compareTo(b.created));
+
+    return todays;
+  }
+
+  GymSet? getLastSetByExerciseId(int exerciseId) =>
+      _gymsets.where((g) => g.exerciseId == exerciseId).sorted((a, b) => b.created.compareTo(a.created)).firstOrNull;
+
+  List<GymSet> getGymSetsForMonth(DateTime month) {
+    return _gymsets.where((set) => set.created.year == month.year && set.created.month == month.month).toList();
+  }
+  // ---------------------------------------------------------------------------
+  // CRUD
+  // ---------------------------------------------------------------------------
+
+  Future<GymSet> insertGymSet(GymSet gymSet) async {
+    gymSet.id = await _db.insert(TableName.sets.name, gymSet.toMap());
+
+    final index = _gymsets.indexWhere((set) => set.id == gymSet.id);
+
+    if (index >= 0) {
+      _gymsets[index] = gymSet;
+    } else {
+      _gymsets.add(gymSet);
+    }
+
+    _sortByCreated();
+
+    await _loadLatestWorkout();
+    notifyListeners();
+
+    return gymSet;
+  }
+
+  Future<void> decoupleSetsFromPlan(List<int> ids) async {
+    final placeholders = List.filled(ids.length, '?').join(', ');
+
+    await _db.execute('''
+        UPDATE sets
+        SET plan_id = NULL
+        WHERE id IN ($placeholders);
+      ''', ids);
+    return;
+  }
+
+  Future<bool> updateGymSet(GymSet? gymSet) async {
+    if (gymSet == null || gymSet.id == null) {
+      return false;
+    }
+
+    final count = await _db.update(TableName.sets.name, gymSet.toMap(), where: 'id = ?', whereArgs: [gymSet.id]);
+
+    if (count <= 0) {
+      return false;
+    }
+
+    final index = _gymsets.indexWhere((set) => set.id == gymSet.id);
+
+    if (index >= 0) {
+      _gymsets[index] = gymSet;
+    } else {
+      _gymsets.add(gymSet);
+    }
+
+    _sortByCreated();
+
+    await _loadLatestWorkout();
+    notifyListeners();
+
+    return true;
+  }
+
+  Future<bool> deleteGymSetsById(List<int> ids) async {
+    if (ids.isEmpty) {
+      return false;
+    }
+
+    final placeholders = List.filled(ids.length, '?').join(',');
+
+    final count = await _db.delete(TableName.sets.name, where: 'id IN ($placeholders)', whereArgs: ids);
+
+    if (count <= 0) {
+      return false;
+    }
+
+    _gymsets.removeWhere((set) => set.id != null && ids.contains(set.id));
+
+    await _loadLatestWorkout();
+    notifyListeners();
+
+    return true;
+  }
+
+  Future<bool> deleteGymSetById(int id) async {
+    final count = await _db.delete(TableName.sets.name, where: 'id = ?', whereArgs: [id]);
+
+    if (count <= 0) {
+      return false;
+    }
+
+    _gymsets.removeWhere((set) => set.id == id);
+
+    await _loadLatestWorkout();
+    notifyListeners();
+
+    return true;
+  }
+
+  void _sortByCreated() {
+    _gymsets.sort((a, b) => b.created.compareTo(a.created));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  int toUnixSeconds(DateTime dateTime) {
+    return dateTime.toUtc().millisecondsSinceEpoch;
+  }
+
+  DateTime fromUnixSeconds(dynamic value) {
+    final milliseconds = value is int ? value : (value as num).toInt();
+
+    return DateTime.fromMillisecondsSinceEpoch(milliseconds, isUtc: true).toLocal();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Is best
+  // ---------------------------------------------------------------------------
+
+  Future<bool> isBest(GymSet gymSet) async {
+    final results = await _db.rawQuery(
+      '''
+      SELECT
+        weight,
+        reps
+
+      FROM ${TableName.sets.name}
+
+      WHERE id != ?
+
+      ORDER BY
+        weight DESC,
+        reps DESC
+
+      LIMIT 1
+      ''',
+      [gymSet.id],
+    );
+
+    if (results.isEmpty) {
+      return false;
+    }
+
+    final weight = (results.first['weight'] as num).toDouble();
+    final reps = (results.first['reps'] as num).toDouble();
+
+    if (gymSet.weight > weight) {
+      return true;
+    }
+
+    if (gymSet.weight == weight && gymSet.reps > reps) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Unit conversion
+  // ---------------------------------------------------------------------------
+
+  Future<void> convertUnits(String unit, int exerciseId) async {
+    if (unit == 'kg') {
+      await _db.execute(
+        '''
+    UPDATE sets
+    SET
+      weight = CASE
+        WHEN unit = 'lb' THEN weight * 0.45359237
+        WHEN unit = 'stone' THEN weight * 6.35029318
+        ELSE weight
+      END,
+      unit = 'kg'
+    WHERE exercise_id = ?
+      AND unit IN ('lb', 'st');
+    ''',
+        [exerciseId],
+      );
+    } else if (unit == 'lb') {
+      await _db.execute(
+        '''
+    UPDATE sets
+    SET
+      weight = CASE
+        WHEN unit = 'kg' THEN weight * 2.20462262
+        WHEN unit = 'stone' THEN weight * 14
+        ELSE weight
+      END,
+      unit = 'lb'
+    WHERE exercise_id = ?
+      AND unit IN ('kg', 'st');
+    ''',
+        [exerciseId],
+      );
+    } else if (unit == 'st') {
+      await _db.execute(
+        '''
+    UPDATE sets
+    SET
+      weight = CASE
+        WHEN unit = 'kg' THEN weight * 0.157473044
+        WHEN unit = 'lb' THEN weight * 0.0714285714
+        ELSE weight
+      END,
+      unit = 'st'
+    WHERE exercise_id = ?
+      AND unit IN ('kg', 'lb');
+    ''',
+        [exerciseId],
+      );
+    }
+
+    // Keep the in-memory cache consistent after conversions.
+    await loadAll();
+  }
+
+  Future<void> _loadLatestWorkout() async {
+    DateTime dayOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+    final today = dayOnly(DateTime.now());
+    if (_gymsets.isEmpty) {
+      _latestgymsets = [];
+      return;
+    }
+    final mostRecentDay = _gymsets
+        .map((s) => dayOnly(s.created))
+        .where((d) => !d.isAfter(today))
+        .reduce((a, b) => a.isAfter(b) ? a : b);
+
+    _latestgymsets = _gymsets.where((s) => dayOnly(s.created) == mostRecentDay).toList();
+  }
+
+  //Strength
+  Future<List<StrengthData>> getStrengthData({
+    required String target,
+    required int exerciseId,
+    required StrengthMetric metric,
+    required Period period,
+    required DateTime? start,
+    required DateTime? end,
+    required int limit,
+  }) async {
+    final groupBy = getCreatedSql(period);
+
+    final where = <String>['exercise_id = ?'];
+
+    final args = <dynamic>[exerciseId];
+
+    if (start != null) {
+      where.add('created >= ?');
+      args.add(toUnixSeconds(start));
+    }
+
+    if (end != null) {
+      where.add('created < ?');
+      args.add(toUnixSeconds(end));
+    }
+
+    final repsExpression = metric == StrengthMetric.bestReps ? 'MAX(reps) AS max_reps' : 'reps';
+
+    final sql =
+        '''
+      SELECT
+        MAX(weight) AS max_weight,
+
+        ${getVolumeSql()} AS volume,
+
+        ${getOrmSql()} AS orm,
+
+        created,
+
+        $repsExpression,
+
+        unit,
+
+        ${getRelativeSql()} AS relative_strength
+
+      FROM ${TableName.sets.name}
+
+      WHERE ${where.join(' AND ')}
+
+      GROUP BY $groupBy
+
+      ORDER BY $groupBy DESC
+
+      LIMIT ?
+    ''';
+
+    args.add(limit);
+
+    final results = await _db.rawQuery(sql, args);
+
+    final list = <StrengthData>[];
+
+    for (final result in results.reversed) {
+      final unit = result['unit'] as String;
+
+      var value = getStrengthFromRow(result, metric);
+
+      if (unit == 'lb' && target == 'kg') {
+        value *= 0.45359237;
+      } else if (unit == 'kg' && target == 'lb') {
+        value *= 2.20462262;
+      }
+
+      double reps = 0.0;
+
+      try {
+        reps = (result['reps'] as num).toDouble();
+      } catch (_) {}
+
+      list.add(StrengthData(created: fromUnixSeconds(result['created']), value: value, unit: unit, reps: reps));
+    }
+
+    return list;
+  }
+
+  String getCreatedSql(Period groupBy) {
+    switch (groupBy) {
+      case Period.day:
+        return """
+          STRFTIME(
+            '%Y-%m-%d',
+            DATE(created / 1000, 'unixepoch', 'localtime')
+          )
+        """;
+
+      case Period.week:
+        return """
+          STRFTIME(
+            '%Y-%m-%W',
+            DATE(created / 1000, 'unixepoch', 'localtime')
+          )
+        """;
+
+      case Period.month:
+        return """
+          STRFTIME(
+            '%Y-%m',
+            DATE(created / 1000, 'unixepoch', 'localtime')
+          )
+        """;
+
+      case Period.year:
+        return """
+          STRFTIME(
+            '%Y',
+            DATE(created / 1000, 'unixepoch', 'localtime')
+          )
+        """;
+    }
+  }
+
+  String getVolumeSql() {
+    return 'ROUND(SUM(weight * reps), 2)';
+  }
+
+  String getOrmSql() {
+    return '''
+      MAX(
+        CASE
+          WHEN weight >= 0
+            THEN weight / (1.0278 - 0.0278 * reps)
+          ELSE
+            weight * (1.0278 - 0.0278 * reps)
+        END
+      )
+    ''';
+  }
+
+  String getRelativeSql() {
+    return '''
+      MAX(weight) / body_weight
+    ''';
+  }
+
+  double getStrengthFromRow(Map<String, dynamic> row, StrengthMetric metric) {
+    switch (metric) {
+      case StrengthMetric.oneRepMax:
+        return (row['orm'] as num?)?.toDouble() ?? 0;
+
+      case StrengthMetric.volume:
+        return (row['volume'] as num?)?.toDouble() ?? 0;
+
+      case StrengthMetric.relativeStrength:
+        return (row['relative_strength'] as num?)?.toDouble() ?? 0;
+
+      case StrengthMetric.bestWeight:
+        return (row['max_weight'] as num?)?.toDouble() ?? 0;
+
+      case StrengthMetric.bestReps:
+        return (row['max_reps'] as num?)?.toDouble() ?? 0;
+    }
+  }
+
+  Future<GymSet> getOrmEstimate(DateTime date, double value, String name) async {
+    final created = date.millisecondsSinceEpoch;
+
+    final result = await _db.rawQuery(
+      '''
+    SELECT *
+    FROM gymSets
+    WHERE created = ?
+      AND ABS(weight / (1.0278 - 0.0278 * reps) - ?) < 0.001
+      AND name = ?
+    LIMIT 1
+    ''',
+      [created, value, name],
+    );
+
+    if (result.isEmpty) {
+      throw Exception('No matching GymSet found');
+    }
+
+    return GymSet.fromMap(result.first);
+  }
+
+  // ---------------------------------------------------------------------------
+  // RPM
+  // ---------------------------------------------------------------------------
+
+  Future<List<Rpm>> getRpms() async {
+    final results = await _db.rawQuery('''
+    WITH time_diffs AS (
+      SELECT
+        e.name,
+        gs.reps,
+        (
+          (
+            gs.created -
+            LAG(gs.created) OVER (
+              PARTITION BY gs.exercise_id
+              ORDER BY gs.created
+            )
+          ) / 60.0
+        ) AS time_diff,
+        gs.weight
+
+      FROM ${TableName.sets.name} gs
+
+      INNER JOIN exercises e
+        ON e.id = gs.exercise_id
+
+      WHERE gs.created >=
+        strftime('%s', 'now') - 60 * 60 * 24 * 30
+
+        AND e.cardio = 0
+    ),
+
+    reps_per_min AS (
+      SELECT
+        name,
+        (reps / time_diff) AS rpm,
+        weight
+
+      FROM time_diffs
+
+      WHERE time_diff IS NOT NULL
+        AND time_diff <= 5
+    )
+
+    SELECT
+      name,
+      AVG(rpm) AS rpm,
+      weight
+
+    FROM reps_per_min
+
+    WHERE rpm IS NOT NULL
+      AND rpm BETWEEN 0.1 AND 10
+
+    GROUP BY name, weight
+    ''');
+
+    return results
+        .map(
+          (result) => (
+            name: result['name'] as String,
+            rpm: (result['rpm'] as num).toDouble(),
+            weight: (result['weight'] as num).toDouble(),
+          ),
+        )
+        .toList();
+  }
+}
