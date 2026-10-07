@@ -4,7 +4,7 @@
 
     <application
         android:hardwareAccelerated="true"
-        android:label="fossfit"
+        android:label="FossFit"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
