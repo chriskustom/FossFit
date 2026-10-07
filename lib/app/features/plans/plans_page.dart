@@ -7,7 +7,6 @@ import 'package:fossfit/app/utils/utils.dart';
 import 'package:fossfit/app/widgets/animated_fab.dart';
 import 'package:fossfit/app/widgets/confirmation_dialog.dart';
 import 'package:fossfit/db/models/features/plan_model.dart';
-import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/plan_exercises_repository.dart';
 import 'package:fossfit/db/repositories/plan_repository.dart';
 import 'package:provider/provider.dart';
@@ -20,7 +19,6 @@ class PlansPage extends StatefulWidget {
 }
 
 class _PlansPageState extends State<PlansPage> {
-  late ConfigRepository config;
   List<Plan>? _displayPlans;
 
   final Set<Plan> _selectedItems = {};
@@ -34,7 +32,6 @@ class _PlansPageState extends State<PlansPage> {
 
   @override
   Widget build(BuildContext context) {
-    config = context.watch<ConfigRepository>();
     var repo = context.watch<PlansRepository>();
 
     final plans = _displayPlans ?? repo.plans;
@@ -72,10 +69,9 @@ class _PlansPageState extends State<PlansPage> {
           final today = plan.days.split(',').contains(weekday);
           title = Text(
             plan.name,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              fontWeight: today ? FontWeight.bold : null,
-              decoration: today ? TextDecoration.underline : null,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyLarge?.copyWith(fontWeight: today ? FontWeight.bold : null, decoration: today ? TextDecoration.underline : null),
           );
         } else if (plan.days.split(',').length < 7) {
           title = RichText(text: TextSpan(children: _getDayListFormatted(plan.days, weekday)));
@@ -138,22 +134,14 @@ class _PlansPageState extends State<PlansPage> {
         child: Container(
           width: 24,
           height: 24,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.secondaryContainer,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(12)),
           child: Center(
             child: Padding(
               padding: EdgeInsets.only(bottom: 2),
               child: Text(
                 plan.name.isNotEmpty ? plan.name[0] : plan.days[0].toUpperCase(),
                 textAlign: TextAlign.justify,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
               ),
             ),
           ),
@@ -200,12 +188,7 @@ class _PlansPageState extends State<PlansPage> {
       buttons.addAll([
         IconButton(
           onPressed: () async {
-            final confirmed = await showConfirmationDialog(
-              context: context,
-              title: "Delete?",
-              content: "Are you sure?",
-              barrierDismissible: true,
-            );
+            final confirmed = await showConfirmationDialog(context: context, title: "Delete?", content: "Are you sure?", barrierDismissible: true);
 
             if (!mounted || confirmed == null || !confirmed) return;
             await planServices.deleteMultiplePlanByIds(_selectedItems.map((i) => i.id!).toList());
@@ -229,10 +212,7 @@ class _PlansPageState extends State<PlansPage> {
       return [
         TextSpan(
           text: trimmedDay,
-          style: style?.copyWith(
-            fontWeight: isToday ? FontWeight.bold : null,
-            decoration: isToday ? TextDecoration.underline : null,
-          ),
+          style: style?.copyWith(fontWeight: isToday ? FontWeight.bold : null, decoration: isToday ? TextDecoration.underline : null),
         ),
         const TextSpan(text: ', '),
       ];

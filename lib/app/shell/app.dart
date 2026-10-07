@@ -6,7 +6,6 @@ import 'package:fossfit/app/theme/theme.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
-import 'package:month_year_picker/month_year_picker.dart';
 import 'package:provider/provider.dart';
 
 class App extends StatelessWidget {
@@ -37,6 +36,7 @@ class _AppView extends StatelessWidget {
           builder: (context, settings, _) {
             final mode = ThemeMode.values.byName(settings.theme.isEmpty ? 'system' : settings.theme);
             var homeRoute = NavRoute.values.byName(settings.home);
+
             return MaterialApp(
               navigatorKey: NavigationService.navigatorKey,
               scaffoldMessengerKey: AppSnackBar.messengerKey,
@@ -80,10 +80,7 @@ class _AppView extends StatelessWidget {
                   },
                 );
               },
-              localizationsDelegates: <LocalizationsDelegate<Object>>[
-                GlobalMaterialLocalizations.delegate,
-                MonthYearPickerLocalizations.delegate,
-              ],
+              localizationsDelegates: <LocalizationsDelegate<Object>>[GlobalMaterialLocalizations.delegate],
               supportedLocales: const [Locale('en')],
             );
           },

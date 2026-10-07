@@ -46,20 +46,19 @@ class _PlanPageState extends State<PlanPage> {
 
   @override
   Widget build(BuildContext context) {
-    var config = context.watch<ConfigRepository>();
     var planRepo = context.watch<PlansRepository>();
     var planExRepo = context.watch<PlanExercisesRepository>();
     var exRepo = context.watch<ExercisesRepository>();
     var plan = planRepo.getPlanById(widget.planId);
     planName = plan?.name;
-    var timer = config.isEnabled(.timers, 'enabled');
 
     final planExercises = displayPlanExercises ?? planExRepo.getPlanExercisesByPlanId(widget.planId);
     selectedPlanExerciseId = selectedPlanExerciseId ?? planExercises.firstOrNull?.id;
     selectedExerciseId = selectedExerciseId ?? planExercises.firstOrNull?.exerciseId;
-    return Selector<ConfigRepository, bool>(
-      selector: (_, repo) => repo.isEnabled(.timers, 'auto_start'),
-      builder: (context, autoStartTimer, child) {
+    return Selector<ConfigRepository, (bool, bool)>(
+      selector: (_, repo) => (repo.isEnabled(.timers, 'enabled'), repo.isEnabled(.timers, 'auto_start')),
+      builder: (context, values, child) {
+        final (timer, autoStartTimer) = values;
         return AppShell(
           showNavBar: false,
           title: planName ?? 'Add Plan',

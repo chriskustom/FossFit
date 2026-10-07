@@ -31,15 +31,22 @@ class _TimerSettingsPageState extends State<TimerSettingsPage> {
       title: category.name.toTitleCase,
       showSearch: false,
       showNavBar: false,
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        children: [
-          _switch('enabled', Icons.timer_rounded),
-          _switch('auto_start', Icons.autorenew_rounded),
-          _switch('vibrate', Icons.vibration_rounded),
-          _switch('enable_sound', Icons.music_note_rounded),
-          _alarmSound(),
-        ],
+      body: Selector<ConfigRepository, bool>(
+        selector: (_, repo) => repo.isEnabled(category, 'enabled'),
+        builder: (ctx, enabled, _) {
+          return ListView(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            children: [
+              _switch('enabled', Icons.timer_rounded),
+              if (enabled) ...[
+                _switch('auto_start', Icons.autorenew_rounded),
+                _switch('vibrate', Icons.vibration_rounded),
+                _switch('enable_sound', Icons.music_note_rounded),
+                _alarmSound(),
+              ],
+            ],
+          );
+        },
       ),
     );
   }

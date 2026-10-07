@@ -26,35 +26,39 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
 
   @override
   Widget build(BuildContext context) {
-    var sysColours = context.watch<ConfigRepository>().isEnabled(category, 'system_colours');
-    var curves = context.watch<ConfigRepository>().isEnabled(category, 'curve_lines');
-    return AppShell(
-      title: category.name.toTitleCase,
-      showSearch: false,
-      showNavBar: false,
-      body: ListView(
-        children: [
-          SizedBox(height: 16),
-          Padding(
-            padding: EdgeInsets.only(left: 16, top: 8),
-            child: Text('Look', style: Theme.of(context).textTheme.labelMedium),
+    return Selector<ConfigRepository, (bool, bool)>(
+      selector: (_, repo) => (repo.isEnabled(category, 'system_colours'), repo.isEnabled(category, 'curve_lines')),
+      builder: (_, values, _) {
+        final (sysColours, curves) = values;
+        return AppShell(
+          title: category.name.toTitleCase,
+          showSearch: false,
+          showNavBar: false,
+          body: ListView(
+            children: [
+              SizedBox(height: 16),
+              Padding(
+                padding: EdgeInsets.only(left: 16, top: 8),
+                child: Text('Look', style: Theme.of(context).textTheme.labelMedium),
+              ),
+              SizedBox(height: 8),
+              _themeItem(),
+              _useSystemColours(),
+              if (!sysColours) _colorScheme(),
+              SizedBox(height: 8),
+              Divider(),
+              Padding(
+                padding: EdgeInsets.only(left: 16, top: 8),
+                child: Text('Feel', style: Theme.of(context).textTheme.labelMedium),
+              ),
+              SizedBox(height: 8),
+              _enableHaptics(),
+              _curveLines(),
+              if (curves) ...[_curveLineSmoothness(), _curveGraphExample()],
+            ],
           ),
-          SizedBox(height: 8),
-          _themeItem(),
-          _useSystemColours(),
-          if (!sysColours) _colorScheme(),
-          SizedBox(height: 8),
-          Divider(),
-          Padding(
-            padding: EdgeInsets.only(left: 16, top: 8),
-            child: Text('Feel', style: Theme.of(context).textTheme.labelMedium),
-          ),
-          SizedBox(height: 8),
-          _enableHaptics(),
-          _curveLines(),
-          if (curves) ...[_curveLineSmoothness(), _curveGraphExample()],
-        ],
-      ),
+        );
+      },
     );
   }
 

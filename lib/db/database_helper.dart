@@ -380,7 +380,7 @@ class DatabaseHelper {
       await migratedDb.execute('PRAGMA foreign_keys = OFF');
       await importSqliteFile(migratedDb);
       await migratedDb.execute('PRAGMA foreign_keys = ON');
-      await migratedDb.execute('PRAGMA user_version = $kDatabaseSchemaVersion;');
+      await migratedDb.execute('PRAGMA user_version = 1;');
       _defaultSettings(migratedDb);
       await migratedDb.close();
 

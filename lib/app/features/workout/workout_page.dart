@@ -22,22 +22,26 @@ class WorkoutPage extends StatefulWidget {
 
 class _WorkoutPageState extends State<WorkoutPage> {
   List<GymSet>? _lastWorkoutSets;
-  Widget lastWorkout = const SizedBox.shrink();
+
   final expand = ExpansibleController();
   final scroll = ScrollController();
-  final Set<int> selectedSets = {};
-
   final Set<GymSet> _selectedItems = {};
+
   bool get selectionMode => _selectedItems.isNotEmpty;
+
   @override
-  void initState() {
-    super.initState();
+  void dispose() {
+    expand.dispose();
+    scroll.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final timer = context.watch<CountdownTimerController>();
+
     final lastWorkoutSets = _lastWorkoutSets ?? context.watch<GymSetRepository>().latestgymsets;
+
     return Selector<ConfigRepository, _Settings>(
       selector: (_, repo) => _Settings(
         showStats: repo.isEnabled(.workouts, 'show_stats'),
@@ -46,16 +50,20 @@ class _WorkoutPageState extends State<WorkoutPage> {
         autoStartTimer: repo.isEnabled(.timers, 'auto_start'),
       ),
       builder: (context, settings, _) {
-        if (settings.showStats) getStats(lastWorkoutSets);
+        // Derive stats here. NO setState().
+        final lastWorkout = settings.showStats ? GymSetServices(context: context).getLastGymSetWorkout(lastWorkoutSets) : const SizedBox.shrink();
+
         return AppShell(
           title: selectionMode ? '${_selectedItems.length} selected' : 'Workout',
           selectActions: _selectActions(),
           showTimer: settings.showTimer,
           body: Padding(
-            padding: EdgeInsets.fromLTRB(8, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
             child: Column(
               children: [
-                if (lastWorkoutSets.isEmpty) ListTile(title: Text(emptyPhrases.randomItem), subtitle: Text('Complete some sets to see them here')),
+                if (lastWorkoutSets.isEmpty)
+                  ListTile(title: Text(emptyPhrases.randomItem), subtitle: const Text('Complete some sets to see them here')),
+
                 if (lastWorkoutSets.isNotEmpty && settings.showStats)
                   Theme(
                     data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -72,28 +80,29 @@ class _WorkoutPageState extends State<WorkoutPage> {
                         initiallyExpanded: true,
                         controller: expand,
                         children: [lastWorkout],
-                        onExpansionChanged: (value) {
+                        onExpansionChanged: (_) {
                           setState(() {});
                         },
                       ),
                     ),
                   ),
+
                 Expanded(
                   child: settings.groupHistory
                       ? WorkoutGrouped(
                           sets: lastWorkoutSets,
                           selectedItems: _selectedItems,
                           selectionMode: selectionMode,
-                          toggleSelection: (set) => _toggleSelection(set),
-                          editSet: (set) => _editSet(set),
+                          toggleSelection: _toggleSelection,
+                          editSet: _editSet,
                           scroll: scroll,
                         )
                       : WorkoutList(
                           sets: lastWorkoutSets,
                           selectedItems: _selectedItems,
                           selectionMode: selectionMode,
-                          toggleSelection: (set) => _toggleSelection(set),
-                          editSet: (set) => _editSet(set),
+                          toggleSelection: _toggleSelection,
+                          editSet: _editSet,
                           scroll: scroll,
                         ),
                 ),
@@ -102,9 +111,13 @@ class _WorkoutPageState extends State<WorkoutPage> {
           ),
           floatingActionButton: AnimatedFab(
             onPressed: () async {
-              var services = GymSetServices(context: context);
+              final services = GymSetServices(context: context);
+
               await services.openAddEditPage(context, null);
-              if (settings.autoStartTimer) timer.start();
+
+              if (settings.autoStartTimer && mounted) {
+                timer.start();
+              }
             },
             label: const Text('Add'),
             icon: const Icon(Icons.add),
@@ -115,19 +128,13 @@ class _WorkoutPageState extends State<WorkoutPage> {
     );
   }
 
-  void getStats(List<GymSet> sets) async {
-    var services = GymSetServices(context: context);
-    try {
-      final lw = services.getLastGymSetWorkout(sets);
-      setState(() {
-        lastWorkout = lw;
-      });
-    } catch (_) {}
-  }
+  Future<void> _editSet(GymSet gymSet) async {
+    final services = GymSetServices(context: context);
 
-  void _editSet(GymSet gymSet) async {
-    var services = GymSetServices(context: context);
     await services.openAddEditPage(context, gymSet.id);
+
+    if (!mounted) return;
+
     setState(() {
       _lastWorkoutSets = context.read<GymSetRepository>().latestgymsets;
     });
@@ -135,14 +142,20 @@ class _WorkoutPageState extends State<WorkoutPage> {
 
   void _toggleSelection(GymSet set) {
     setState(() {
-      _selectedItems.contains(set) ? _selectedItems.remove(set) : _selectedItems.add(set);
+      if (_selectedItems.contains(set)) {
+        _selectedItems.remove(set);
+      } else {
+        _selectedItems.add(set);
+      }
     });
   }
 
   List<IconButton> _selectActions() {
     final setServices = GymSetServices(context: context);
     final sets = setServices.getAllGymSets();
-    List<IconButton> buttons = [];
+
+    final List<IconButton> buttons = [];
+
     if (_selectedItems.isNotEmpty) {
       buttons.add(
         IconButton(
@@ -159,19 +172,26 @@ class _WorkoutPageState extends State<WorkoutPage> {
         ),
       );
 
-      buttons.addAll([
+      buttons.add(
         IconButton(
           onPressed: () async {
-            final confirmed = await showConfirmationDialog(context: context, title: "Delete?", content: "Are you sure?", barrierDismissible: true);
+            final confirmed = await showConfirmationDialog(context: context, title: 'Delete?', content: 'Are you sure?', barrierDismissible: true);
 
-            if (!mounted || confirmed == null || !confirmed) return;
+            if (!mounted || confirmed != true) return;
+
             await setServices.deleteMultipleGymSetssByIds(_selectedItems.map((i) => i.id!).toList());
-            setState(() => _selectedItems.clear());
+
+            if (!mounted) return;
+
+            setState(() {
+              _selectedItems.clear();
+            });
           },
           icon: const Icon(Icons.delete),
         ),
-      ]);
+      );
     }
+
     return buttons;
   }
 }

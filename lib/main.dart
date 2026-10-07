@@ -18,11 +18,12 @@ import 'package:timezone/timezone.dart' as tz;
 
 MethodChannel androidChannel = const MethodChannel("com.kustom.fossfit/android");
 Future main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   if (kIsWeb || PlatformDetail.isDesktop) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
-  WidgetsFlutterBinding.ensureInitialized();
   tz.initializeTimeZones();
   try {
     final timezoneInfo = await FlutterTimezone.getLocalTimezone();

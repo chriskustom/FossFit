@@ -25,7 +25,6 @@ class ExercisesPage extends StatefulWidget {
 }
 
 class _ExercisesPageState extends State<ExercisesPage> {
-  late ConfigRepository config;
   List<Exercise> exercises = [];
   final ScrollController _scrollController = ScrollController();
 
@@ -59,7 +58,6 @@ class _ExercisesPageState extends State<ExercisesPage> {
 
   @override
   Widget build(BuildContext context) {
-    config = context.watch<ConfigRepository>();
     var exRepo = context.watch<ExercisesRepository>();
     var gymSetRepo = context.watch<GymSetRepository>();
     exercises = exRepo.exercises;
@@ -75,101 +73,106 @@ class _ExercisesPageState extends State<ExercisesPage> {
       return true;
     }).toList();
     matching.sortByOrder(sortBy, sortOrder);
-    final dateFormat = config.getSetting(.formats, 'long_date_format');
-    return AppShell(
-      showSearch: false,
-      selectActions: _selectActions(),
-      sorting: _sortMenu(),
-      title: selectionMode ? '${_selectedItems.length} selected' : 'Exercises',
-      body: Stack(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(8),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: TextField(
-                    controller: searchCtrl,
-                    decoration: InputDecoration(
-                      hintText: 'Search exercises...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+    return Selector<ConfigRepository, (String, bool)>(
+      selector: (_, repo) => (repo.getSetting(.formats, 'long_date_format'), repo.isEnabled(.timers, 'show_images')),
+      builder: (_, values, _) {
+        final (dateFormat, showImages) = values;
+        return AppShell(
+          showSearch: false,
+          selectActions: _selectActions(),
+          sorting: _sortMenu(),
+          title: selectionMode ? '${_selectedItems.length} selected' : 'Exercises',
+          body: Stack(
+            children: [
+              Padding(
+                padding: EdgeInsets.all(8),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: TextField(
+                        controller: searchCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'Search exercises...',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            search = value.toLowerCase();
+                          });
+                        },
+                      ),
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        search = value.toLowerCase();
-                      });
-                    },
+
+                    if (matching.isEmpty)
+                      _buildNothingFound()
+                    else
+                      Expanded(
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          itemCount: matching.length,
+                          itemBuilder: (context, index) {
+                            var exercise = matching[index].key;
+                            var lastSet = matching[index].value;
+                            var subtitle = lastSet == null
+                                ? Text('Never completed')
+                                : Text(
+                                    'Last completed - ${dateFormat == 'timeago' ? timeago.format(lastSet.created) : DateFormat(dateFormat).format(lastSet.created)}',
+                                  );
+                            return ListTile(
+                              key: Key('${exercise.id}-${exercise.name}'),
+                              leading: _leading(exercise, showImages),
+                              title: Text(exercise.name),
+                              subtitle: subtitle,
+                              selected: _selectedItems.contains(exercise),
+                              onLongPress: () => _toggleSelection(exercise),
+                              onTap: () async {
+                                if (selectionMode) {
+                                  _toggleSelection(exercise);
+                                } else {
+                                  var exServices = ExerciseServices(context: context);
+                                  var data = await gymSetRepo.getStrengthData(
+                                    target: lastSet?.unit ?? exercise.defaultUnit ?? 'kg',
+                                    exerciseId: exercise.id!,
+                                    metric: StrengthMetric.bestWeight,
+                                    period: Period.day,
+                                    start: null,
+                                    end: null,
+                                    limit: 20,
+                                  );
+                                  if (!context.mounted) return;
+
+                                  await exServices.openExercisePage(context, exercise.id!, data);
+                                }
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (isDeleting)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    child: const Center(child: CircularProgressIndicator()),
                   ),
                 ),
-
-                if (matching.isEmpty)
-                  _buildNothingFound()
-                else
-                  Expanded(
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      itemCount: matching.length,
-                      itemBuilder: (context, index) {
-                        var exercise = matching[index].key;
-                        var lastSet = matching[index].value;
-                        var subtitle = lastSet == null
-                            ? Text('Never completed')
-                            : Text(
-                                'Last completed - ${dateFormat == 'timeago' ? timeago.format(lastSet.created) : DateFormat(dateFormat).format(lastSet.created)}',
-                              );
-                        return ListTile(
-                          key: Key('${exercise.id}-${exercise.name}'),
-                          leading: _leading(exercise),
-                          title: Text(exercise.name),
-                          subtitle: subtitle,
-                          selected: _selectedItems.contains(exercise),
-                          onLongPress: () => _toggleSelection(exercise),
-                          onTap: () async {
-                            if (selectionMode) {
-                              _toggleSelection(exercise);
-                            } else {
-                              var exServices = ExerciseServices(context: context);
-                              var data = await gymSetRepo.getStrengthData(
-                                target: lastSet?.unit ?? exercise.defaultUnit ?? 'kg',
-                                exerciseId: exercise.id!,
-                                metric: StrengthMetric.bestWeight,
-                                period: Period.day,
-                                start: null,
-                                end: null,
-                                limit: 20,
-                              );
-                              if (!context.mounted) return;
-
-                              await exServices.openExercisePage(context, exercise.id!, data);
-                            }
-                          },
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
+            ],
           ),
-          if (isDeleting)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.4),
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-            ),
-        ],
-      ),
-      floatingActionButton: AnimatedFab(
-        onPressed: () async {
-          var services = ExerciseServices(context: context);
-          await services.openAddEditExercisePage(context, null, null);
-        },
-        label: const Text('Add'),
-        icon: const Icon(Icons.add),
-        scroll: _scrollController,
-      ),
+          floatingActionButton: AnimatedFab(
+            onPressed: () async {
+              var services = ExerciseServices(context: context);
+              await services.openAddEditExercisePage(context, null, null);
+            },
+            label: const Text('Add'),
+            icon: const Icon(Icons.add),
+            scroll: _scrollController,
+          ),
+        );
+      },
     );
   }
 
@@ -188,8 +191,7 @@ class _ExercisesPageState extends State<ExercisesPage> {
     );
   }
 
-  Widget _leading(Exercise exercise) {
-    var showImages = config.isEnabled(.workouts, 'show_images');
+  Widget _leading(Exercise exercise, bool showImages) {
     Widget? leading = SizedBox(
       height: 24,
       width: 24,
@@ -219,22 +221,14 @@ class _ExercisesPageState extends State<ExercisesPage> {
         child: Container(
           width: 24,
           height: 24,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.secondaryContainer,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(12)),
           child: Center(
             child: Padding(
               padding: EdgeInsets.only(bottom: 2),
               child: Text(
                 exercise.name.isNotEmpty ? exercise.name[0].toUpperCase() : '?',
                 textAlign: TextAlign.justify,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
               ),
             ),
           ),
