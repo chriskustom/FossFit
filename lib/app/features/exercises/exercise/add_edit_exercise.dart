@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/features/exercises/exercise/image/image_page.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/services/image_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
@@ -108,11 +109,7 @@ class _AddEditExerciseState extends State<AddEditExercise> {
           ],
         ),
       ),
-      floatingActionButton: AnimatedFab(
-        onPressed: () => save(),
-        label: const Text('Save'),
-        icon: const Icon(Icons.save),
-      ),
+      floatingActionButton: AnimatedFab(onPressed: () => save(), label: const Text('Save'), icon: const Icon(Icons.save)),
     );
   }
 
@@ -152,29 +149,23 @@ class _AddEditExerciseState extends State<AddEditExercise> {
           onSelected: (String selection) {
             category = selection;
           },
-          fieldViewBuilder:
-              (
-                BuildContext context,
-                TextEditingController textEditingController,
-                FocusNode focusNode,
-                VoidCallback onFieldSubmitted,
-              ) {
-                catController = textEditingController;
-                return TextFormField(
-                  controller: textEditingController,
-                  focusNode: focusNode,
-                  decoration: const InputDecoration(labelText: 'Category'),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Required';
-                    if (!snapshot.data!.contains(value)) return 'Invlaid';
-                    return null;
-                  },
-                  onChanged: (value) {
-                    if (value.isEmpty || !snapshot.data!.contains(value)) return;
-                    category = value;
-                  },
-                );
+          fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
+            catController = textEditingController;
+            return TextFormField(
+              controller: textEditingController,
+              focusNode: focusNode,
+              decoration: const InputDecoration(labelText: 'Category'),
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Required';
+                if (!snapshot.data!.contains(value)) return 'Invlaid';
+                return null;
               },
+              onChanged: (value) {
+                if (value.isEmpty || !snapshot.data!.contains(value)) return;
+                category = value;
+              },
+            );
+          },
         );
       },
     );
@@ -205,13 +196,34 @@ class _AddEditExerciseState extends State<AddEditExercise> {
               Tooltip(
                 message: 'Long-press to delete',
                 child: GestureDetector(
-                  onTap: () => () async {
-                    var pickedImage = await pickImage(context);
-                    if (pickedImage != null || pickedImage!.isNotEmpty) {
-                      setState(() {
-                        image = pickedImage;
-                      });
-                    }
+                  onTap: () async {
+                    final imageFile = ImageFile(name: widget.name ?? 'Image', bytes: image ?? Uint8List(0));
+
+                    if (!context.mounted) return;
+                    showGeneralDialog(
+                      context: context,
+                      barrierLabel: "Right Sheet",
+                      barrierDismissible: true,
+                      barrierColor: Colors.black54,
+                      transitionDuration: const Duration(milliseconds: 200),
+                      pageBuilder: (context, anim1, anim2) {
+                        return Align(
+                          alignment: Alignment.centerRight,
+                          child: Material(
+                            color: Colors.white,
+                            child: SizedBox(
+                              width: MediaQuery.of(context).size.width,
+                              height: double.infinity,
+                              child: ImagePage(image: imageFile),
+                            ),
+                          ),
+                        );
+                      },
+                      transitionBuilder: (context, anim1, anim2, child) {
+                        final offsetAnimation = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(anim1);
+                        return SlideTransition(position: offsetAnimation, child: child);
+                      },
+                    );
                   },
                   onLongPress: () => setState(() {
                     image = null;
@@ -220,13 +232,10 @@ class _AddEditExerciseState extends State<AddEditExercise> {
                   child: Container(
                     width: imageSize,
                     height: imageSize,
-                    clipBehavior: Clip.hardEdge,
+                    clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(imageSize * 0.15),
-                      color: Colors.white,
-                      image: showImages
-                          ? DecorationImage(image: MemoryImage(image ?? Uint8List(0)), fit: BoxFit.contain)
-                          : null,
+                      image: showImages ? DecorationImage(image: MemoryImage(image ?? Uint8List(0)), fit: BoxFit.cover) : null,
                     ),
                   ),
                 ),
@@ -258,9 +267,7 @@ class _AddEditExerciseState extends State<AddEditExercise> {
           builder: (BuildContext context) {
             return AlertDialog(
               title: const Text('Units conflict'),
-              content: Text(
-                'Not all of your records have the same unit. This will convert all units to $unit. Are you sure?',
-              ),
+              content: Text('Not all of your records have the same unit. This will convert all units to $unit. Are you sure?'),
               actions: <Widget>[
                 TextButton.icon(
                   label: const Text('Cancel'),

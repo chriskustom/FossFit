@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/features/exercises/exercise/graph/flex_line.dart';
+import 'package:fossfit/app/features/exercises/exercise/image/image_page.dart';
 import 'package:fossfit/app/features/workout/widgets/workout_peek.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
@@ -108,15 +109,43 @@ class _ExercisePageState extends State<ExercisePage> {
                   children: [
                     if (exercise!.hasImage() == true) ...[
                       Center(
-                        child: Container(
-                          width: imageSize,
-                          height: imageSize,
-                          clipBehavior: Clip.hardEdge,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(imageSize * 0.15),
-                            image: DecorationImage(
-                              image: MemoryImage(exercise?.image ?? Uint8List(0)),
-                              fit: BoxFit.contain,
+                        child: InkWell(
+                          onTap: () async {
+                            final imageFile = ImageFile(name: exercise!.name, bytes: exercise!.image ?? Uint8List(0));
+
+                            if (!context.mounted) return;
+                            showGeneralDialog(
+                              context: context,
+                              barrierLabel: "Right Sheet",
+                              barrierDismissible: true,
+                              barrierColor: Colors.black54,
+                              transitionDuration: const Duration(milliseconds: 200),
+                              pageBuilder: (context, anim1, anim2) {
+                                return Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Material(
+                                    color: Colors.white,
+                                    child: SizedBox(
+                                      width: MediaQuery.of(context).size.width,
+                                      height: double.infinity,
+                                      child: ImagePage(image: imageFile),
+                                    ),
+                                  ),
+                                );
+                              },
+                              transitionBuilder: (context, anim1, anim2, child) {
+                                final offsetAnimation = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(anim1);
+                                return SlideTransition(position: offsetAnimation, child: child);
+                              },
+                            );
+                          },
+                          child: Container(
+                            width: imageSize,
+                            height: imageSize,
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(imageSize * 0.15),
+                              image: DecorationImage(image: MemoryImage(exercise?.image ?? Uint8List(0)), fit: BoxFit.cover),
                             ),
                           ),
                         ),
@@ -131,10 +160,7 @@ class _ExercisePageState extends State<ExercisePage> {
                         const DropdownMenuItem(value: StrengthMetric.oneRepMax, child: Text("One rep max")),
                         const DropdownMenuItem(value: StrengthMetric.volume, child: Text("Volume")),
                         if (settings.isEnabled(.workouts, 'show_body_weight'))
-                          const DropdownMenuItem(
-                            value: StrengthMetric.relativeStrength,
-                            child: Text("Relative strength"),
-                          ),
+                          const DropdownMenuItem(value: StrengthMetric.relativeStrength, child: Text("Relative strength")),
                       ],
                       onChanged: (value) {
                         setState(() {
@@ -351,10 +377,7 @@ class _ExercisePageState extends State<ExercisePage> {
             break;
         }
 
-        return [
-          LineTooltipItem(text, TextStyle(color: Theme.of(context).textTheme.bodyLarge!.color)),
-          if (touchedSpots.length > 1) null,
-        ];
+        return [LineTooltipItem(text, TextStyle(color: Theme.of(context).textTheme.bodyLarge!.color)), if (touchedSpots.length > 1) null];
       },
     );
   }
@@ -386,11 +409,7 @@ class _ExercisePageState extends State<ExercisePage> {
         break;
       case StrengthMetric.relativeStrength:
         gymSet = theseSets
-            .where(
-              (tbl) =>
-                  ((tbl.weight / (tbl.bodyWeight ?? 0.0)) == (row.value) ||
-                  (tbl.weight / (tbl.bodyWeight ?? 0.0)).isNaN),
-            )
+            .where((tbl) => ((tbl.weight / (tbl.bodyWeight ?? 0.0)) == (row.value) || (tbl.weight / (tbl.bodyWeight ?? 0.0)).isNaN))
             .take(1)
             .first;
         break;
@@ -404,12 +423,7 @@ class _ExercisePageState extends State<ExercisePage> {
   }
 
   Future<void> _selectEnd() async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: end,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
+    final DateTime? pickedDate = await showDatePicker(context: context, initialDate: end, firstDate: DateTime(2000), lastDate: DateTime(2100));
 
     if (pickedDate == null) return;
 
@@ -420,12 +434,7 @@ class _ExercisePageState extends State<ExercisePage> {
   }
 
   Future<void> _selectStart() async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: start,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
+    final DateTime? pickedDate = await showDatePicker(context: context, initialDate: start, firstDate: DateTime(2000), lastDate: DateTime(2100));
 
     if (pickedDate == null) return;
 
