@@ -10,6 +10,7 @@ import 'package:fossfit/app/widgets/confirmation_dialog.dart';
 import 'package:fossfit/app/widgets/countdown_timer.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
+import 'package:fossfit/db/repositories/exercise_repository.dart';
 import 'package:fossfit/db/repositories/gym_set_repository.dart';
 import 'package:provider/provider.dart';
 
@@ -39,7 +40,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
   @override
   Widget build(BuildContext context) {
     final timer = context.watch<CountdownTimerController>();
-
+    context.watch<ExercisesRepository>();
     final lastWorkoutSets = _lastWorkoutSets ?? context.watch<GymSetRepository>().latestgymsets;
 
     return Selector<ConfigRepository, _Settings>(
@@ -50,7 +51,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
         autoStartTimer: repo.isEnabled(.timers, 'auto_start'),
       ),
       builder: (context, settings, _) {
-        // Derive stats here. NO setState().
         final lastWorkout = settings.showStats ? GymSetServices(context: context).getLastGymSetWorkout(lastWorkoutSets) : const SizedBox.shrink();
 
         return AppShell(

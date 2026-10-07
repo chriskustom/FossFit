@@ -50,7 +50,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
   String? category;
   String? unit;
   String? name;
-  bool isDeleting = false;
+
   late bool dateSet = false;
 
   late ConfigRepository config;
@@ -86,21 +86,16 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     gymSet = setServices.getGymSetById(widget.setId ?? 0);
 
     if (isEditMode) {
-      //set exercuse to gymset exercise
       currentExercise = exerciseRepo.getExerciseById(gymSet!.exerciseId)!;
       updateFields(gymSet);
     }
     if (!isEditMode && name == null) {
-      //initial load of new set
-      //set exercise to last completed exercise (or first if none completed)
       var lastSet = setServices.getLastGymSet();
       var lastExercise = exerciseRepo.getExerciseById(lastSet?.exerciseId ?? 0);
       currentExercise = lastExercise ?? exerciseRepo.exercises.first;
       updateFields(lastSet);
     }
     if (!isEditMode && name != null) {
-      //exercise has changed, get details of last gymset from this exercise
-      //get exercise
       currentExercise = exerciseRepo.getExerciseByName(name!) ?? currentExercise;
       var lastSet = setServices.getSetsByExerciseId(currentExercise.id!).firstOrNull;
       updateFields(lastSet);
@@ -367,7 +362,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
       builder: (context, showImages, child) {
         return Column(
           children: [
-            if (image == null || !currentExercise.hasImage())
+            if (image == null || image!.isEmpty)
               TextButton.icon(
                 onPressed: () async {
                   var pickedImage = await pickImage(context);
@@ -380,7 +375,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
                 label: const Text('Image'),
                 icon: const Icon(Icons.image),
               ),
-            if (image != null && currentExercise.hasImage()) ...[
+            if (image != null && image!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Tooltip(
                 message: 'Long-press to delete',
@@ -415,8 +410,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
                     );
                   },
                   onLongPress: () => setState(() {
-                    image = null;
-                    isDeleting = true;
+                    image = Uint8List(0);
                   }),
                   child: Container(
                     width: imageSize,
@@ -511,9 +505,8 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     }
     exerciseNameTEC.text = currentExercise.name;
     category = currentExercise.category;
-    image = isDeleting ? null : image ?? currentExercise.image;
+    image = image ?? currentExercise.image;
     name = currentExercise.name;
-    isDeleting = false;
   }
 
   void setORM() {

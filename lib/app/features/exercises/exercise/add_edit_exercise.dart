@@ -36,7 +36,6 @@ class _AddEditExerciseState extends State<AddEditExercise> {
   String? unit;
   String? category;
   Uint8List? image;
-  bool deletingImage = false;
   @override
   void initState() {
     super.initState();
@@ -57,7 +56,7 @@ class _AddEditExerciseState extends State<AddEditExercise> {
       descCtrl.text = descCtrl.text.isEmpty ? _exercise?.description ?? '' : descCtrl.text;
       unit = unit ?? _exercise?.defaultUnit;
       category = category ?? _exercise?.category;
-      image = deletingImage ? null : image ?? _exercise?.image;
+      image = image ?? _exercise?.image;
       setsController.text = setsController.text.isEmpty ? (_exercise?.defaultSets).toString() : setsController.text;
     } else {
       nameCtrl.text = widget.name ?? 'Add Exercise';
@@ -65,7 +64,6 @@ class _AddEditExerciseState extends State<AddEditExercise> {
       unit = 'kg';
     }
     var prefix = isEditMode ? 'Update all' : 'Add ';
-    deletingImage = false;
     return AppShell(
       showNavBar: false,
       showSearch: false,
@@ -226,8 +224,7 @@ class _AddEditExerciseState extends State<AddEditExercise> {
                     );
                   },
                   onLongPress: () => setState(() {
-                    image = null;
-                    deletingImage = true;
+                    image = Uint8List(0);
                   }),
                   child: Container(
                     width: imageSize,

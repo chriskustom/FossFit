@@ -45,12 +45,13 @@ Future<Uint8List?> pickImage(BuildContext context) async {
 }
 
 Future<Uint8List?> _cropWithImageCropper(String path, BuildContext context) async {
+  final colour = Theme.of(context).colorScheme;
   if (!context.mounted) return null;
 
   final cropped = await ImageCropper().cropImage(
     sourcePath: path,
     uiSettings: [
-      AndroidUiSettings(toolbarTitle: 'Crop'),
+      AndroidUiSettings(toolbarTitle: 'Crop', backgroundColor: colour.surface),
       IOSUiSettings(title: 'Crop'),
       WebUiSettings(context: context),
     ],

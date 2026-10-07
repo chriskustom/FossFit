@@ -20,6 +20,7 @@ class _DesktopCropScreenState extends State<CropScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colour = Theme.of(context).colorScheme;
     return AppShell(
       title: 'Crop image',
       floatingActionButton: FloatingActionButton(
@@ -35,6 +36,7 @@ class _DesktopCropScreenState extends State<CropScreen> {
         child: const Icon(Icons.save),
       ),
       body: Crop(
+        baseColor: colour.surface,
         image: widget.imageBytes,
         controller: _controller,
         onCropped: (result) {

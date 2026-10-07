@@ -70,17 +70,12 @@ class _ImagePageState extends State<ImagePage> {
       body: InteractiveViewer(
         transformationController: _transformationController,
 
-        // Never allow the image to become smaller than its initial size.
         minScale: _minScale,
         maxScale: _maxScale,
-
-        // This is the important part:
-        // no panning at all while the image is at 1x.
         panEnabled: _isZoomed,
 
         scaleEnabled: true,
 
-        // Don't let the image be dragged outside the viewport.
         boundaryMargin: EdgeInsets.zero,
 
         clipBehavior: Clip.none,

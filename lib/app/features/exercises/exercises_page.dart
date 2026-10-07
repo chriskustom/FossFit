@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_iconpicker/extensions/list_extensions.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
@@ -74,7 +75,7 @@ class _ExercisesPageState extends State<ExercisesPage> {
     }).toList();
     matching.sortByOrder(sortBy, sortOrder);
     return Selector<ConfigRepository, (String, bool)>(
-      selector: (_, repo) => (repo.getSetting(.formats, 'long_date_format'), repo.isEnabled(.timers, 'show_images')),
+      selector: (_, repo) => (repo.getSetting(.formats, 'long_date_format'), repo.isEnabled(.workouts, 'show_images')),
       builder: (_, values, _) {
         final (dateFormat, showImages) = values;
         return AppShell(
@@ -198,7 +199,7 @@ class _ExercisesPageState extends State<ExercisesPage> {
       child: Checkbox(value: _selectedItems.contains(exercise), onChanged: (_) => _toggleSelection(exercise)),
     );
 
-    if (!selectionMode && showImages && exercise.hasImage()) {
+    if (!selectionMode && showImages && exercise.image.isNotNullOrEmpty) {
       leading = GestureDetector(
         onTap: () => _toggleSelection(exercise),
         child: Container(
@@ -207,11 +208,7 @@ class _ExercisesPageState extends State<ExercisesPage> {
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            image: DecorationImage(
-              image: MemoryImage(exercise.image ?? Uint8List(0)),
-              fit: BoxFit.cover,
-              //colorFilter: ColorFilter.mode(Color.fromARGB(100, 0, 0, 0), BlendMode.darken),
-            ),
+            image: DecorationImage(image: MemoryImage(exercise.image ?? Uint8List(0)), fit: BoxFit.cover),
           ),
         ),
       );
