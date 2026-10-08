@@ -17,10 +17,10 @@ class KustomNavBar extends StatelessWidget {
         final routes = tabs.split(',').map((page) => NavRoute.values.byName(page.toLowerCase())).toList();
 
         final currentRoute = ModalRoute.of(context)?.settings.name;
-        final selectedIndex = routes.indexWhere((page) => page == NavRoute.fromRoute(currentRoute));
+        final selectedIndex = routes.indexWhere((page) => page == NavRoute.fromRoute(currentRoute, routes.first));
         return miniDock
             ? Padding(
-                padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 2, 16, 16),
                 child: Center(
                   child: Container(
                     height: 60,

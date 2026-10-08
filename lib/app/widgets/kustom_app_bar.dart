@@ -5,6 +5,8 @@ import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/fade_route.dart';
 import 'package:fossfit/app/widgets/about_dialog.dart';
 import 'package:fossfit/app/widgets/menus/triple_dot_menu.dart';
+import 'package:fossfit/db/repositories/config_reposity.dart';
+import 'package:provider/provider.dart';
 
 class KustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   final String title;
@@ -13,14 +15,7 @@ class KustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   final List<IconButton>? selectActions;
   final bool showSearch;
 
-  const KustomAppBar({
-    super.key,
-    required this.title,
-    this.actions,
-    this.sorting,
-    this.selectActions,
-    this.showSearch = true,
-  });
+  const KustomAppBar({super.key, required this.title, this.actions, this.sorting, this.selectActions, this.showSearch = true});
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -39,10 +34,9 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
     _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
   }
 
-  Widget? _getLeading() {
-    var route = ModalRoute.of(context)?.settings.name == '/'
-        ? NavRoute.allRoutes.first
-        : ModalRoute.of(context)?.settings.name;
+  Widget _getLeading(String home) {
+    var homeRoute = NavRoute.values.byName(home.toLowerCase());
+    var route = ModalRoute.of(context)?.settings.name == '/' ? homeRoute : ModalRoute.of(context)?.settings.name;
     return !NavRoute.allRoutes.contains(route)
         ? IconButton(
             icon: const Icon(Icons.arrow_back),
@@ -50,24 +44,22 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
               Navigator.maybePop(context);
             }),
           )
-        : Icon(NavRoute.fromRoute(ModalRoute.of(context)?.settings.name).icon);
+        : Icon(NavRoute.fromRoute(ModalRoute.of(context)?.settings.name, homeRoute).icon);
   }
 
   @override
   Widget build(BuildContext context) {
     return AppBar(
       elevation: 0,
-      leading: _getLeading(),
+      leading: Selector<ConfigRepository, String>(
+        selector: (p0, p1) => p1.getSetting(.tabs, 'tabs'),
+        builder: (context, value, child) => _getLeading(value.split(',').first),
+      ),
       title: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
         switchInCurve: Curves.easeInOut,
         switchOutCurve: Curves.easeInOut,
-        child: Text(
-          widget.title,
-          key: const ValueKey("title"),
-          style: Theme.of(context).textTheme.labelLarge,
-          textScaler: TextScaler.linear(1.1),
-        ),
+        child: Text(widget.title, key: const ValueKey("title"), style: Theme.of(context).textTheme.labelLarge, textScaler: TextScaler.linear(1.1)),
       ),
       actions: _buildMenu(context),
     );

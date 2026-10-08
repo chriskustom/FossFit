@@ -45,6 +45,12 @@ class ConfigRepository extends ChangeNotifier {
   }
 
   Future<void> setSetting({required ConfigCategory category, required String key, required String value}) async {
+    // Update the UI immediately.
+    _settingCache.putIfAbsent(category.name, () => {});
+    _settingCache[category.name]![key] = value;
+    notifyListeners();
+
+    // Persist the new value afterward.
     final success = await db.update(
       tableName,
       {'category': category.name, 'key': key, 'value': value},
@@ -57,10 +63,6 @@ class ConfigRepository extends ChangeNotifier {
       final config = Config(category: category.name, key: key, value: value);
       await db.insert(tableName, config.toMap());
     }
-    _settingCache.putIfAbsent(category.name, () => {});
-    _settingCache[category.name]![key] = value;
-
-    notifyListeners();
   }
 
   //endregion

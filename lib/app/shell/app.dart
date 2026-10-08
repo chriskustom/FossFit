@@ -62,10 +62,9 @@ class _AppView extends StatelessWidget {
               home: homeRoute.page,
 
               onGenerateRoute: (routeSettings) {
-                Widget page;
                 final pageName = routeSettings.name == '/' ? homeRoute.route : routeSettings.name;
-                final navRoute = NavRoute.fromRoute(pageName);
-                page = navRoute.page;
+                final navRoute = NavRoute.fromRoute(pageName, homeRoute);
+                final page = navRoute.page;
 
                 return PageRouteBuilder(
                   settings: routeSettings,

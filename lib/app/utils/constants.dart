@@ -27,12 +27,9 @@ enum NavRoute {
   final String label;
   final Widget page;
 
-  static NavRoute fromRoute(String? route) {
-    if (route == null) return NavRoute.values.first;
-    return NavRoute.values.firstWhere(
-      (e) => e.route == route || route.startsWith(e.route),
-      orElse: () => NavRoute.values.first,
-    );
+  static NavRoute fromRoute(String? route, NavRoute home) {
+    if (route == null) return home;
+    return NavRoute.values.firstWhere((e) => e.route == route || route.startsWith(e.route), orElse: () => home);
   }
 
   bool matches(String? route) => route != null && route.startsWith(this.route);
@@ -143,11 +140,7 @@ const List<String> emptyPhrases = [
 
 const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-const List<MapEntry<String, String>> unitsList = [
-  MapEntry('kg', 'Kilograms (kg)'),
-  MapEntry('lb', 'Pounds (lb)'),
-  MapEntry('st', 'Stone (st)'),
-];
+const List<MapEntry<String, String>> unitsList = [MapEntry('kg', 'Kilograms (kg)'), MapEntry('lb', 'Pounds (lb)'), MapEntry('st', 'Stone (st)')];
 
 const longdateFormats = [
   'timeago',
@@ -169,18 +162,7 @@ const longdateFormats = [
 
 const shortdateFormats = ['d/M/yy', 'M/d/yy', 'd-M-yy', 'M-d-yy', 'd.M.yy', 'M.d.yy', 'dd.MM.yy'];
 
-const fonts = [
-  'Arial',
-  'Lato',
-  'Lunasima',
-  'Montserrat',
-  'Noto Sans',
-  'Open Sans',
-  'Roboto',
-  'Staatliches',
-  'Times New Roman',
-  'Wolland',
-];
+const fonts = ['Arial', 'Lato', 'Lunasima', 'Montserrat', 'Noto Sans', 'Open Sans', 'Roboto', 'Staatliches', 'Times New Roman', 'Wolland'];
 
 const defaultExercises = [
   ('Arnold press', 'Shoulders'),
