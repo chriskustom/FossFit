@@ -82,7 +82,7 @@ class KustomNavBar extends StatelessWidget {
                 ),
               )
             : NavigationBar(
-                height: 60,
+                height: 80,
                 backgroundColor: color.surface,
                 selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
                 onDestinationSelected: (index) => onTap(routes[index], routes.first),

@@ -63,9 +63,9 @@ class _TabsSettingsPageState extends State<TabsSettingsPage> {
           return ListTile(
             leading: Transform.scale(
               scale: iconScale,
-              child: Icon(Icons.vertical_align_bottom_rounded, color: isEnabled ? Theme.of(context).colorScheme.primary : null),
+              child: Icon(Icons.minimize_rounded, color: isEnabled ? Theme.of(context).colorScheme.primary : null),
             ),
-            title: const Padding(padding: EdgeInsets.only(left: 8), child: Text('Enable minimal navigation bar/dock')),
+            title: const Padding(padding: EdgeInsets.only(left: 8), child: Text('Minimal nav bar')),
             trailing: Transform.scale(
               scale: switchScale,
               child: Switch.adaptive(
