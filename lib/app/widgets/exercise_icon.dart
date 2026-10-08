@@ -19,23 +19,14 @@ class ExerciseIcon extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           image: showImages && exercise.hasImage() == true
-              ? DecorationImage(
-                  image: MemoryImage(exercise.image ?? Uint8List(0)),
-                  fit: BoxFit.cover,
-                  //colorFilter: ColorFilter.mode(Color.fromARGB(100, 0, 0, 0), BlendMode.darken),
-                )
+              ? DecorationImage(image: MemoryImage(exercise.image ?? Uint8List(0)), fit: BoxFit.cover)
               : null,
         ),
         child: showImages && exercise.hasImage() == true
             ? null
             : Text(
                 exercise.name.isNotEmpty ? exercise.name[0].toUpperCase() : '?',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
               ),
       ),
     );

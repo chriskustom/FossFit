@@ -21,12 +21,10 @@ Future<Uint8List?> pickImage(BuildContext context) async {
 
     if (bytes == null) return null;
 
-    // Android: store at 50% of the cropped image dimensions.
     if (Platform.isAndroid) {
       return _resizeTo50Percent(bytes);
     }
 
-    // iOS / Web: keep your existing 512px max size.
     return _resizeToMax512(bytes);
   } else {
     final typeGroup = XTypeGroup(label: 'images', extensions: ['jpg', 'jpeg', 'png', 'webp']);
@@ -39,7 +37,6 @@ Future<Uint8List?> pickImage(BuildContext context) async {
 
     if (!context.mounted) return null;
 
-    // Desktop: don't resize before or after cropping.
     return await _cropWithDesktop(fileBytes, context);
   }
 }

@@ -33,8 +33,7 @@ class WorkoutGrouped extends StatelessWidget {
     var config = context.read<ConfigRepository>();
     final showImages = config.isEnabled(.workouts, 'show_images');
     final services = GymSetServices(context: context);
-    final sortedDays = List<ExerciseSets>.from(services.getExerciseSets(sets, reversed: true))
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final sortedDays = List<ExerciseSets>.from(services.getExerciseSets(sets, reversed: true))..sort((a, b) => b.date.compareTo(a.date));
     var grouped = services.groupExerciseSetsByDay(sortedDays);
 
     return ListView.builder(
@@ -87,10 +86,7 @@ class WorkoutGrouped extends StatelessWidget {
             const SizedBox(width: 4),
             const Icon(Icons.today, size: 16),
             const SizedBox(width: 4),
-            Text(
-              DateFormat(config.getSetting(.formats, 'short_date_format')).format(date),
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+            Text(DateFormat(config.getSetting(.formats, 'short_date_format')).format(date), style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(width: 4),
             const Expanded(child: Divider(thickness: 1)),
           ],
@@ -109,9 +105,7 @@ class WorkoutGrouped extends StatelessWidget {
         final weight = gymSet.weight;
 
         final dateFormat = config.getSetting(.formats, 'short_date_format');
-        final trailing = Text(
-          dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
-        );
+        final trailing = Text(dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created));
         return ListTile(
           dense: true,
           visualDensity: VisualDensity.comfortable,
@@ -164,11 +158,7 @@ class WorkoutGrouped extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            image: DecorationImage(
-              image: MemoryImage(exercise.image ?? Uint8List(0)),
-              fit: BoxFit.cover,
-              //colorFilter: ColorFilter.mode(Color.fromARGB(100, 0, 0, 0), BlendMode.darken),
-            ),
+            image: DecorationImage(image: MemoryImage(exercise.image ?? Uint8List(0)), fit: BoxFit.cover),
           ),
         ),
       );
@@ -178,22 +168,14 @@ class WorkoutGrouped extends StatelessWidget {
         child: Container(
           width: 24,
           height: 24,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.secondaryContainer,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(12)),
           child: Center(
             child: Padding(
               padding: EdgeInsets.only(bottom: 2),
               child: Text(
                 exercise.name.isNotEmpty ? exercise.name[0] : '?',
                 textAlign: TextAlign.justify,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
               ),
             ),
           ),

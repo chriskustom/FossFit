@@ -182,6 +182,9 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
                 },
               ),
             ),
+            onTap: () {
+              context.read<ConfigRepository>().setSetting(category: category, key: key, value: !isEnabled == true ? '1' : '0');
+            },
           );
         },
       ),
@@ -211,6 +214,9 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
                 },
               ),
             ),
+            onTap: () {
+              context.read<ConfigRepository>().setSetting(category: category, key: key, value: !isEnabled == true ? '1' : '0');
+            },
           );
         },
       ),

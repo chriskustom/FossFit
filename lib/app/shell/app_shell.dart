@@ -1,12 +1,10 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:fossfit/app/services/app_services.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/widgets/countdown_timer.dart';
 import 'package:fossfit/app/widgets/kustom_app_bar.dart';
-import 'package:fossfit/db/repositories/config_reposity.dart';
-import 'package:provider/provider.dart';
+import 'package:fossfit/app/widgets/kustom_nav_bar.dart';
 
 ValueNotifier<int?> currentSetId = ValueNotifier(null);
 ValueNotifier<int?> currentPlanId = ValueNotifier(null);
@@ -46,7 +44,6 @@ class _AppShellState extends State<AppShell> {
     super.dispose();
   }
 
-  //bool _locked = true;
   @override
   void initState() {
     super.initState();
@@ -54,8 +51,6 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return SafeArea(
       bottom: true,
       top: false,
@@ -74,19 +69,22 @@ class _AppShellState extends State<AppShell> {
                 return ConstrainedBox(
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(context).copyWith(
-                      dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad},
-                    ),
+                    behavior: ScrollConfiguration.of(
+                      context,
+                    ).copyWith(dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad}),
                     child: widget.body,
                   ),
                 );
               },
             ),
-            resizeToAvoidBottomInset: false, // Android keyboard optimization
+            resizeToAvoidBottomInset: false,
             floatingActionButton: widget.floatingActionButton,
             bottomNavigationBar: Column(
               mainAxisSize: MainAxisSize.min,
-              children: [_buildTimer(), widget.showNavBar ? _buildNavigationBar(context, colors) : SizedBox.shrink()],
+              children: [
+                CountdownTimer(),
+                widget.showNavBar ? KustomNavBar(onTap: (target, home) => _navigateIfNeeded(target, home)) : SizedBox.shrink(),
+              ],
             ),
           ),
         ],
@@ -110,132 +108,5 @@ class _AppShellState extends State<AppShell> {
         return routeName == '/' || routeName == home.route;
       });
     });
-  }
-
-  Widget _buildTimer() {
-    return Padding(padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8), child: CountdownTimer());
-  }
-
-  Widget _buildNavigationBar(BuildContext context, ColorScheme colors) {
-    return Selector<ConfigRepository, String>(
-      selector: (_, config) => config.getSetting(.tabs, 'tabs'),
-      builder: (context, tabs, _) {
-        final routes = tabs.split(',').map((page) => NavRoute.values.byName(page.toLowerCase())).toList();
-
-        final currentRoute = ModalRoute.of(context)?.settings.name;
-        final selectedIndex = routes.indexWhere((page) => page == NavRoute.fromRoute(currentRoute));
-        if (routes.length == 1) {
-          final page = routes.first;
-
-          return Container(
-            height: 80,
-            color: colors.surface,
-            child: Center(
-              child: InkWell(
-                onTap: () {
-                  AppHaptics.tap(context);
-                  _navigateIfNeeded(page, page);
-                },
-                borderRadius: BorderRadius.circular(24),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(page.icon), Text(page.label)]),
-                ),
-              ),
-            ),
-          );
-        }
-        return NavigationBar(
-          backgroundColor: colors.surface,
-          selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
-          onDestinationSelected: (index) {
-            AppHaptics.tap(context);
-            _navigateIfNeeded(routes[index], routes[0]);
-          },
-          destinations: routes.map((page) {
-            return NavigationDestination(icon: Icon(page.icon), label: page.label);
-          }).toList(),
-        );
-      },
-    );
-  }
-
-  Widget _pillNav(List<NavRoute> tabs, int selectedIndex) {
-    final color = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-      child: Center(
-        child: Container(
-          height: 60,
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: color.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 16, offset: const Offset(0, 6)),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: tabs.asMap().entries.map((entry) {
-              final index = entry.key;
-              final tab = entry.value;
-              final isSelected = index == selectedIndex;
-              final label = tab.label;
-
-              return Semantics(
-                label: label,
-                button: true,
-                selected: isSelected,
-                child: Tooltip(
-                  message: label,
-                  child: GestureDetector(
-                    onTap: () {
-                      AppHaptics.tap(context);
-                      _navigateIfNeeded(tabs[index], tabs[0]);
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 350),
-                      curve: Curves.easeOutCubic,
-                      height: 48,
-                      padding: EdgeInsets.symmetric(horizontal: isSelected ? 16 : 12),
-                      decoration: BoxDecoration(
-                        color: isSelected ? color.primary : Colors.transparent,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            tab.icon,
-                            color: isSelected ? color.onPrimary : color.onSurface,
-                            size: 24,
-                            semanticLabel: label,
-                          ),
-                          AnimatedSize(
-                            duration: const Duration(milliseconds: 350),
-                            curve: Curves.easeOutCubic,
-                            child: isSelected
-                                ? Padding(
-                                    padding: const EdgeInsets.only(left: 8),
-                                    child: Text(
-                                      label,
-                                      maxLines: 1,
-                                      style: Theme.of(context).textTheme.labelLarge?.copyWith(color: color.onPrimary),
-                                    ),
-                                  )
-                                : const SizedBox.shrink(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ),
-    );
   }
 }

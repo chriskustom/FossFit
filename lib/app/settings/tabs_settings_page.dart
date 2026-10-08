@@ -26,10 +26,66 @@ class _TabsSettingsPageState extends State<TabsSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AppShell(title: category.name.toTitleCase, showSearch: false, showNavBar: false, body: __pageOrder());
+    return AppShell(
+      title: category.name.toTitleCase,
+      showSearch: false,
+      showNavBar: false,
+      body: ListView(
+        children: [
+          SizedBox(height: 16),
+          Padding(
+            padding: EdgeInsets.only(left: 16, top: 8),
+            child: Text('Navigation', style: Theme.of(context).textTheme.labelMedium),
+          ),
+          SizedBox(height: 8),
+          _minimalDock(),
+          SizedBox(height: 8),
+          Divider(),
+          Padding(
+            padding: EdgeInsets.only(left: 16, top: 8),
+            child: Text('Tabs', style: Theme.of(context).textTheme.labelMedium),
+          ),
+          SizedBox(height: 8),
+          _tabs(),
+        ],
+      ),
+    );
   }
 
-  Padding __pageOrder() {
+  Padding _minimalDock() {
+    const key = 'minimal_dock';
+
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: Selector<ConfigRepository, bool>(
+        selector: (_, repo) => repo.isEnabled(category, key),
+        builder: (context, isEnabled, _) {
+          return ListTile(
+            leading: Transform.scale(
+              scale: iconScale,
+              child: Icon(Icons.vertical_align_bottom_rounded, color: isEnabled ? Theme.of(context).colorScheme.primary : null),
+            ),
+            title: const Padding(padding: EdgeInsets.only(left: 8), child: Text('Enable minimal navigation bar/dock')),
+            trailing: Transform.scale(
+              scale: switchScale,
+              child: Switch.adaptive(
+                value: isEnabled,
+                onChanged: (value) {
+                  context.read<ConfigRepository>().setSetting(category: category, key: key, value: value ? '1' : '0');
+                },
+              ),
+            ),
+
+            onTap: () {
+              context.read<ConfigRepository>().setSetting(category: category, key: key, value: !isEnabled == true ? '1' : '0');
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Padding _tabs() {
     return Padding(
       padding: EdgeInsets.all(8),
       child: Selector<ConfigRepository, String>(

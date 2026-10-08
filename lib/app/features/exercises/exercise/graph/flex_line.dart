@@ -26,7 +26,6 @@ class FlexLine extends StatelessWidget {
     this.showTrendLine = true,
   });
 
-  // Calculate linear regression trend line
   List<FlSpot> _calculateTrendLine(List<FlSpot> spots) {
     if (spots.length < 2) return [];
 
@@ -96,10 +95,7 @@ class FlexLine extends StatelessWidget {
         curveSmoothness: settings.getDouble(.appearance, 'curve_smoothness'),
         dotData: const FlDotData(show: false),
         preventCurveOverShooting: true,
-        belowBarData: BarAreaData(
-          show: true,
-          gradient: LinearGradient(colors: colors.map((color) => color.withValues(alpha: 0.3)).toList()),
-        ),
+        belowBarData: BarAreaData(show: true, gradient: LinearGradient(colors: colors.map((color) => color.withValues(alpha: 0.3)).toList())),
       ),
     ];
 
@@ -141,8 +137,7 @@ class FlexLine extends StatelessWidget {
               showTitles: hideBottom != true,
               reservedSize: 27,
               interval: bottomInterval,
-              getTitlesWidget: (value, meta) =>
-                  bottomTitleWidgets(value, meta, settings.getSetting(.formats, 'short_date_format'), context),
+              getTitlesWidget: (value, meta) => bottomTitleWidgets(value, meta, settings.getSetting(.formats, 'short_date_format'), context),
             ),
           ),
         ),

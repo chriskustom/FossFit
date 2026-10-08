@@ -322,17 +322,14 @@ class DatabaseHelper {
       final currentVersion = await _getUserVersion(currentDb);
       await currentDb.close();
 
-      // 1️⃣ Validate imported version
       final importedDb = await openDatabase(importedPath, readOnly: true);
       final importedVersion = await _getUserVersion(importedDb);
       await importedDb.close();
 
-      ///old flexify db. Reset version to allow migrations
       if (importedVersion > currentVersion) {
         throw Exception('Backup was created with a newer app version ($importedVersion)');
       }
 
-      // 2️⃣ Copy to temp location first
       final tempFile = File(tempPath);
       if (await tempFile.exists()) {
         await tempFile.delete();
@@ -340,11 +337,9 @@ class DatabaseHelper {
 
       await File(importedPath).copy(tempPath);
 
-      // 3️⃣ Open temp DB with proper version (this triggers migrations)
       final migratedDb = await _openDb(tempPath);
       await migratedDb.close();
 
-      // 4️⃣ Replace live DB only AFTER successful migration
       final targetFile = File(targetPath);
       if (await targetFile.exists()) {
         await targetFile.delete();
@@ -352,7 +347,6 @@ class DatabaseHelper {
 
       await File(tempPath).rename(targetPath);
 
-      // 5️⃣ Reopen normally
       _database = await _openDb(targetPath);
 
       return 'Database imported and migrated successfully';
@@ -367,7 +361,6 @@ class DatabaseHelper {
       final targetPath = join(dbDir, dbFileName);
       final tempPath = join(dbDir, 'temp_import.db');
 
-      // 2️⃣ Copy to temp location first
       final tempFile = File(tempPath);
       if (await tempFile.exists()) {
         await tempFile.delete();
@@ -375,7 +368,6 @@ class DatabaseHelper {
 
       await File(importedPath).copy(tempPath);
 
-      // 3️⃣ Open temp DB with proper version (this triggers migrations)
       final migratedDb = await openDatabase(tempPath);
       await migratedDb.execute('PRAGMA foreign_keys = OFF');
       await importSqliteFile(migratedDb);
@@ -387,7 +379,6 @@ class DatabaseHelper {
       final currentDb = await database;
       await currentDb.close();
 
-      // 4️⃣ Replace live DB only AFTER successful migration
       final targetFile = File(targetPath);
       if (await targetFile.exists()) {
         await targetFile.delete();
@@ -395,7 +386,6 @@ class DatabaseHelper {
 
       await File(tempPath).rename(targetPath);
 
-      // 5️⃣ Reopen normally
       _database = await _openDb(targetPath);
 
       return 'Database imported and migrated successfully';

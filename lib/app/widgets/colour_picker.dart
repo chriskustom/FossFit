@@ -118,27 +118,22 @@ class RoundSliderThumbWithBorder extends SliderComponentShape {
   }) {
     final Canvas canvas = context.canvas;
 
-    // Define colors
     final Color thumbColor = sliderTheme.thumbColor ?? Colors.white;
-    final Color borderColor = Colors.black.withAlpha(150); // Black border
-    final double borderWidth = 2.0; // Border thickness
+    final Color borderColor = Colors.black.withAlpha(150);
+    final double borderWidth = 2.0;
 
-    // Paint for the filled inner circle
     final Paint fillPaint = Paint()
       ..color = thumbColor
       ..style = PaintingStyle.fill;
 
-    // Paint for the black border
     final Paint borderPaint = Paint()
       ..color = borderColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = borderWidth;
 
-    // Calculate radius with animation
     final Tween<double> radiusTween = Tween<double>(begin: _disabledThumbRadius, end: enabledThumbRadius);
     final double radius = radiusTween.evaluate(enableAnimation);
 
-    // Draw the thumb
     canvas.drawCircle(center, radius, fillPaint);
     canvas.drawCircle(center, radius, borderPaint);
   }
@@ -157,11 +152,6 @@ class FullWidthTrackShape extends RoundedRectSliderTrackShape {
   }) {
     final trackHeight = sliderTheme.trackHeight ?? 2;
 
-    return Rect.fromLTWH(
-      offset.dx,
-      offset.dy + (parentBox.size.height - trackHeight) / 2,
-      parentBox.size.width,
-      trackHeight,
-    );
+    return Rect.fromLTWH(offset.dx, offset.dy + (parentBox.size.height - trackHeight) / 2, parentBox.size.width, trackHeight);
   }
 }

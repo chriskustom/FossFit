@@ -74,9 +74,7 @@ class WorkoutPeek extends StatelessWidget {
     final weight = gymSet.weight;
     final trailing = Text("${_getSetNumber(gymSet)}: $reps REPS @ $weight ${gymSet.unit}");
     final dateFormat = context.read<ConfigRepository>().getSetting(.formats, 'short_date_format');
-    final subtitle = Text(
-      dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
-    );
+    final subtitle = Text(dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

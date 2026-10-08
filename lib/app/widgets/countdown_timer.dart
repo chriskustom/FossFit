@@ -82,102 +82,104 @@ class _CountdownTimerState extends State<CountdownTimer> with TickerProviderStat
       sound: config.getSetting(.timers, 'alarm_sound'),
     );
 
-    return Consumer<CountdownTimerController>(
-      builder: (context, timer, _) {
-        //_updatePulseAnimation(timer.alarmActive);
-        _updateAnimations(timer);
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, right: 8, bottom: 8),
+      child: Consumer<CountdownTimerController>(
+        builder: (context, timer, _) {
+          _updateAnimations(timer);
 
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 2),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -3))],
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              children: [
-                const Divider(height: 1),
+          return Container(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 2),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -3))],
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                children: [
+                  const Divider(height: 1),
 
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          IconButton.outlined(
-                            onPressed: timer.reset,
-                            icon: const Icon(Icons.restart_alt_rounded),
-                            visualDensity: const VisualDensity(horizontal: 4, vertical: 0),
-                          ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            IconButton.outlined(
+                              onPressed: timer.reset,
+                              icon: const Icon(Icons.restart_alt_rounded),
+                              visualDensity: const VisualDensity(horizontal: 4, vertical: 0),
+                            ),
 
-                          Expanded(
-                            child: Center(
-                              child: Column(
-                                children: [
-                                  InkWell(
-                                    onTap: timer.isRunning
-                                        ? timer.pause
-                                        : timer.remainingSeconds < timer.durationSeconds
-                                        ? timer.start
-                                        : () => _selectDuration(context, timer),
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                                      child: AnimatedBuilder(
-                                        animation: Listenable.merge([_pulseAnimation, _startPulseAnimation]),
-                                        builder: (context, child) {
-                                          final alarmScale = timer.alarmActive ? _pulseAnimation.value : 1.0;
+                            Expanded(
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    InkWell(
+                                      onTap: timer.isRunning
+                                          ? timer.pause
+                                          : timer.remainingSeconds < timer.durationSeconds
+                                          ? timer.start
+                                          : () => _selectDuration(context, timer),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        child: AnimatedBuilder(
+                                          animation: Listenable.merge([_pulseAnimation, _startPulseAnimation]),
+                                          builder: (context, child) {
+                                            final alarmScale = timer.alarmActive ? _pulseAnimation.value : 1.0;
 
-                                          return Transform.scale(scale: _startPulseAnimation.value * alarmScale, child: child);
-                                        },
-                                        child: Text(
-                                          _formatTime(timer.remainingSeconds),
-                                          style: const TextStyle(
-                                            fontSize: 28,
-                                            fontWeight: FontWeight.bold,
-                                            fontFeatures: [FontFeature.tabularFigures()],
+                                            return Transform.scale(scale: _startPulseAnimation.value * alarmScale, child: child);
+                                          },
+                                          child: Text(
+                                            _formatTime(timer.remainingSeconds),
+                                            style: const TextStyle(
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.bold,
+                                              fontFeatures: [FontFeature.tabularFigures()],
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  SizedBox(height: 8),
-                                  SizedBox(
-                                    width: 120,
-                                    height: 3,
-                                    child: _TimerProgressBar(progress: timer.progress, isRunning: timer.isRunning),
-                                  ),
-                                ],
+                                    SizedBox(height: 8),
+                                    SizedBox(
+                                      width: 120,
+                                      height: 3,
+                                      child: _TimerProgressBar(progress: timer.progress, isRunning: timer.isRunning),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
 
-                          IconButton.filledTonal(
-                            visualDensity: const VisualDensity(horizontal: 4, vertical: 0),
-                            onPressed: timer.alarmActive
-                                ? timer.stopAlarm
-                                : timer.isRunning
-                                ? timer.pause
-                                : timer.start,
-                            icon: Icon(
-                              timer.alarmActive
-                                  ? Icons.stop_rounded
+                            IconButton.filledTonal(
+                              visualDensity: const VisualDensity(horizontal: 4, vertical: 0),
+                              onPressed: timer.alarmActive
+                                  ? timer.stopAlarm
                                   : timer.isRunning
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
+                                  ? timer.pause
+                                  : timer.start,
+                              icon: Icon(
+                                timer.alarmActive
+                                    ? Icons.stop_rounded
+                                    : timer.isRunning
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -264,7 +266,6 @@ class _DurationPickerDialogState extends State<_DurationPickerDialog> {
       content: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Minutes
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -291,7 +292,6 @@ class _DurationPickerDialogState extends State<_DurationPickerDialog> {
             child: Text(':', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           ),
 
-          // Seconds
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [

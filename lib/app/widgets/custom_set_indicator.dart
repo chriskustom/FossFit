@@ -36,15 +36,11 @@ class CustomSetIndicator extends StatelessWidget {
                 ],
                 const SizedBox(height: 4),
 
-                // Always render the ghost/background bar.
                 SizedBox(
                   height: 6,
                   width: double.infinity,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(2),
-                      color: theme.colorScheme.outlineVariant,
-                    ),
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: theme.colorScheme.outlineVariant),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(2),
                       child: AnimatedFractionallySizedBox(

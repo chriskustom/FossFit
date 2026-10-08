@@ -1,5 +1,5 @@
-import 'package:fossfit/app/services/app_services.dart';
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/services/app_services.dart';
 
 class NotiSwitch extends StatelessWidget {
   final bool enabled;
@@ -9,7 +9,7 @@ class NotiSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Transform.scale(
-      scale: 0.7, // 70% of default size
+      scale: 0.7,
       child: Switch.adaptive(
         value: enabled,
         thumbIcon: .resolveWith<Icon>((states) {

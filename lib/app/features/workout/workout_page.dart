@@ -31,6 +31,12 @@ class _WorkoutPageState extends State<WorkoutPage> {
   bool get selectionMode => _selectedItems.isNotEmpty;
 
   @override
+  void initState() {
+    super.initState();
+    expand.expand();
+  }
+
+  @override
   void dispose() {
     expand.dispose();
     scroll.dispose();

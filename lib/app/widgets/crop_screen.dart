@@ -42,7 +42,6 @@ class _DesktopCropScreenState extends State<CropScreen> {
         onCropped: (result) {
           switch (result) {
             case CropSuccess(:final croppedImage):
-              // croppedImage is Uint8List
               Navigator.pop(context, croppedImage);
 
             case CropFailure(:final cause):

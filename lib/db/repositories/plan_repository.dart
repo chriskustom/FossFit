@@ -22,7 +22,7 @@ class PlansRepository extends ChangeNotifier {
 
     _plans.sort((a, b) {
       if (a.sequence == null && b.sequence == null) return 0;
-      if (a.sequence == null) return 1; // Nulls go to end
+      if (a.sequence == null) return 1;
       if (b.sequence == null) return -1;
       return a.sequence!.compareTo(b.sequence!);
     });
@@ -53,7 +53,7 @@ class PlansRepository extends ChangeNotifier {
 
     _plans.sort((a, b) {
       if (a.sequence == null && b.sequence == null) return 0;
-      if (a.sequence == null) return 1; // Nulls go to end
+      if (a.sequence == null) return 1;
       if (b.sequence == null) return -1;
       return a.sequence!.compareTo(b.sequence!);
     });
@@ -141,7 +141,7 @@ class PlansRepository extends ChangeNotifier {
 
     _plans.sort((a, b) {
       if (a.sequence == null && b.sequence == null) return 0;
-      if (a.sequence == null) return 1; // Nulls go to end
+      if (a.sequence == null) return 1;
       if (b.sequence == null) return -1;
       return a.sequence!.compareTo(b.sequence!);
     });

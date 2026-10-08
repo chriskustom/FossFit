@@ -15,7 +15,7 @@ class StringUtils {
       case 'date':
         return SortBy.date;
       default:
-        return SortBy.date; // sensible default
+        return SortBy.date;
     }
   }
 
@@ -50,8 +50,7 @@ extension RandomItem<T> on List<T> {
   T get randomItem => this[Random().nextInt(length)];
 }
 
-void selectAll(TextEditingController controller) =>
-    controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
+void selectAll(TextEditingController controller) => controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
 
 String toString(double value) {
   final str = value.toStringAsFixed(2);
@@ -128,9 +127,7 @@ extension StringExtensions on String {
             .toList();
 
     // Capitalize the first letter of each word and join them back together
-    return words
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1).toLowerCase() : '')
-        .join(' ');
+    return words.map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1).toLowerCase() : '').join(' ');
   }
 
   //!~~~~~~~~~~~~~~~~~~~~~~~ Small Case Text ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

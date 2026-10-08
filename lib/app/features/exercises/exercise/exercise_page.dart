@@ -28,8 +28,10 @@ class ExercisePage extends StatefulWidget {
   State<ExercisePage> createState() => _ExercisePageState();
 }
 
-class _ExercisePageState extends State<ExercisePage> {
+class _ExercisePageState extends State<ExercisePage> with SingleTickerProviderStateMixin {
   late List<StrengthData> data = widget.initialData;
+
+  final ExpansibleController _controller = ExpansibleController();
 
   int limit = 20;
   StrengthMetric metric = StrengthMetric.bestWeight;
@@ -42,6 +44,17 @@ class _ExercisePageState extends State<ExercisePage> {
   Exercise? exercise;
 
   bool isDeleting = false;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,29 +71,6 @@ class _ExercisePageState extends State<ExercisePage> {
       showNavBar: false,
       showSearch: false,
       actions: [
-        IconButton(
-          onPressed: () async {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              showDragHandle: true,
-              builder: (context) {
-                return FractionallySizedBox(
-                  heightFactor: 0.75,
-                  widthFactor: 0.85,
-                  child: Material(
-                    color: Theme.of(context).colorScheme.surface,
-                    clipBehavior: Clip.antiAlias,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                    child: WorkoutPeek(sets: gymSets),
-                  ),
-                );
-              },
-            );
-          },
-          icon: const Icon(Icons.history),
-          tooltip: "History",
-        ),
         IconButton(
           onPressed: () async {
             var services = ExerciseServices(context: context);
@@ -247,41 +237,74 @@ class _ExercisePageState extends State<ExercisePage> {
                         ],
                       ),
                     ),
-                    Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16),
-                          child: Text("Limit ($limit)", style: Theme.of(context).textTheme.bodyLarge),
-                        ),
-                        Slider(
-                          value: limit.toDouble(),
-                          inactiveColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
-                          min: 10,
-                          max: 100,
-                          onChanged: (value) {
-                            setState(() {
-                              limit = value.toInt();
-                            });
-                            setData();
-                          },
-                        ),
-                      ],
-                    ),
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.35,
-                      child: data.isEmpty
-                          ? const ListTile(title: Text("No data yet."))
-                          : Padding(
-                              padding: const EdgeInsets.only(right: 32.0, top: 16.0),
-                              child: FlexLine(
-                                data: data,
-                                spots: spots,
-                                tooltipData: () => tooltipData(settings.getSetting(.formats, 'short_date_format')),
-                                touchLine: touchLine,
+
+                    Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ListTileTheme(
+                        data: ListTileThemeData(contentPadding: EdgeInsets.only(top: 6), minVerticalPadding: 0, dense: true),
+                        child: ExpansionTile(
+                          title: Row(
+                            mainAxisSize: .max,
+                            children: [
+                              Padding(
+                                padding: .only(left: 16),
+                                child: Text(
+                                  _controller.isExpanded ? 'Graph' : 'History',
+                                  textScaler: TextScaler.linear(1.1),
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
                               ),
-                            ),
+                              if (!_controller.isExpanded) ...[
+                                SizedBox(width: 8),
+
+                                Expanded(
+                                  child: Text("(expand for graph)", textAlign: TextAlign.left, style: Theme.of(context).textTheme.bodySmall),
+                                ),
+                              ],
+                              Expanded(
+                                flex: _controller.isExpanded ? 1 : 0,
+                                child: Text("Limit ($limit)", textAlign: TextAlign.right, style: Theme.of(context).textTheme.bodyMedium),
+                              ),
+                            ],
+                          ),
+                          initiallyExpanded: false,
+                          controller: _controller,
+                          onExpansionChanged: (value) => setState(() {}),
+                          subtitle: Slider(
+                            value: limit.toDouble(),
+                            inactiveColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
+                            min: 10,
+                            max: 100,
+                            onChanged: (value) {
+                              setState(() {
+                                limit = value.toInt();
+                              });
+                              setData();
+                            },
+                          ),
+                          children: [
+                            data.isEmpty
+                                ? const ListTile(title: Text("No data yet."))
+                                : SizedBox(
+                                    height: MediaQuery.of(context).size.height * 0.35,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 32.0, top: 16.0),
+                                      child: FlexLine(
+                                        data: data,
+                                        spots: spots,
+                                        tooltipData: () => tooltipData(settings.getSetting(.formats, 'short_date_format')),
+                                        touchLine: touchLine,
+                                      ),
+                                    ),
+                                  ),
+                          ],
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 116),
+
+                    const SizedBox(height: 16),
+                    const SizedBox(height: 8.0),
+                    SizedBox(height: 400, child: WorkoutPeek(sets: gymSets.take(limit).toList())),
                   ],
                 );
               },

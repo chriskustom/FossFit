@@ -90,13 +90,11 @@ class GymSetServices {
 
   GymSet? getLastGymSet() => getAllGymSets().firstOrNull;
 
-  List<GymSet> getTodaysSetsByExerciseId(int exerciseId, int? planId) =>
-      gymsetsRepo.getTodaysSetsByExerciseId(exerciseId, planId);
+  List<GymSet> getTodaysSetsByExerciseId(int exerciseId, int? planId) => gymsetsRepo.getTodaysSetsByExerciseId(exerciseId, planId);
 
   List<GymSet> getSetsByExerciseId(int exerciseId, {int limit = 100}) =>
       gymsetsRepo.gymsets.where((e) => e.exerciseId == exerciseId).take(limit).toList();
-  List<GymSet> getSetsByPlanId(int planId, {int limit = 100}) =>
-      gymsetsRepo.gymsets.where((e) => e.planId == planId).take(limit).toList();
+  List<GymSet> getSetsByPlanId(int planId, {int limit = 100}) => gymsetsRepo.gymsets.where((e) => e.planId == planId).take(limit).toList();
 
   Widget getLastGymSetWorkout(List<GymSet> sets) {
     String plural(int s) => s > 1 ? 's' : '';
@@ -225,7 +223,6 @@ class GymSetServices {
       map[day]!.add(set);
     }
 
-    // Optional: sort newest first
     final sortedKeys = map.keys.toList()..sort((a, b) => b.compareTo(a));
 
     return {for (final key in sortedKeys) key: map[key]!};
@@ -238,8 +235,6 @@ class GymSetServices {
       map.putIfAbsent(day.date, () => []);
       map[day.date]!.add(day);
     }
-
-    // Optional: sort newest first
     final sortedKeys = map.keys.toList()..sort((a, b) => b.compareTo(a));
 
     return {for (final key in sortedKeys) key: map[key]!};
