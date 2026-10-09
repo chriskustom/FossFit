@@ -36,7 +36,7 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
 
   Widget _getLeading(String home) {
     var homeRoute = NavRoute.values.byName(home.toLowerCase());
-    var route = ModalRoute.of(context)?.settings.name == '/' ? homeRoute : ModalRoute.of(context)?.settings.name;
+    var route = ModalRoute.of(context)?.settings.name == '/' ? homeRoute.route : ModalRoute.of(context)?.settings.name;
     return !NavRoute.allRoutes.contains(route)
         ? IconButton(
             icon: const Icon(Icons.arrow_back),
