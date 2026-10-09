@@ -85,11 +85,12 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
       TripleDotMenu(
         options: [
           ...menuItems,
-          MenuItem(
-            title: "Settings",
-            icon: const Icon(Icons.settings),
-            onTap: () => Navigator.push(context, FadeRoute<ConfigCategory>(page: const SettingsPage())),
-          ),
+          if (widget.title != 'Settings')
+            MenuItem(
+              title: "Settings",
+              icon: const Icon(Icons.settings),
+              onTap: () => Navigator.push(context, FadeRoute<ConfigCategory>(page: const SettingsPage())),
+            ),
           MenuItem(title: "About", icon: const Icon(Icons.info_outline), onTap: () => AboutAppDialog.showAbout(this)),
         ],
       ),

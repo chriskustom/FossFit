@@ -27,13 +27,13 @@ class AppSnackBar {
     final colorScheme = theme.colorScheme;
 
     final backgroundColor = switch (type) {
-      _SnackType.success => colorScheme.tertiary,
+      _SnackType.success => colorScheme.secondary,
       _SnackType.error => colorScheme.error,
       _SnackType.info => colorScheme.primary,
     };
 
     final foregroundColor = switch (type) {
-      _SnackType.success => colorScheme.onTertiary,
+      _SnackType.success => colorScheme.onSecondary,
       _SnackType.error => colorScheme.onError,
       _SnackType.info => colorScheme.onPrimary,
     };
@@ -44,10 +44,7 @@ class AppSnackBar {
         SnackBar(
           duration: _duration,
           backgroundColor: backgroundColor,
-          content: Text(
-            message,
-            style: theme.textTheme.bodyMedium?.copyWith(color: foregroundColor),
-          ),
+          content: Text(message, style: theme.textTheme.bodyMedium?.copyWith(color: foregroundColor)),
         ),
       );
   }

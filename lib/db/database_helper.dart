@@ -312,7 +312,7 @@ class DatabaseHelper {
   //endregion
 
   //region import
-  Future<String> importDatabase(String importedPath) async {
+  Future<(bool, String)> importDatabase(String importedPath) async {
     try {
       final dbDir = await getDatabasesPath();
       final targetPath = join(dbDir, dbFileName);
@@ -349,13 +349,13 @@ class DatabaseHelper {
 
       _database = await _openDb(targetPath);
 
-      return 'Database imported and migrated successfully';
+      return (true, 'Database imported and migrated successfully');
     } catch (e) {
-      return 'Failed to import database: $e';
+      return (false, 'Failed to import database: $e');
     }
   }
 
-  Future<String> importFlexifyDatabase(String importedPath) async {
+  Future<(bool, String)> importFlexifyDatabase(String importedPath) async {
     try {
       final dbDir = await getDatabasesPath();
       final targetPath = join(dbDir, dbFileName);
@@ -388,9 +388,9 @@ class DatabaseHelper {
 
       _database = await _openDb(targetPath);
 
-      return 'Database imported and migrated successfully';
+      return (true, 'Database imported and migrated successfully');
     } catch (e) {
-      return 'Failed to import database: $e';
+      return (false, 'Failed to import database: $e');
     }
   }
 

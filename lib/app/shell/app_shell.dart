@@ -57,6 +57,7 @@ class _AppShellState extends State<AppShell> {
       child: Stack(
         children: [
           Scaffold(
+            extendBody: true,
             appBar: KustomAppBar(
               title: widget.title,
               actions: widget.actions,

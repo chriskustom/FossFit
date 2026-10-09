@@ -201,25 +201,33 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
             title: Text('Restore backup'),
             subtitle: Text('Restore previous database. Requires restart'),
             onTap: AppHaptics.tapWithHaptics(context, () async {
-              var result = await importDatabase(dir);
-              AppSnackBar.success(result);
+              var (success, result) = await importDatabase(dir);
+              if (success) {
+                AppSnackBar.success(result);
 
-              await Future.delayed(const Duration(milliseconds: 2000));
-              if (Platform.isWindows) {
-                exit(0);
+                await Future.delayed(const Duration(milliseconds: 2000));
+                if (Platform.isWindows) {
+                  exit(0);
+                } else {
+                  SystemNavigator.pop(animated: true);
+                }
               } else {
-                SystemNavigator.pop(animated: true);
+                AppSnackBar.error(result);
               }
             }),
             onLongPress: AppHaptics.tapWithHaptics(context, () async {
-              var result = await importDatabase(dir, flexify: true);
-              AppSnackBar.success(result);
+              var (success, result) = await importDatabase(dir, flexify: true);
+              if (success) {
+                AppSnackBar.success(result);
 
-              await Future.delayed(const Duration(milliseconds: 2000));
-              if (Platform.isWindows) {
-                exit(0);
+                await Future.delayed(const Duration(milliseconds: 2000));
+                if (Platform.isWindows) {
+                  exit(0);
+                } else {
+                  SystemNavigator.pop(animated: true);
+                }
               } else {
-                SystemNavigator.pop(animated: true);
+                AppSnackBar.error(result);
               }
             }),
           );
