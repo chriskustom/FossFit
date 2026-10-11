@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/services/app_services.dart';
 import 'package:fossfit/app/settings/settings_page.dart';
+import 'package:fossfit/app/theme/theme.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/fade_route.dart';
 import 'package:fossfit/app/widgets/about_dialog.dart';
@@ -62,6 +63,7 @@ class _KustomAppBarState extends State<KustomAppBar> with SingleTickerProviderSt
         child: Text(widget.title, key: const ValueKey("title"), style: Theme.of(context).textTheme.labelLarge, textScaler: TextScaler.linear(1.1)),
       ),
       actions: _buildMenu(context),
+      flexibleSpace: Container(decoration: BoxDecoration(gradient: context.linearGradientLR)),
     );
   }
 

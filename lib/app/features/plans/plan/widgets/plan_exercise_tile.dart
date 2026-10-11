@@ -1,11 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/features/exercises/exercise/widgets/exercise_icon.dart';
+import 'package:fossfit/app/features/workout/widgets/workout_peek.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/utils.dart';
-import 'package:fossfit/app/widgets/custom_set_indicator.dart';
-import 'package:fossfit/app/widgets/exercise_icon.dart';
+import 'package:fossfit/app/widgets/kustom_set_indicator.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/models/features/plan_exercise_model.dart';
@@ -97,13 +98,13 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
                 child: Platform.isAndroid ? const Icon(Icons.drag_handle, size: 32) : const SizedBox.shrink(),
               ),
               onExpansionChanged: (open) => widget.onExpansionChanged(open),
-              title: _buildExerciseTitle(widget.exercise, planExercise, completedSets.length, max, showImages),
+              title: _buildExerciseTitle(widget.exercise, planExercise, completedSets, max, showImages),
               children: [
                 strengthFields(completedSets.length, max),
                 unitSelector(),
                 notesField(),
                 const SizedBox(height: 4),
-                CustomSetIndicator(sets: completedSets, max: max),
+                KustomSetIndicator(sets: completedSets, max: max, full: true),
               ],
             ),
           ),
@@ -113,7 +114,7 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     );
   }
 
-  Widget _buildExerciseTitle(Exercise exercise, PlanExercise planExercise, int completedSets, int max, bool showImages) {
+  Widget _buildExerciseTitle(Exercise exercise, PlanExercise planExercise, List<GymSet> completedSets, int max, bool showImages) {
     return Row(
       children: [
         Container(
@@ -125,11 +126,11 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
               ? Stack(
                   children: [
                     ExerciseIcon(exercise: exercise, showImages: showImages),
-                    if (completedSets == max) Icon(Icons.check, size: 20),
+                    if (completedSets.length == max) Icon(Icons.check, size: 20),
                   ],
                 )
               : Center(
-                  child: completedSets == max
+                  child: completedSets.length == max
                       ? Icon(Icons.check, size: 20)
                       : Text(
                           exercise.name[0].toUpperCase(),
@@ -141,7 +142,8 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
         const SizedBox(width: 8),
         Expanded(child: Text(exercise.name, overflow: TextOverflow.ellipsis)),
         const SizedBox(width: 8),
-        if (widget.expander.isExpanded == false) ..._buildBlips(exercise, planExercise, completedSets),
+        if (widget.expander.isExpanded == false) KustomSetIndicator(sets: completedSets, max: max, full: false),
+        if (widget.expander.isExpanded == true) IconButton(tooltip: 'History', icon: const Icon(Icons.history), onPressed: _showHistory),
       ],
     );
   }
@@ -221,38 +223,6 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     );
   }
 
-  List<Widget> _buildBlips(Exercise exercise, PlanExercise planExercise, int completedSets) {
-    final items = <Widget>[];
-
-    var maxSets = planExercise.maxSets ?? exercise.defaultSets ?? 3;
-    for (int i = 0; i < maxSets; i++) {
-      items.add(
-        SizedBox(
-          width: 10,
-          child: Container(
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: Theme.of(context).colorScheme.outlineVariant),
-            height: 4,
-            child: AnimatedFractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: completedSets > i ? 1 : 0,
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.ease,
-              child: DecoratedBox(
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: Theme.of(context).colorScheme.primary),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      if (i < maxSets - 1) {
-        items.add(const SizedBox(width: 6));
-      }
-    }
-
-    return items;
-  }
-
   String? _requiredNumberValidator(String? value) {
     if (value == null || value.isEmpty) {
       return 'Required';
@@ -263,6 +233,31 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     }
 
     return null;
+  }
+
+  Future<void> _showHistory() async {
+    final services = GymSetServices(context: context);
+    final sets = services.getSetsByExerciseId(widget.exercise.id ?? 0);
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return FractionallySizedBox(
+          heightFactor: 0.75,
+          widthFactor: 0.85,
+          child: Material(
+            color: Theme.of(context).colorScheme.surface,
+            clipBehavior: Clip.antiAlias,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            child: WorkoutPeek(sets: sets.take(20).toList()),
+          ),
+        );
+      },
+    );
   }
 
   final max = TextEditingController();

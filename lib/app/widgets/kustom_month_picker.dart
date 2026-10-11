@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-Future<DateTime?> showCustomMonthYearPicker({
+Future<DateTime?> showKustomMonthYearPicker({
   required BuildContext context,
   required DateTime initialDate,
   required DateTime firstDate,
@@ -115,10 +115,7 @@ Future<DateTime?> showCustomMonthYearPicker({
                                     Navigator.of(dialogContext).pop(DateTime(selectedYear, month));
                                   }
                                 : null,
-                            child: Text(
-                              months[index],
-                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                            ),
+                            child: Text(months[index], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                           ),
                         );
                       },

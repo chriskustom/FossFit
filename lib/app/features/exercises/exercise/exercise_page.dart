@@ -66,6 +66,10 @@ class _ExercisePageState extends State<ExercisePage> with SingleTickerProviderSt
     _unit = _unit ?? gymSets.firstOrNull?.unit ?? exercise!.defaultUnit ?? 'kg';
     final imageSize = MediaQuery.of(context).size.width * 0.25;
     setData();
+    List<FlSpot> spots = [];
+    for (var index = 0; index < data.length; index++) {
+      spots.add(FlSpot(index.toDouble(), data[index].value));
+    }
     return AppShell(
       title: exercise!.name,
       showNavBar: false,
@@ -88,226 +92,218 @@ class _ExercisePageState extends State<ExercisePage> with SingleTickerProviderSt
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Builder(
-              builder: (context) {
-                List<FlSpot> spots = [];
-                for (var index = 0; index < data.length; index++) {
-                  spots.add(FlSpot(index.toDouble(), data[index].value));
-                }
+            child: Column(
+              children: [
+                if (exercise!.hasImage() == true) ...[
+                  Padding(
+                    padding: .only(top: 8),
+                    child: Center(
+                      child: InkWell(
+                        onTap: () async {
+                          final imageFile = ImageFile(name: exercise!.name, bytes: exercise!.image ?? Uint8List(0));
 
-                return ListView(
-                  children: [
-                    if (exercise!.hasImage() == true) ...[
-                      Center(
-                        child: InkWell(
-                          onTap: () async {
-                            final imageFile = ImageFile(name: exercise!.name, bytes: exercise!.image ?? Uint8List(0));
-
-                            if (!context.mounted) return;
-                            showGeneralDialog(
-                              context: context,
-                              barrierLabel: "Right Sheet",
-                              barrierDismissible: true,
-                              barrierColor: Colors.black54,
-                              transitionDuration: const Duration(milliseconds: 200),
-                              pageBuilder: (context, anim1, anim2) {
-                                return Align(
-                                  alignment: Alignment.centerRight,
-                                  child: Material(
-                                    color: Colors.white,
-                                    child: SizedBox(
-                                      width: MediaQuery.of(context).size.width,
-                                      height: double.infinity,
-                                      child: ImagePage(image: imageFile),
-                                    ),
+                          if (!context.mounted) return;
+                          showGeneralDialog(
+                            context: context,
+                            barrierLabel: "Right Sheet",
+                            barrierDismissible: true,
+                            barrierColor: Colors.black54,
+                            transitionDuration: const Duration(milliseconds: 200),
+                            pageBuilder: (context, anim1, anim2) {
+                              return Align(
+                                alignment: Alignment.centerRight,
+                                child: Material(
+                                  color: Colors.white,
+                                  child: SizedBox(
+                                    width: MediaQuery.of(context).size.width,
+                                    height: double.infinity,
+                                    child: ImagePage(image: imageFile),
                                   ),
-                                );
-                              },
-                              transitionBuilder: (context, anim1, anim2, child) {
-                                final offsetAnimation = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(anim1);
-                                return SlideTransition(position: offsetAnimation, child: child);
-                              },
-                            );
-                          },
-                          child: Container(
-                            width: imageSize,
-                            height: imageSize,
-                            clipBehavior: Clip.antiAlias,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(imageSize * 0.15),
-                              image: DecorationImage(image: MemoryImage(exercise?.image ?? Uint8List(0)), fit: BoxFit.cover),
-                            ),
+                                ),
+                              );
+                            },
+                            transitionBuilder: (context, anim1, anim2, child) {
+                              final offsetAnimation = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(anim1);
+                              return SlideTransition(position: offsetAnimation, child: child);
+                            },
+                          );
+                        },
+                        child: Container(
+                          width: imageSize,
+                          height: imageSize,
+                          clipBehavior: Clip.antiAlias,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(imageSize * 0.15),
+                            image: DecorationImage(image: MemoryImage(exercise?.image ?? Uint8List(0)), fit: BoxFit.cover),
                           ),
                         ),
                       ),
+                    ),
+                  ),
+                ],
+                DropdownButtonFormField(
+                  decoration: const InputDecoration(labelText: 'Metric'),
+                  initialValue: metric,
+                  items: [
+                    const DropdownMenuItem(value: StrengthMetric.bestWeight, child: Text("Best weight")),
+                    const DropdownMenuItem(value: StrengthMetric.bestReps, child: Text("Best reps")),
+                    const DropdownMenuItem(value: StrengthMetric.oneRepMax, child: Text("One rep max")),
+                    const DropdownMenuItem(value: StrengthMetric.volume, child: Text("Volume")),
+                    if (settings.isEnabled(.workouts, 'show_body_weight'))
+                      const DropdownMenuItem(value: StrengthMetric.relativeStrength, child: Text("Relative strength")),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      metric = value!;
+                    });
+                    setData();
+                  },
+                ),
+                DropdownButtonFormField(
+                  decoration: const InputDecoration(labelText: 'Period'),
+                  initialValue: period,
+                  items: const [
+                    DropdownMenuItem(value: Period.day, child: Text("Daily")),
+                    DropdownMenuItem(value: Period.week, child: Text("Weekly")),
+                    DropdownMenuItem(value: Period.month, child: Text("Monthly")),
+                    DropdownMenuItem(value: Period.year, child: Text("Yearly")),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      period = value!;
+                    });
+                    setData();
+                  },
+                ),
+                Visibility(
+                  visible: settings.isEnabled(.workouts, 'show_units'),
+                  child: DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(labelText: 'Unit'),
+                    initialValue: _unit,
+                    items: const [
+                      DropdownMenuItem(value: 'kg', child: Text("Kilograms (kg)")),
+                      DropdownMenuItem(value: 'lb', child: Text("Pounds (lb)")),
+                      DropdownMenuItem(value: 'stone', child: Text("Stone")),
                     ],
-                    DropdownButtonFormField(
-                      decoration: const InputDecoration(labelText: 'Metric'),
-                      initialValue: metric,
-                      items: [
-                        const DropdownMenuItem(value: StrengthMetric.bestWeight, child: Text("Best weight")),
-                        const DropdownMenuItem(value: StrengthMetric.bestReps, child: Text("Best reps")),
-                        const DropdownMenuItem(value: StrengthMetric.oneRepMax, child: Text("One rep max")),
-                        const DropdownMenuItem(value: StrengthMetric.volume, child: Text("Volume")),
-                        if (settings.isEnabled(.workouts, 'show_body_weight'))
-                          const DropdownMenuItem(value: StrengthMetric.relativeStrength, child: Text("Relative strength")),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          metric = value!;
-                        });
-                        setData();
-                      },
-                    ),
-                    DropdownButtonFormField(
-                      decoration: const InputDecoration(labelText: 'Period'),
-                      initialValue: period,
-                      items: const [
-                        DropdownMenuItem(value: Period.day, child: Text("Daily")),
-                        DropdownMenuItem(value: Period.week, child: Text("Weekly")),
-                        DropdownMenuItem(value: Period.month, child: Text("Monthly")),
-                        DropdownMenuItem(value: Period.year, child: Text("Yearly")),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          period = value!;
-                        });
-                        setData();
-                      },
-                    ),
-                    Visibility(
-                      visible: settings.isEnabled(.workouts, 'show_units'),
-                      child: DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(labelText: 'Unit'),
-                        initialValue: _unit,
-                        items: const [
-                          DropdownMenuItem(value: 'kg', child: Text("Kilograms (kg)")),
-                          DropdownMenuItem(value: 'lb', child: Text("Pounds (lb)")),
-                          DropdownMenuItem(value: 'stone', child: Text("Stone")),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _unit = newValue!;
+                      });
+                      setData();
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ListTile(
+                          title: const Text('Start date'),
+                          subtitle: start == null
+                              ? Text(settings.getSetting(.formats, 'short_date_format'))
+                              : Text(DateFormat(settings.getSetting(.formats, 'short_date_format')).format(start!)),
+                          onLongPress: () {
+                            setState(() {
+                              start = null;
+                            });
+                            setData();
+                          },
+                          trailing: const Icon(Icons.calendar_today),
+                          onTap: () => _selectStart(),
+                        ),
+                      ),
+                      Expanded(
+                        child: ListTile(
+                          title: const Text('Stop date'),
+                          subtitle: Selector<ConfigRepository, String>(
+                            selector: (p0, settings) => settings.getSetting(.formats, 'short_date_format'),
+                            builder: (context, value, child) {
+                              if (end == null) return Text(value);
+
+                              return Text(DateFormat(value).format(end!));
+                            },
+                          ),
+                          onLongPress: () {
+                            setState(() {
+                              end = null;
+                            });
+                            setData();
+                          },
+                          trailing: const Icon(Icons.calendar_today),
+                          onTap: () => _selectEnd(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Theme(
+                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  child: ListTileTheme(
+                    data: ListTileThemeData(contentPadding: EdgeInsets.only(top: 6), minVerticalPadding: 0, dense: true),
+                    child: ExpansionTile(
+                      title: Row(
+                        mainAxisSize: .max,
+                        children: [
+                          Padding(
+                            padding: .only(left: 16),
+                            child: Text(
+                              _controller.isExpanded ? 'Graph' : 'History',
+                              textScaler: TextScaler.linear(1.1),
+                              style: Theme.of(context).textTheme.bodyLarge,
+                            ),
+                          ),
+                          if (!_controller.isExpanded) ...[
+                            SizedBox(width: 8),
+
+                            Expanded(
+                              child: Text("(expand for graph)", textAlign: TextAlign.left, style: Theme.of(context).textTheme.bodySmall),
+                            ),
+                          ],
+                          Expanded(
+                            flex: _controller.isExpanded ? 1 : 0,
+                            child: Text("Limit ($limit)", textAlign: TextAlign.right, style: Theme.of(context).textTheme.bodyMedium),
+                          ),
                         ],
-                        onChanged: (String? newValue) {
+                      ),
+                      initiallyExpanded: false,
+                      controller: _controller,
+                      onExpansionChanged: (value) => setState(() {}),
+                      subtitle: Slider(
+                        value: limit.toDouble(),
+                        inactiveColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
+                        min: 10,
+                        max: 100,
+                        onChanged: (value) {
                           setState(() {
-                            _unit = newValue!;
+                            limit = value.toInt();
                           });
                           setData();
                         },
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: ListTile(
-                              title: const Text('Start date'),
-                              subtitle: start == null
-                                  ? Text(settings.getSetting(.formats, 'short_date_format'))
-                                  : Text(DateFormat(settings.getSetting(.formats, 'short_date_format')).format(start!)),
-                              onLongPress: () {
-                                setState(() {
-                                  start = null;
-                                });
-                                setData();
-                              },
-                              trailing: const Icon(Icons.calendar_today),
-                              onTap: () => _selectStart(),
-                            ),
-                          ),
-                          Expanded(
-                            child: ListTile(
-                              title: const Text('Stop date'),
-                              subtitle: Selector<ConfigRepository, String>(
-                                selector: (p0, settings) => settings.getSetting(.formats, 'short_date_format'),
-                                builder: (context, value, child) {
-                                  if (end == null) return Text(value);
-
-                                  return Text(DateFormat(value).format(end!));
-                                },
-                              ),
-                              onLongPress: () {
-                                setState(() {
-                                  end = null;
-                                });
-                                setData();
-                              },
-                              trailing: const Icon(Icons.calendar_today),
-                              onTap: () => _selectEnd(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    Theme(
-                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-                      child: ListTileTheme(
-                        data: ListTileThemeData(contentPadding: EdgeInsets.only(top: 6), minVerticalPadding: 0, dense: true),
-                        child: ExpansionTile(
-                          title: Row(
-                            mainAxisSize: .max,
-                            children: [
-                              Padding(
-                                padding: .only(left: 16),
-                                child: Text(
-                                  _controller.isExpanded ? 'Graph' : 'History',
-                                  textScaler: TextScaler.linear(1.1),
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                              ),
-                              if (!_controller.isExpanded) ...[
-                                SizedBox(width: 8),
-
-                                Expanded(
-                                  child: Text("(expand for graph)", textAlign: TextAlign.left, style: Theme.of(context).textTheme.bodySmall),
-                                ),
-                              ],
-                              Expanded(
-                                flex: _controller.isExpanded ? 1 : 0,
-                                child: Text("Limit ($limit)", textAlign: TextAlign.right, style: Theme.of(context).textTheme.bodyMedium),
-                              ),
-                            ],
-                          ),
-                          initiallyExpanded: false,
-                          controller: _controller,
-                          onExpansionChanged: (value) => setState(() {}),
-                          subtitle: Slider(
-                            value: limit.toDouble(),
-                            inactiveColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
-                            min: 10,
-                            max: 100,
-                            onChanged: (value) {
-                              setState(() {
-                                limit = value.toInt();
-                              });
-                              setData();
-                            },
-                          ),
-                          children: [
-                            data.isEmpty
-                                ? const ListTile(title: Text("No data yet."))
-                                : SizedBox(
-                                    height: MediaQuery.of(context).size.height * 0.35,
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(right: 32.0, top: 16.0),
-                                      child: FlexLine(
-                                        data: data,
-                                        spots: spots,
-                                        tooltipData: () => tooltipData(settings.getSetting(.formats, 'short_date_format')),
-                                        touchLine: touchLine,
-                                      ),
-                                    ),
+                      children: [
+                        data.isEmpty
+                            ? const ListTile(title: Text("No data yet."))
+                            : SizedBox(
+                                height: MediaQuery.of(context).size.height * 0.35,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(right: 32.0, top: 16.0),
+                                  child: FlexLine(
+                                    data: data,
+                                    spots: spots,
+                                    tooltipData: () => tooltipData(settings.getSetting(.formats, 'short_date_format')),
+                                    touchLine: touchLine,
                                   ),
-                          ],
-                        ),
-                      ),
+                                ),
+                              ),
+                      ],
                     ),
-
-                    const SizedBox(height: 16),
-                    const SizedBox(height: 8.0),
-                    SizedBox(height: 400, child: WorkoutPeek(sets: gymSets.take(limit).toList())),
-                  ],
-                );
-              },
+                  ),
+                ),
+                SizedBox(height: 16),
+                Expanded(child: WorkoutPeek(sets: gymSets.take(limit).toList())),
+              ],
             ),
           ),
           if (isDeleting)

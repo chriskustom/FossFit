@@ -6,7 +6,7 @@ import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/utils.dart';
 import 'package:fossfit/app/widgets/confirmation_dialog.dart';
-import 'package:fossfit/app/widgets/custom_month_picker.dart';
+import 'package:fossfit/app/widgets/kustom_month_picker.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:fossfit/db/repositories/gym_set_repository.dart';
@@ -101,7 +101,7 @@ class CalendarPageState extends State<CalendarPage> {
                 _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
               },
               onDateTap: () async {
-                var selected = await showCustomMonthYearPicker(
+                var selected = await showKustomMonthYearPicker(
                   context: context,
                   initialDate: _selectedDay ?? today,
                   firstDate: earliest,

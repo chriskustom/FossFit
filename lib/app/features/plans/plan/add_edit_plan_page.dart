@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/features/exercises/exercise/widgets/exercise_icon.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/widgets/animated_fab.dart';
 import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/app/widgets/confirmation_dialog.dart';
-import 'package:fossfit/app/widgets/day_selector.dart';
-import 'package:fossfit/app/widgets/exercise_icon.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
 import 'package:fossfit/db/models/features/plan_exercise_model.dart';
 import 'package:fossfit/db/models/features/plan_model.dart';
@@ -33,7 +32,7 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
   final titleCtrl = TextEditingController();
   final scroll = ScrollController();
 
-  List<bool>? _days;
+  List<String>? _days;
   List<Exercise>? _planExercises;
 
   bool isEditMode = false;
@@ -73,14 +72,10 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
     final plan = _plan ?? planRepo.getPlanById(widget.planId ?? 0);
 
     final days = plan?.days.split(',') ?? [];
-
-    _days ??= weekdays.map((day) => days.contains(day)).toList();
+    _days ??= weekdays.where((d) => days.map((day) => day.trim().toLowerCase()).contains(d.toLowerCase())).toList();
 
     _planExercises ??= exerciseRepo.exercises
-        .where(
-          (exercise) =>
-              planExerciseRepo.getPlanExercisesByPlanId(plan?.id ?? 0).map((pe) => pe.exerciseId).contains(exercise.id),
-        )
+        .where((exercise) => planExerciseRepo.getPlanExercisesByPlanId(plan?.id ?? 0).map((pe) => pe.exerciseId).contains(exercise.id))
         .toList();
 
     if (isEditMode && plan != null) {
@@ -116,7 +111,7 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
 
               const SizedBox(height: 16),
 
-              DaySelector(daySwitches: _days ?? []),
+              _daySelector(),
 
               const SizedBox(height: 8),
 
@@ -174,10 +169,7 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
     }).toList();
 
     if (_initialSelectedExerciseIds.isEmpty && planExercises.isNotEmpty) {
-      _initialSelectedExerciseIds = planExercises
-          .where((exercise) => exercise.id != null)
-          .map((exercise) => exercise.id!)
-          .toSet();
+      _initialSelectedExerciseIds = planExercises.where((exercise) => exercise.id != null).map((exercise) => exercise.id!).toSet();
     }
 
     final initiallySelected = matching.where((exercise) {
@@ -251,12 +243,7 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
         if (!alreadyExists) {
           final sequence = existing.isEmpty ? 0 : existing.map((pe) => pe.sequence).reduce((a, b) => a > b ? a : b) + 1;
 
-          final planExercise = PlanExercise(
-            planId: plan.id!,
-            sequence: sequence,
-            maxSets: exercise.defaultSets,
-            exerciseId: exerciseId,
-          );
+          final planExercise = PlanExercise(planId: plan.id!, sequence: sequence, maxSets: exercise.defaultSets, exerciseId: exerciseId);
 
           await planExerciseRepo.insertPlanExercise(planExercise);
         }
@@ -405,11 +392,7 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
   Future<void> _savePlanAndExit() async {
     final selectedDays = <String>[];
 
-    for (var i = 0; i < (_days?.length ?? 0); i++) {
-      if (_days![i]) {
-        selectedDays.add(weekdays[i]);
-      }
-    }
+    selectedDays.addAll((_days ?? []));
 
     if (selectedDays.isEmpty) {
       AppSnackBar.info('Please select days!');
@@ -434,10 +417,7 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
 
     final planName = titleCtrl.text.trim();
 
-    final updatedPlan = plan.copyWith(
-      days: selectedDays.join(','),
-      name: planName.isEmpty ? selectedDays.join(', ') : planName,
-    );
+    final updatedPlan = plan.copyWith(days: selectedDays.join(','), name: planName.isEmpty ? selectedDays.join(', ') : planName);
 
     await planRepo.updatePlan(updatedPlan);
 
@@ -485,11 +465,7 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
 
     final selectedDays = <String>[];
 
-    for (var i = 0; i < (_days?.length ?? 0); i++) {
-      if (_days![i]) {
-        selectedDays.add(weekdays[i]);
-      }
-    }
+    selectedDays.addAll((_days ?? []));
 
     if (selectedDays.isEmpty) {
       AppSnackBar.info('Please select days!');
@@ -516,10 +492,7 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
 
       final planName = titleCtrl.text.trim();
 
-      final updatedPlan = plan.copyWith(
-        days: selectedDays.join(','),
-        name: planName.isEmpty ? selectedDays.join(', ') : planName,
-      );
+      final updatedPlan = plan.copyWith(days: selectedDays.join(','), name: planName.isEmpty ? selectedDays.join(', ') : planName);
 
       await planRepo.updatePlan(updatedPlan);
 
@@ -535,5 +508,67 @@ class _AddEditPlanPageState extends State<AddEditPlanPage> {
         });
       }
     }
+  }
+
+  Widget _daySelector() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Row(
+      children: List.generate(weekdays.length, (index) {
+        final isSelected = _days?.contains(weekdays[index]) ?? false;
+        final day = weekdays[index];
+
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              height: 48,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? colorScheme.primaryContainer.withAlpha((colorScheme.primaryContainer.a * 0.3 * 255.0).round() & 0xff)
+                    : colorScheme.outline.withAlpha((colorScheme.outline.a * 0.1 * 255.0).round() & 0xff),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected
+                      ? colorScheme.primary.withAlpha((colorScheme.primary.a * 0.7 * 255.0).round() & 0xff)
+                      : colorScheme.outline.withAlpha((colorScheme.outline.a * 0.3 * 255.0).round() & 0xff),
+                  width: isSelected ? 2 : 1,
+                ),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () async {
+                    final planRepo = context.read<PlansRepository>();
+                    final plan = await _ensurePlan();
+                    if (_days?.contains(day) == true) _days?.remove(day);
+                    if (_days?.contains(day) == false) _days?.add(day);
+
+                    if (plan == null || plan.id == null) {
+                      return;
+                    }
+
+                    final updatedPlan = plan.copyWith(days: _days?.join(','));
+
+                    await planRepo.updatePlan(updatedPlan);
+                    setState(() {});
+                  },
+                  child: Center(
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 200),
+                      style: TextStyle(color: colorScheme.onSurface, fontSize: 14, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500),
+                      child: Text(day.substring(0, 3)),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:fossfit/app/features/exercises/exercise/widgets/exercise_icon.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
-import 'package:fossfit/app/widgets/exercise_icon.dart';
 import 'package:fossfit/db/models/features/gymset_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:intl/intl.dart';

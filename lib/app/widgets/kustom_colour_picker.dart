@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
-class ColorBarPicker extends StatefulWidget {
-  const ColorBarPicker({super.key, this.initialColor, required this.primaryColor, this.onChanged});
+class KustomColourPicker extends StatefulWidget {
+  const KustomColourPicker({super.key, this.initialColor, required this.primaryColor, this.onChanged});
 
   final String? initialColor;
   final Color primaryColor;
   final ValueChanged<Color>? onChanged;
 
   @override
-  State<ColorBarPicker> createState() => _ColorBarPickerState();
+  State<KustomColourPicker> createState() => _KustomColourPickerState();
 }
 
-class _ColorBarPickerState extends State<ColorBarPicker> {
+class _KustomColourPickerState extends State<KustomColourPicker> {
   late double _value;
   late Color _color;
 

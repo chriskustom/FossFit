@@ -1,16 +1,8 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static ThemeData light({
-    String? fontFamily,
-    double? fontSize,
-    int? seedColor,
-    ColorScheme? dynamic,
-    bool sysColours = false,
-  }) {
-    final colourScheme = ColorScheme.fromSeed(
-      seedColor: seedColor == null ? const Color.fromARGB(255, 209, 1, 199) : Color(seedColor),
-    );
+  static ThemeData light({String? fontFamily, double? fontSize, int? seedColor, ColorScheme? dynamic, bool sysColours = false}) {
+    final colourScheme = ColorScheme.fromSeed(seedColor: seedColor == null ? const Color.fromARGB(255, 209, 1, 199) : Color(seedColor));
     return ThemeData(
       useMaterial3: true,
       colorScheme: sysColours ? dynamic : colourScheme,
@@ -24,13 +16,7 @@ class AppTheme {
     );
   }
 
-  static ThemeData dark({
-    String? fontFamily,
-    double? fontSize,
-    int? seedColor,
-    ColorScheme? dynamic,
-    bool sysColours = false,
-  }) {
+  static ThemeData dark({String? fontFamily, double? fontSize, int? seedColor, ColorScheme? dynamic, bool sysColours = false}) {
     final colourScheme = ColorScheme.fromSeed(
       seedColor: seedColor == null ? const Color.fromARGB(255, 209, 1, 199) : Color(seedColor),
       brightness: Brightness.dark,
@@ -88,8 +74,8 @@ extension ThemeX on BuildContext {
     end: AlignmentGeometry.bottomRight,
   );
   LinearGradient get linearGradientLR => LinearGradient(
-    colors: [Theme.of(this).colorScheme.primaryContainer, Theme.of(this).colorScheme.primaryContainer /*  */],
-    begin: AlignmentGeometry.centerLeft,
-    end: AlignmentGeometry.centerRight,
+    colors: [Theme.of(this).colorScheme.surface, Theme.of(this).colorScheme.primaryContainer /*  */],
+    begin: AlignmentGeometry.bottomCenter,
+    end: AlignmentGeometry.topCenter,
   );
 }

@@ -4,7 +4,7 @@ import 'package:fossfit/app/features/exercises/exercise/graph/flex_line.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/utils.dart';
-import 'package:fossfit/app/widgets/colour_picker.dart';
+import 'package:fossfit/app/widgets/kustom_colour_picker.dart';
 import 'package:fossfit/db/models/features/strength_model.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:provider/provider.dart';
@@ -113,7 +113,7 @@ class _AppearanceSettingsState extends State<AppearanceSettings> {
               ),
               Padding(
                 padding: .symmetric(horizontal: 16),
-                child: ColorBarPicker(
+                child: KustomColourPicker(
                   primaryColor: colorScheme,
                   initialColor: dbColor,
                   onChanged: (color) {

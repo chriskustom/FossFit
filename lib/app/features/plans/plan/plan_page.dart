@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/features/plans/plan/widgets/plan_exercise_tile.dart';
-import 'package:fossfit/app/features/workout/widgets/workout_peek.dart';
 import 'package:fossfit/app/services/features/exercise_services.dart';
 import 'package:fossfit/app/services/features/gym_set_services.dart';
 import 'package:fossfit/app/services/features/plan_exercise_services.dart';
@@ -94,10 +93,6 @@ class _PlanPageState extends State<PlanPage> {
                             selectedPlanExerciseId = planExercise.id;
                             selectedExerciseId = planExercise.exerciseId;
                             expandedIndex = index;
-                            debugPrint(
-                              'Selected Plan Exercise ID - $selectedExerciseId, '
-                              'Selected Exercise - $selectedExerciseId / ${exercise.name}',
-                            );
                           }
                           setState(() {});
                         },
@@ -129,7 +124,6 @@ class _PlanPageState extends State<PlanPage> {
             scroll: scroll,
           ),
           actions: [
-            IconButton(tooltip: 'History', icon: const Icon(Icons.history), onPressed: _showHistory),
             IconButton(
               onPressed: () async {
                 var services = PlanServices(context: context);
@@ -139,31 +133,6 @@ class _PlanPageState extends State<PlanPage> {
             ),
             buildDeleteButton(),
           ],
-        );
-      },
-    );
-  }
-
-  Future<void> _showHistory() async {
-    final services = GymSetServices(context: context);
-    final sets = services.getSetsByExerciseId(selectedExerciseId ?? 0);
-
-    if (!mounted) return;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) {
-        return FractionallySizedBox(
-          heightFactor: 0.75,
-          widthFactor: 0.85,
-          child: Material(
-            color: Theme.of(context).colorScheme.surface,
-            clipBehavior: Clip.antiAlias,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: WorkoutPeek(sets: sets.take(20).toList()),
-          ),
         );
       },
     );
@@ -205,7 +174,7 @@ class _PlanPageState extends State<PlanPage> {
   }
 
   Future<bool> save(bool autoStartTimer) async {
-    final timer = context.watch<CountdownTimerController>();
+    final timer = context.read<CountdownTimerController>();
     if (selectedPlanExerciseId == null || selectedExerciseId == null) return false;
     final peServices = PlanExerciseServices(context: context);
     final exServices = ExerciseServices(context: context);
