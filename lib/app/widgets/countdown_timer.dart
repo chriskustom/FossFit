@@ -86,7 +86,7 @@ class _CountdownTimerState extends State<CountdownTimer> with TickerProviderStat
     );
 
     return Padding(
-      padding: EdgeInsets.only(left: 8, right: 8, bottom: 8),
+      padding: EdgeInsets.only(left: 8, right: 8, bottom: 0),
       child: Consumer<CountdownTimerController>(
         builder: (context, timer, _) {
           _updateAnimations(timer);
