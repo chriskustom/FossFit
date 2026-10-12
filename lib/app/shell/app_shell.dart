@@ -70,9 +70,9 @@ class _AppShellState extends State<AppShell> {
                 return ConstrainedBox(
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: ScrollConfiguration(
-                    behavior: ScrollConfiguration.of(
-                      context,
-                    ).copyWith(dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad}),
+                    behavior: ScrollConfiguration.of(context).copyWith(
+                      dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.trackpad},
+                    ),
                     child: widget.body,
                   ),
                 );
@@ -84,7 +84,9 @@ class _AppShellState extends State<AppShell> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 CountdownTimer(),
-                widget.showNavBar ? KustomNavBar(onTap: (target, home) => _navigateIfNeeded(target, home)) : SizedBox.shrink(),
+                widget.showNavBar
+                    ? KustomNavBar(onTap: (target, home) => _navigateIfNeeded(target, home))
+                    : SizedBox.shrink(),
               ],
             ),
           ),

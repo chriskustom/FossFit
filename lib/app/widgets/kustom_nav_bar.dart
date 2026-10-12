@@ -20,7 +20,7 @@ class KustomNavBar extends StatelessWidget {
         final selectedIndex = routes.indexWhere((page) => page == NavRoute.fromRoute(currentRoute, routes.first));
         return miniDock
             ? Padding(
-                padding: const EdgeInsets.fromLTRB(16, 2, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: Center(
                   child: Container(
                     height: 60,
@@ -28,7 +28,13 @@ class KustomNavBar extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: color.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(30),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 16, offset: const Offset(0, 6))],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -65,7 +71,9 @@ class KustomNavBar extends StatelessWidget {
                                               child: Text(
                                                 tab.label,
                                                 maxLines: 1,
-                                                style: Theme.of(context).textTheme.labelLarge?.copyWith(color: color.onPrimary),
+                                                style: Theme.of(
+                                                  context,
+                                                ).textTheme.labelLarge?.copyWith(color: color.onPrimary),
                                               ),
                                             )
                                           : const SizedBox.shrink(),

@@ -9,7 +9,6 @@ class Exercise extends BaseModel {
   final String? description;
   final Uint8List? image;
   final int? defaultSets;
-  final int? defaultRest;
   final String? defaultUnit;
 
   Exercise({
@@ -20,7 +19,6 @@ class Exercise extends BaseModel {
     this.description,
     this.image,
     this.defaultSets,
-    this.defaultRest,
     this.defaultUnit,
   });
 
@@ -34,7 +32,6 @@ class Exercise extends BaseModel {
     String? description,
     Uint8List? image,
     int? defaultSets,
-    int? defaultRest,
     String? defaultUnit,
     DateTime? created,
   }) {
@@ -45,7 +42,6 @@ class Exercise extends BaseModel {
       description: description ?? this.description,
       image: image ?? this.image,
       defaultSets: defaultSets ?? this.defaultSets,
-      defaultRest: defaultRest ?? this.defaultRest,
       defaultUnit: defaultUnit ?? this.defaultUnit,
       created: created ?? this.created,
     );
@@ -57,7 +53,6 @@ class Exercise extends BaseModel {
     'category': category,
     'description': description,
     'default_sets': defaultSets,
-    'default_rest': defaultRest,
     'default_unit': defaultUnit,
     'image': image,
     'created': created.millisecondsSinceEpoch,
@@ -71,7 +66,6 @@ class Exercise extends BaseModel {
       description: map['description'] as String?,
       image: map['image'] ?? Uint8List(0),
       defaultSets: map['default_sets'] as int?,
-      defaultRest: map['default_rest'] as int?,
       defaultUnit: map['default_unit'] as String?,
       created: DateTime.fromMicrosecondsSinceEpoch((map['created']) as int),
     );

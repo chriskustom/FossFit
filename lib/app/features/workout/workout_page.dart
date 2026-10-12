@@ -57,7 +57,9 @@ class _WorkoutPageState extends State<WorkoutPage> {
         autoStartTimer: repo.isEnabled(.timers, 'auto_start'),
       ),
       builder: (context, settings, _) {
-        final lastWorkout = settings.showStats ? GymSetServices(context: context).getLastGymSetWorkout(lastWorkoutSets) : const SizedBox.shrink();
+        final lastWorkout = settings.showStats
+            ? GymSetServices(context: context).getLastGymSetWorkout(lastWorkoutSets)
+            : const SizedBox.shrink();
 
         return AppShell(
           title: selectionMode ? '${_selectedItems.length} selected' : 'Workout',
@@ -68,7 +70,10 @@ class _WorkoutPageState extends State<WorkoutPage> {
             child: Column(
               children: [
                 if (lastWorkoutSets.isEmpty)
-                  ListTile(title: Text(emptyPhrases.randomItem), subtitle: const Text('Complete some sets to see them here')),
+                  ListTile(
+                    title: Text(emptyPhrases.randomItem),
+                    subtitle: const Text('Complete some sets to see them here'),
+                  ),
 
                 if (lastWorkoutSets.isNotEmpty && settings.showStats)
                   Theme(
@@ -122,6 +127,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
               await services.openAddEditPage(context, null);
 
               if (settings.autoStartTimer && mounted) {
+                if (timer.alarmActive) await timer.reset();
                 timer.start();
               }
             },
@@ -181,7 +187,12 @@ class _WorkoutPageState extends State<WorkoutPage> {
       buttons.add(
         IconButton(
           onPressed: () async {
-            final confirmed = await showConfirmationDialog(context: context, title: 'Delete?', content: 'Are you sure?', barrierDismissible: true);
+            final confirmed = await showConfirmationDialog(
+              context: context,
+              title: 'Delete?',
+              content: 'Are you sure?',
+              barrierDismissible: true,
+            );
 
             if (!mounted || confirmed != true) return;
 
@@ -208,7 +219,12 @@ class _Settings {
   final bool groupHistory;
   final bool autoStartTimer;
 
-  const _Settings({required this.showStats, required this.showTimer, required this.groupHistory, required this.autoStartTimer});
+  const _Settings({
+    required this.showStats,
+    required this.showTimer,
+    required this.groupHistory,
+    required this.autoStartTimer,
+  });
 
   @override
   bool operator ==(Object other) {

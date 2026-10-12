@@ -194,3 +194,17 @@ Future<void> migrateToV2(Database db) async {
           ''');
   });
 }
+
+Future<void> migrateToV3(Database db) async {
+  await db.transaction((txn) async {
+    await txn.execute('''
+      ALTER TABLE exercises DROP COLUMN default_rest;
+      ''');
+    await txn.execute('''
+      ALTER TABLE sets DROP COLUMN rest;
+    ''');
+    await txn.execute('''
+      ALTER TABLE plan_exercises DROP COLUMN rest;
+    ''');
+  });
+}

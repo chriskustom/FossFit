@@ -45,7 +45,10 @@ class KustomSetIndicator extends StatelessWidget {
                   height: 6,
                   width: double.infinity,
                   child: DecoratedBox(
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: theme.colorScheme.outlineVariant),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(2),
+                      color: theme.colorScheme.outlineVariant,
+                    ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(2),
                       child: AnimatedFractionallySizedBox(
@@ -62,6 +65,13 @@ class KustomSetIndicator extends StatelessWidget {
             ),
           ),
           if (i < max - 1) const SizedBox(width: 6),
+        ],
+
+        if (sets.length > max) ...[
+          Padding(
+            padding: .only(left: 4),
+            child: Icon(Icons.add, size: 22, color: theme.colorScheme.primary),
+          ),
         ],
       ],
     );
@@ -93,6 +103,14 @@ class KustomSetIndicator extends StatelessWidget {
       if (i < max - 1) {
         items.add(const SizedBox(width: 6));
       }
+    }
+    if (sets.length > max) {
+      items.add(
+        Padding(
+          padding: .only(left: 4),
+          child: Icon(Icons.add, size: 20, color: theme.colorScheme.primary),
+        ),
+      );
     }
     return Row(children: [...items]);
   }

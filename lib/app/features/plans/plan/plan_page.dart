@@ -88,7 +88,9 @@ class _PlanPageState extends State<PlanPage> {
                         onExpansionChanged: (open) {
                           if (open) {
                             if (expandedIndex != index) {
-                              expanders.entries.where((c) => c.key != planExercise.id! && c.value.isExpanded).forEach((c) => c.value.collapse());
+                              expanders.entries
+                                  .where((c) => c.key != planExercise.id! && c.value.isExpanded)
+                                  .forEach((c) => c.value.collapse());
                             }
                             selectedPlanExerciseId = planExercise.id;
                             selectedExerciseId = planExercise.exerciseId;
@@ -100,8 +102,15 @@ class _PlanPageState extends State<PlanPage> {
                         onSwap: () async {
                           Navigator.pop(context);
                           var services = PlanExerciseServices(context: context);
-                          var newExerciseId = await services.openSwapExercisePage(context, planExercise.exerciseId, planExercise.planId);
-                          final old = planExRepo.getPlanExerciseByExerciseAndPlan(planExercise.exerciseId, planExercise.planId);
+                          var newExerciseId = await services.openSwapExercisePage(
+                            context,
+                            planExercise.exerciseId,
+                            planExercise.planId,
+                          );
+                          final old = planExRepo.getPlanExerciseByExerciseAndPlan(
+                            planExercise.exerciseId,
+                            planExercise.planId,
+                          );
                           if (old == null) return;
                           await planExRepo.updatePlanExercise(old.copyWith(exerciseId: newExerciseId));
                           planExRepo.loadAll();
@@ -196,11 +205,13 @@ class _PlanPageState extends State<PlanPage> {
       planId: widget.planId,
       created: DateTime.now(),
       bodyWeight: lastSets.firstOrNull?.bodyWeight,
-      rest: lastSets.firstOrNull?.rest,
     );
     await services.insertGymSet(gymSet);
 
-    final max = peServices.getPlanExerciseById(selectedPlanExerciseId!)?.maxSets ?? exServices.getExerciseById(selectedExerciseId!)?.defaultSets ?? 3;
+    final max =
+        peServices.getPlanExerciseById(selectedPlanExerciseId!)?.maxSets ??
+        exServices.getExerciseById(selectedExerciseId!)?.defaultSets ??
+        3;
     final count = services.getTodaysSetsByExerciseId(selectedExerciseId!, widget.planId).length;
     if (count == max) {
       final keys = expanders.keys.toList();
@@ -213,7 +224,10 @@ class _PlanPageState extends State<PlanPage> {
       }
     }
     setState(() {});
-    if (autoStartTimer) timer.start();
+    if (autoStartTimer) {
+      if (timer.alarmActive) await timer.reset();
+      timer.start();
+    }
     return true;
   }
 }

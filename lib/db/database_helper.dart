@@ -119,7 +119,7 @@ class DatabaseHelper {
     await _runMigrations(db, 0, version);
   }
 
-  final migrations = <int, Future<void> Function(Database)>{2: migrateToV2};
+  final migrations = <int, Future<void> Function(Database)>{2: migrateToV2, 3: migrateToV3};
 
   Future<void> _runMigrations(Database db, int from, int to) async {
     for (final version in migrations.keys.toList()..sort()) {
@@ -277,7 +277,11 @@ class DatabaseHelper {
     final dir = Directory(backupDirPath);
     if (!dir.existsSync()) return null;
 
-    final files = dir.listSync().whereType<File>().where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db')).toList();
+    final files = dir
+        .listSync()
+        .whereType<File>()
+        .where((f) => basename(f.path).startsWith('${backupPrefix}_') && f.path.endsWith('.db'))
+        .toList();
 
     if (files.isEmpty) return null;
 

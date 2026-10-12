@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:fossfit/app/shell/app_shell.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/utils/utils.dart';
+import 'package:fossfit/app/widgets/app_snack_bar.dart';
 import 'package:fossfit/db/repositories/config_reposity.dart';
 import 'package:provider/provider.dart';
 
@@ -66,12 +67,22 @@ class _TimerSettingsPageState extends State<TimerSettingsPage> {
             child: Switch.adaptive(
               value: enabled,
               onChanged: (value) async {
-                await context.read<ConfigRepository>().setSetting(category: category, key: option, value: value ? '1' : '0');
+                if (option == 'enabled' && value) AppSnackBar.info('Tap timer to set duration');
+                await context.read<ConfigRepository>().setSetting(
+                  category: category,
+                  key: option,
+                  value: value ? '1' : '0',
+                );
               },
             ),
           ),
           onTap: () async {
-            await context.read<ConfigRepository>().setSetting(category: category, key: option, value: enabled ? '0' : '1');
+            if (option == 'enabled' && !enabled) AppSnackBar.info('Tap timer to set duration');
+            await context.read<ConfigRepository>().setSetting(
+              category: category,
+              key: option,
+              value: enabled ? '0' : '1',
+            );
           },
         );
       },

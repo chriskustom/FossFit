@@ -16,8 +16,6 @@ class WorkoutPeek extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var config = context.watch<ConfigRepository>();
-    final showImages = config.isEnabled(.workouts, 'show_images');
     final services = GymSetServices(context: context);
     var grouped = services.groupSetsByDay(sets);
 
@@ -39,7 +37,7 @@ class WorkoutPeek extends StatelessWidget {
           ),
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: List.generate(sets.length, (index) => _buildListItem(context, sets[index], showImages)),
+            children: List.generate(sets.length, (index) => _buildListItem(context, sets[index])),
           ),
         );
       },
@@ -49,49 +47,58 @@ class WorkoutPeek extends StatelessWidget {
   //region HELPERS
 
   Widget _buildSectionDivider(BuildContext context, DateTime date) {
-    final format = context.read<ConfigRepository>().getSetting(.formats, 'short_date_format');
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          const Expanded(child: Divider(thickness: 1)),
-          const SizedBox(width: 4),
-          const Icon(Icons.today, size: 16),
-          const SizedBox(width: 4),
-          Text(DateFormat(format).format(date), style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(width: 4),
-          const Expanded(child: Divider(thickness: 1)),
-        ],
-      ),
+    return Selector<ConfigRepository, String>(
+      selector: (_, config) => config.getSetting(.formats, 'short_date_format'),
+      builder: (context, dateFormat, child) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              const Expanded(child: Divider(thickness: 1)),
+              const SizedBox(width: 4),
+              const Icon(Icons.today, size: 16),
+              const SizedBox(width: 4),
+              Text(DateFormat(dateFormat).format(date), style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(width: 4),
+              const Expanded(child: Divider(thickness: 1)),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildListItem(BuildContext context, GymSet gymSet, bool showImages) {
-    final showImages = context.read<ConfigRepository>().isEnabled(.workouts, 'show_images');
+  Widget _buildListItem(BuildContext context, GymSet gymSet) {
     var services = ExerciseServices(context: context);
     var exercise = services.getExerciseById(gymSet.exerciseId);
     final reps = gymSet.reps;
     final weight = gymSet.weight;
-    final trailing = Text("${_getSetNumber(gymSet)}: $reps REPS @ $weight ${gymSet.unit}");
-    final dateFormat = context.read<ConfigRepository>().getSetting(.formats, 'short_date_format');
-    final subtitle = Text(dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ListTile(
-          dense: true,
-          visualDensity: VisualDensity.compact,
-          leading: ExerciseIcon(exercise: exercise!, showImages: showImages),
-          title: Text(exercise.name),
-          subtitle: trailing,
-          trailing: subtitle,
-          onTap: () async {
-            var services = GymSetServices(context: context);
-            await services.openAddEditPage(context, gymSet.id);
-          },
-        ),
-      ],
+    return Selector<ConfigRepository, (bool, String)>(
+      selector: (_, config) =>
+          (config.isEnabled(.workouts, 'show_images'), config.getSetting(.formats, 'short_date_format')),
+      builder: (context, values, child) {
+        final (showImages, dateFormat) = values;
+        final trailing = Text(
+          dateFormat == 'timeago' ? timeago.format(gymSet.created) : DateFormat("HH:mm a").format(gymSet.created),
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListTile(
+              dense: true,
+              visualDensity: VisualDensity.compact,
+              leading: ExerciseIcon(exercise: exercise!, showImages: showImages),
+              title: Text("${_getSetNumber(gymSet)}: $reps REPS @ $weight ${gymSet.unit}"),
+              trailing: trailing,
+              onTap: () async {
+                var services = GymSetServices(context: context);
+                await services.openAddEditPage(context, gymSet.id);
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 

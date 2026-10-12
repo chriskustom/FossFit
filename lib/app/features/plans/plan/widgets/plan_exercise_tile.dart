@@ -57,6 +57,11 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
 
   late ConfigRepository config;
 
+  String? reps;
+  String? weight;
+  String? notes;
+  String? unit;
+
   @override
   void initState() {
     if (widget.index == 0) widget.expander.expand();
@@ -68,17 +73,18 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     config = context.watch<ConfigRepository>();
     var peRepo = context.watch<PlanExercisesRepository>();
     final services = GymSetServices(context: context);
-    final planExercise = currentPlanExercise ?? peRepo.getPlanExerciseByExerciseAndPlan(widget.exercise.id!, widget.planId)!;
+    final planExercise =
+        currentPlanExercise ?? peRepo.getPlanExerciseByExerciseAndPlan(widget.exercise.id!, widget.planId)!;
 
     final max = planExercise.maxSets ?? widget.exercise.defaultSets ?? 3;
     final completedSets = services.getTodaysSetsByExerciseId(widget.exercise.id!, widget.planId);
     final showImages = config.isEnabled(.workouts, 'show_images');
     final lastSets = services.getSetsByExerciseId(widget.exercise.id!, limit: max);
 
-    widget.reps.text = (lastSets.firstOrNull?.reps ?? 0).toString();
-    widget.weight.text = (lastSets.firstOrNull?.weight ?? 0.0).toString();
-    widget.notes.text = (lastSets.firstOrNull?.note ?? '');
-    widget.unit.text = (lastSets.firstOrNull?.unit ?? widget.exercise.defaultUnit).toString();
+    widget.reps.text = reps ?? (lastSets.firstOrNull?.reps ?? 0).toString();
+    widget.weight.text = weight ?? (lastSets.firstOrNull?.weight ?? 0.0).toString();
+    widget.notes.text = notes ?? (lastSets.firstOrNull?.note ?? '');
+    widget.unit.text = unit ?? (lastSets.firstOrNull?.unit ?? widget.exercise.defaultUnit).toString();
 
     return GestureDetector(
       onLongPress: () => _showExerciseModal(context, planExercise, completedSets),
@@ -114,23 +120,32 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     );
   }
 
-  Widget _buildExerciseTitle(Exercise exercise, PlanExercise planExercise, List<GymSet> completedSets, int max, bool showImages) {
+  Widget _buildExerciseTitle(
+    Exercise exercise,
+    PlanExercise planExercise,
+    List<GymSet> completedSets,
+    int max,
+    bool showImages,
+  ) {
     return Row(
       children: [
         Container(
           width: 24,
           height: 24,
           clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: showImages && exercise.hasImage() == true
               ? Stack(
                   children: [
                     ExerciseIcon(exercise: exercise, showImages: showImages),
-                    if (completedSets.length == max) Icon(Icons.check, size: 20),
+                    if (completedSets.length >= max) Icon(Icons.check, size: 20),
                   ],
                 )
               : Center(
-                  child: completedSets.length == max
+                  child: completedSets.length >= max
                       ? Icon(Icons.check, size: 20)
                       : Text(
                           exercise.name[0].toUpperCase(),
@@ -142,8 +157,9 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
         const SizedBox(width: 8),
         Expanded(child: Text(exercise.name, overflow: TextOverflow.ellipsis)),
         const SizedBox(width: 8),
-        if (widget.expander.isExpanded == false) KustomSetIndicator(sets: completedSets, max: max, full: false),
-        if (widget.expander.isExpanded == true) IconButton(tooltip: 'History', icon: const Icon(Icons.history), onPressed: _showHistory),
+        widget.expander.isExpanded
+            ? IconButton(tooltip: 'History', icon: const Icon(Icons.history), onPressed: _showHistory)
+            : KustomSetIndicator(sets: completedSets, max: max, full: false),
       ],
     );
   }
@@ -159,6 +175,8 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
       onFieldSubmitted: (_) => selectAll(widget.weight),
       onTap: () => selectAll(widget.reps),
       validator: _requiredNumberValidator,
+
+      onChanged: (value) => reps = value,
     );
 
     final weightField = TextFormField(
@@ -168,10 +186,15 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
       onTap: () => selectAll(widget.weight),
       onFieldSubmitted: (_) => widget.onFieldSubmitted(),
       validator: _requiredNumberValidator,
+
+      onChanged: (value) => weight = value,
     );
 
     if (screenWidth <= 450) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [repsField, const SizedBox(height: 8), weightField]);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [repsField, const SizedBox(height: 8), weightField],
+      );
     }
 
     return Row(
@@ -200,6 +223,7 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
           items: unitsList.map((u) => DropdownMenuItem(value: u.key, child: Text(u.value))).toList(),
           onChanged: (value) {
             widget.unit.text = value!;
+            unit = value;
           },
         );
       },
@@ -218,6 +242,7 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
           controller: widget.notes,
           maxLines: 3,
           decoration: const InputDecoration(labelText: 'Notes', border: InputBorder.none),
+          onChanged: (value) => notes = value,
         );
       },
     );
@@ -242,6 +267,7 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     if (!mounted) return;
 
     showModalBottomSheet(
+      barrierLabel: widget.exercise.name,
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -253,7 +279,22 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
             color: Theme.of(context).colorScheme.surface,
             clipBehavior: Clip.antiAlias,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            child: WorkoutPeek(sets: sets.take(20).toList()),
+            child: Column(
+              children: [
+                ListTile(
+                  title: Text(
+                    widget.exercise.name,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight(700)),
+                    textScaler: TextScaler.linear(1.1),
+                    textAlign: .center,
+                    overflow: .ellipsis,
+                  ),
+                  leading: IconButton(icon: Icon(Icons.arrow_back_rounded), onPressed: () => Navigator.pop(context)),
+                  trailing: IconButton(icon: Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
+                ),
+                Expanded(child: WorkoutPeek(sets: sets.take(20).toList())),
+              ],
+            ),
           ),
         );
       },
@@ -341,7 +382,12 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
                     setState(() {});
                   },
                 ),
-              if (sets.isEmpty) ListTile(leading: const Icon(Icons.swap_horiz), title: const Text('Swap'), onTap: () => widget.onSwap()),
+              if (sets.isEmpty)
+                ListTile(
+                  leading: const Icon(Icons.swap_horiz),
+                  title: const Text('Swap'),
+                  onTap: () => widget.onSwap(),
+                ),
             ],
           ),
         );

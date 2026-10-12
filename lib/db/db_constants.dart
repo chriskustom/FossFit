@@ -9,4 +9,4 @@ enum TableName {
   final String name;
 }
 
-const int kDatabaseSchemaVersion = 2;
+const int kDatabaseSchemaVersion = 3;
