@@ -92,7 +92,7 @@ class _CountdownTimerState extends State<CountdownTimer> with TickerProviderStat
           _updateAnimations(timer);
 
           return Container(
-            padding: EdgeInsets.fromLTRB(20, 8, 20, 2),
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 10),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               boxShadow: [
