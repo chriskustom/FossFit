@@ -85,20 +85,16 @@ class _CountdownTimerState extends State<CountdownTimer> with TickerProviderStat
       sound: config.getSetting(.timers, 'alarm_sound'),
     );
 
-    var miniDock = config.isEnabled(.tabs, 'minimal_dock');
-    var (l, r, a) = (8.0, 8.0, 1.0);
-    if (miniDock) (l, r, a) = (120.0, 120.0, .8);
     return Padding(
-      padding: EdgeInsets.only(left: l, right: r, bottom: miniDock ? 10 : 0),
+      padding: EdgeInsets.only(left: 8, right: 8, bottom: 8),
       child: Consumer<CountdownTimerController>(
         builder: (context, timer, _) {
           _updateAnimations(timer);
 
           return Container(
-            padding: miniDock ? const EdgeInsets.fromLTRB(10, 5, 10, 5) : const EdgeInsets.fromLTRB(22, 5, 22, 5),
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 2),
             decoration: BoxDecoration(
-              borderRadius: miniDock ? BorderRadius.circular(50) : null,
-              color: Theme.of(context).colorScheme.surface.withValues(alpha: a),
+              color: Theme.of(context).colorScheme.surface,
               boxShadow: [
                 BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -3)),
               ],
@@ -107,83 +103,86 @@ class _CountdownTimerState extends State<CountdownTimer> with TickerProviderStat
               top: false,
               child: Column(
                 children: [
-                  //if (!miniDock) const Divider(height: 1),
+                  const Divider(height: 1),
 
-                  Column(
-                    children: [
-                      Row(
-                        mainAxisSize: .min,
-                        children: [
-                          IconButton.outlined(
-                            onPressed: timer.reset,
-                            icon: const Icon(Icons.restart_alt_rounded),
-                            visualDensity: const VisualDensity(horizontal: 4, vertical: 0),
-                          ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 2),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisSize: .min,
+                          children: [
+                            IconButton.outlined(
+                              onPressed: timer.reset,
+                              icon: const Icon(Icons.restart_alt_rounded),
+                              visualDensity: const VisualDensity(horizontal: 4, vertical: 0),
+                            ),
 
-                          Expanded(
-                            child: Center(
-                              child: Column(
-                                children: [
-                                  InkWell(
-                                    onTap: timer.isRunning
-                                        ? timer.pause
-                                        : timer.remainingSeconds < timer.durationSeconds
-                                        ? timer.start
-                                        : () => _selectDuration(context, timer),
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 0),
-                                      child: AnimatedBuilder(
-                                        animation: Listenable.merge([_pulseAnimation, _startPulseAnimation]),
-                                        builder: (context, child) {
-                                          final alarmScale = timer.alarmActive ? _pulseAnimation.value : 1.0;
+                            Expanded(
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    InkWell(
+                                      onTap: timer.isRunning
+                                          ? timer.pause
+                                          : timer.remainingSeconds < timer.durationSeconds
+                                          ? timer.start
+                                          : () => _selectDuration(context, timer),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 0),
+                                        child: AnimatedBuilder(
+                                          animation: Listenable.merge([_pulseAnimation, _startPulseAnimation]),
+                                          builder: (context, child) {
+                                            final alarmScale = timer.alarmActive ? _pulseAnimation.value : 1.0;
 
-                                          return Transform.scale(
-                                            scale: _startPulseAnimation.value * alarmScale,
-                                            child: child,
-                                          );
-                                        },
-                                        child: Text(
-                                          _formatTime(timer.remainingSeconds),
-                                          style: const TextStyle(
-                                            fontSize: 28,
-                                            fontWeight: FontWeight.bold,
-                                            fontFeatures: [FontFeature.tabularFigures()],
+                                            return Transform.scale(
+                                              scale: _startPulseAnimation.value * alarmScale,
+                                              child: child,
+                                            );
+                                          },
+                                          child: Text(
+                                            _formatTime(timer.remainingSeconds),
+                                            style: const TextStyle(
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.bold,
+                                              fontFeatures: [FontFeature.tabularFigures()],
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
 
-                                  SizedBox(height: 8),
-                                  SizedBox(
-                                    width: 120,
-                                    height: 3,
-                                    child: _TimerProgressBar(progress: timer.progress, isRunning: timer.isRunning),
-                                  ),
-                                ],
+                                    SizedBox(height: 8),
+                                    SizedBox(
+                                      width: 120,
+                                      height: 3,
+                                      child: _TimerProgressBar(progress: timer.progress, isRunning: timer.isRunning),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
 
-                          IconButton.filledTonal(
-                            visualDensity: const VisualDensity(horizontal: 4, vertical: 0),
-                            onPressed: timer.alarmActive
-                                ? timer.stopAlarm
-                                : timer.isRunning
-                                ? timer.pause
-                                : timer.start,
-                            icon: Icon(
-                              timer.alarmActive
-                                  ? Icons.stop_rounded
+                            IconButton.filledTonal(
+                              visualDensity: const VisualDensity(horizontal: 4, vertical: 0),
+                              onPressed: timer.alarmActive
+                                  ? timer.stopAlarm
                                   : timer.isRunning
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
+                                  ? timer.pause
+                                  : timer.start,
+                              icon: Icon(
+                                timer.alarmActive
+                                    ? Icons.stop_rounded
+                                    : timer.isRunning
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

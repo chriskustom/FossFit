@@ -5,6 +5,8 @@ import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/app/widgets/countdown_timer.dart';
 import 'package:fossfit/app/widgets/kustom_app_bar.dart';
 import 'package:fossfit/app/widgets/kustom_nav_bar.dart';
+import 'package:fossfit/db/repositories/config_reposity.dart';
+import 'package:provider/provider.dart';
 
 ValueNotifier<int?> currentSetId = ValueNotifier(null);
 ValueNotifier<int?> currentPlanId = ValueNotifier(null);
@@ -80,14 +82,21 @@ class _AppShellState extends State<AppShell> {
             ),
             resizeToAvoidBottomInset: false,
             floatingActionButton: widget.floatingActionButton,
-            bottomNavigationBar: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CountdownTimer(),
-                widget.showNavBar
+            bottomNavigationBar: Selector<ConfigRepository, bool>(
+              selector: (_, config) => config.isEnabled(.tabs, 'minimal_dock'),
+              builder: (context, minidock, child) {
+                var nav = widget.showNavBar
                     ? KustomNavBar(onTap: (target, home) => _navigateIfNeeded(target, home))
-                    : SizedBox.shrink(),
-              ],
+                    : SizedBox.shrink();
+                var timer = CountdownTimer();
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (minidock) ...[nav, timer],
+                    if (!minidock) ...[timer, nav],
+                  ],
+                );
+              },
             ),
           ),
         ],
