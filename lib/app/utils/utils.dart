@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fossfit/app/utils/constants.dart';
 import 'package:fossfit/db/models/features/exercise_model.dart';
@@ -51,7 +53,7 @@ extension RandomItem<T> on List<T> {
 }
 
 void selectAll(TextEditingController controller) {
-  Future.delayed(const Duration(milliseconds: 100), () {
+  Future.delayed(const Duration(milliseconds: 500), () {
     controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length);
   });
 }
@@ -101,6 +103,34 @@ extension SortedExerciseGymSets on List<MapEntry<Exercise, GymSet?>> {
   }
 }
 
+//## Extensions of TextEditiongController
+// text_selection_extension.dart
+extension SelectOnFocusExtension on TextEditingController {
+  void attachSelectOnFocus(FocusNode focusNode) {
+    bool wasFocused = false;
+
+    focusNode.addListener(() {
+      final isNowFocused = focusNode.hasFocus;
+
+      if (isNowFocused && !wasFocused) {
+        wasFocused = true;
+
+        final delay = _isAndroid ? const Duration(milliseconds: 500) : Duration.zero;
+
+        Future.delayed(delay, () {
+          if (focusNode.hasFocus && text.isNotEmpty) {
+            selection = TextSelection(baseOffset: 0, extentOffset: text.length);
+          }
+        });
+      } else if (!isNowFocused) {
+        wasFocused = false;
+      }
+    });
+  }
+
+  bool get _isAndroid => !kIsWeb && (Platform.isAndroid || defaultTargetPlatform == TargetPlatform.android);
+}
+
 ///## An extension on the [String] class that provides methods for transforming text.
 ///
 /// This extension adds various text transformation methods such as converting a string
@@ -131,9 +161,7 @@ extension StringExtensions on String {
             .toList();
 
     // Capitalize the first letter of each word and join them back together
-    return words
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1).toLowerCase() : '')
-        .join(' ');
+    return words.map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1).toLowerCase() : '').join(' ');
   }
 
   //!~~~~~~~~~~~~~~~~~~~~~~~ Small Case Text ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

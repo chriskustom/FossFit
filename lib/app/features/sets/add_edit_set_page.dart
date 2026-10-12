@@ -67,6 +67,8 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     if (isEditMode) {
       currentSetId.value = widget.setId;
     }
+    repsTEC.attachSelectOnFocus(repsNode);
+    weightTEC.attachSelectOnFocus(weightNode);
   }
 
   @override
@@ -165,10 +167,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
                 if (showNotes) ...[notesField(), const SizedBox(height: 8.0)],
                 dateSelector(),
                 if (showImages) ...[const SizedBox(height: 8.0), imageField()],
-                if (name != '') ...[
-                  SizedBox(height: 300, child: WorkoutPeek(sets: getHistory())),
-                  const SizedBox(height: 8.0),
-                ],
+                if (name != '') ...[SizedBox(height: 300, child: WorkoutPeek(sets: getHistory())), const SizedBox(height: 8.0)],
               ],
             );
           },
@@ -197,7 +196,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
       focusNode: repsNode,
       decoration: const InputDecoration(labelText: 'Reps'),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      onTap: () => selectAll(repsTEC),
+      //onTap: () => selectAll(repsTEC),
       onChanged: (value) {
         reps = value;
         setORM();
@@ -215,9 +214,11 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
   Widget buildWeightField() {
     return TextFormField(
       controller: weightTEC,
+      focusNode: weightNode,
+      textInputAction: TextInputAction.next,
       decoration: InputDecoration(labelText: 'Weight ($unit)'),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      onTap: () => selectAll(weightTEC),
+      //onTap: () => selectAll(weightTEC),
       onFieldSubmitted: (value) async {
         var gymSet = await save();
         if (gymSet != null && mounted) {
@@ -295,29 +296,23 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
           onSelected: (String selection) {
             category = selection;
           },
-          fieldViewBuilder:
-              (
-                BuildContext context,
-                TextEditingController textEditingController,
-                FocusNode focusNode,
-                VoidCallback onFieldSubmitted,
-              ) {
-                categoryTEC = textEditingController;
-                return TextFormField(
-                  controller: textEditingController,
-                  focusNode: focusNode,
-                  decoration: const InputDecoration(labelText: 'Category'),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Required';
-                    if (!snapshot.data!.contains(value)) return 'Invlaid';
-                    return null;
-                  },
-                  onChanged: (value) {
-                    if (value.isEmpty || !snapshot.data!.contains(value)) return;
-                    category = value;
-                  },
-                );
+          fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
+            categoryTEC = textEditingController;
+            return TextFormField(
+              controller: textEditingController,
+              focusNode: focusNode,
+              decoration: const InputDecoration(labelText: 'Category'),
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Required';
+                if (!snapshot.data!.contains(value)) return 'Invlaid';
+                return null;
               },
+              onChanged: (value) {
+                if (value.isEmpty || !snapshot.data!.contains(value)) return;
+                category = value;
+              },
+            );
+          },
         );
       },
     );
@@ -333,18 +328,10 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
   }
 
   Widget dateSelector() {
-    final lastSet = context
-        .read<GymSetRepository>()
-        .gymsets
-        .where((e) => e.exerciseId == currentExercise.id)
-        .firstOrNull;
+    final lastSet = context.read<GymSetRepository>().gymsets.where((e) => e.exerciseId == currentExercise.id).firstOrNull;
 
     if (lastSet == null) {
-      return const ListTile(
-        title: Text('Created date'),
-        subtitle: Text('No date available'),
-        trailing: Icon(Icons.calendar_today),
-      );
+      return const ListTile(title: Text('Created date'), subtitle: Text('No date available'), trailing: Icon(Icons.calendar_today));
     }
 
     final lastDate = lastSet.created;
@@ -364,9 +351,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
       selector: (context, settings) => settings.getSetting(.formats, 'long_date_format'),
       builder: (context, longDateFormat, child) => ListTile(
         title: const Text('Created date'),
-        subtitle: Text(
-          longDateFormat == 'timeago' ? timeago.format(created) : DateFormat(longDateFormat).format(created),
-        ),
+        subtitle: Text(longDateFormat == 'timeago' ? timeago.format(created) : DateFormat(longDateFormat).format(created)),
         trailing: const Icon(Icons.calendar_today),
         onTap: () => selectDate(),
       ),
@@ -412,10 +397,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
                 message: 'Long-press to delete',
                 child: GestureDetector(
                   onTap: () async {
-                    final imageFile = ImageFile(
-                      name: currentExercise.name,
-                      bytes: currentExercise.image ?? Uint8List(0),
-                    );
+                    final imageFile = ImageFile(name: currentExercise.name, bytes: currentExercise.image ?? Uint8List(0));
 
                     if (!context.mounted) return;
                     showGeneralDialog(
@@ -438,10 +420,7 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
                         );
                       },
                       transitionBuilder: (context, anim1, anim2, child) {
-                        final offsetAnimation = Tween<Offset>(
-                          begin: const Offset(1, 0),
-                          end: Offset.zero,
-                        ).animate(anim1);
+                        final offsetAnimation = Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(anim1);
                         return SlideTransition(position: offsetAnimation, child: child);
                       },
                     );
@@ -494,32 +473,26 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
               currentExercise = repo.getExerciseByName(selection) ?? currentExercise;
             });
           },
-          fieldViewBuilder:
-              (
-                BuildContext context,
-                TextEditingController textEditingController,
-                FocusNode focusNode,
-                VoidCallback onFieldSubmitted,
-              ) {
-                exerciseNameTEC = textEditingController;
-                return TextFormField(
-                  controller: textEditingController,
-                  focusNode: focusNode,
-                  decoration: const InputDecoration(labelText: 'Exercise name'),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Required';
-                    if (!snapshot.data!.contains(value)) return 'Invlaid';
-                    return null;
-                  },
-                  onChanged: (value) {
-                    if (value.isEmpty || !snapshot.data!.contains(value)) return;
-                    setState(() {
-                      name = value;
-                      currentExercise = repo.getExerciseByName(value) ?? currentExercise;
-                    });
-                  },
-                );
+          fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
+            exerciseNameTEC = textEditingController;
+            return TextFormField(
+              controller: textEditingController,
+              focusNode: focusNode,
+              decoration: const InputDecoration(labelText: 'Exercise name'),
+              validator: (value) {
+                if (value == null || value.isEmpty) return 'Required';
+                if (!snapshot.data!.contains(value)) return 'Invlaid';
+                return null;
               },
+              onChanged: (value) {
+                if (value.isEmpty || !snapshot.data!.contains(value)) return;
+                setState(() {
+                  name = value;
+                  currentExercise = repo.getExerciseByName(value) ?? currentExercise;
+                });
+              },
+            );
+          },
         );
       },
     );
@@ -555,21 +528,14 @@ class _AddEditSetPageState extends State<AddEditSetPage> {
     final parsedWeight = double.tryParse(weightTEC.text);
     if (parsedReps == null || parsedWeight == null) return;
     if (parsedReps > 0) {
-      ormTEC.text =
-          "${(double.parse(weightTEC.text) / (1.0278 - (0.0278 * double.parse(repsTEC.text)))).toStringAsFixed(2)} $unit";
+      ormTEC.text = "${(double.parse(weightTEC.text) / (1.0278 - (0.0278 * double.parse(repsTEC.text)))).toStringAsFixed(2)} $unit";
     } else {
-      ormTEC.text =
-          "${(double.parse(weightTEC.text) * (1.0278 - (0.0278 * double.parse(repsTEC.text)))).toStringAsFixed(2)} $unit";
+      ormTEC.text = "${(double.parse(weightTEC.text) * (1.0278 - (0.0278 * double.parse(repsTEC.text)))).toStringAsFixed(2)} $unit";
     }
   }
 
   Future<void> selectDate() async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: created,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
+    final DateTime? pickedDate = await showDatePicker(context: context, initialDate: created, firstDate: DateTime(2000), lastDate: DateTime(2100));
 
     if (pickedDate != null) {
       selectTime(pickedDate);

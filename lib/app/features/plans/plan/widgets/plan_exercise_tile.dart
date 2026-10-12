@@ -62,10 +62,15 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
   String? notes;
   String? unit;
 
+  final weightNode = FocusNode();
+  final repsNode = FocusNode();
+
   @override
   void initState() {
     if (widget.index == 0) widget.expander.expand();
     super.initState();
+    widget.reps.attachSelectOnFocus(repsNode);
+    widget.weight.attachSelectOnFocus(weightNode);
   }
 
   @override
@@ -73,8 +78,7 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     config = context.watch<ConfigRepository>();
     var peRepo = context.watch<PlanExercisesRepository>();
     final services = GymSetServices(context: context);
-    final planExercise =
-        currentPlanExercise ?? peRepo.getPlanExerciseByExerciseAndPlan(widget.exercise.id!, widget.planId)!;
+    final planExercise = currentPlanExercise ?? peRepo.getPlanExerciseByExerciseAndPlan(widget.exercise.id!, widget.planId)!;
 
     final max = planExercise.maxSets ?? widget.exercise.defaultSets ?? 3;
     final completedSets = services.getTodaysSetsByExerciseId(widget.exercise.id!, widget.planId);
@@ -120,23 +124,14 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     );
   }
 
-  Widget _buildExerciseTitle(
-    Exercise exercise,
-    PlanExercise planExercise,
-    List<GymSet> completedSets,
-    int max,
-    bool showImages,
-  ) {
+  Widget _buildExerciseTitle(Exercise exercise, PlanExercise planExercise, List<GymSet> completedSets, int max, bool showImages) {
     return Row(
       children: [
         Container(
           width: 24,
           height: 24,
           clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.secondaryContainer,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(12)),
           child: showImages && exercise.hasImage() == true
               ? Stack(
                   children: [
@@ -191,10 +186,7 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
     );
 
     if (screenWidth <= 450) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [repsField, const SizedBox(height: 8), weightField],
-      );
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [repsField, const SizedBox(height: 8), weightField]);
     }
 
     return Row(
@@ -382,12 +374,7 @@ class _PlanExerciseTileState extends State<PlanExerciseTile> {
                     setState(() {});
                   },
                 ),
-              if (sets.isEmpty)
-                ListTile(
-                  leading: const Icon(Icons.swap_horiz),
-                  title: const Text('Swap'),
-                  onTap: () => widget.onSwap(),
-                ),
+              if (sets.isEmpty) ListTile(leading: const Icon(Icons.swap_horiz), title: const Text('Swap'), onTap: () => widget.onSwap()),
             ],
           ),
         );
